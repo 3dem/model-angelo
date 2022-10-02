@@ -1,0 +1,46 @@
+while test $# -gt 0; do
+  case "$1" in
+    -h|--help)
+      echo "Make sure you have conda installed"
+      echo "Make sure you have set the TORCH_HOME environment variable to a suitable public location (if installing on a cluster)"
+      echo "-h, --help                   simple help and instructions"
+      echo "-w, --download-weights       use if you want to also download the weights"
+      exit 0
+      ;;
+    -w|--download-weights)
+      echo "Downloading weights as well because flag -w or --download-weights was specified"
+      DOWNLOAD_WEIGHTS=1
+      shift
+      ;;
+  esac
+done
+
+if [ -z "${TORCH_HOME}" ] && [ -n "${DOWNLOAD_WEIGHTS}" ]; then
+  echo "ERROR: TORCH_HOME is not set, but --download-weights or -w flag is set";
+  echo "Please specify TORCH_HOME to a publicly available directory";
+  exit 1;
+fi
+
+is_conda_model_angelo_installed=$(conda info --envs | grep model_angelo -c)
+if [[ "${is_conda_model_angelo_installed}" == "0" ]];then
+  conda create -n model_angelo python=3.9 -y;
+fi
+
+torch_home_path="${TORCH_HOME}"
+
+source `which activate` model_angelo
+
+conda install -y pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
+
+conda env config vars set TORCH_HOME="${torch_home_path}"
+
+pip install -r requirements.txt
+python setup.py install
+
+if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
+  echo "Writing weights to ${TORCH_HOME}"
+  python model_angelo/utils/setup_weights.py --bundle-name original
+  python model_angelo/utils/setup_weights.py --bundle-name original_no_seq
+else
+  echo "Did not download weights because the flag -w or --download-weights was not specified"
+fi

@@ -1,0 +1,33 @@
+{
+  "standardize_mrc_args":
+    {
+      "target_voxel_size": 1.5,
+      "crop_z": 0,
+      "bfactor_to_apply": 0,
+      "auto_mask": false
+    },
+  "ca_infer_args":
+    {
+      "model_checkpoint": "chkpt.torch",
+      "bfactor": 0,
+      "batch_size": 4,
+      "stride": 16,
+      "dont_mask_input": true,
+      "threshold": 0.05,
+      "save_real_coordinates": false,
+      "save_cryo_em_grid": false,
+      "do_nucleotides": false,
+      "save_backbone_trace": false,
+      "save_ca_grid": false,
+      "crop": 6
+    },
+  "gnn_infer_args":
+    {
+      "num_rounds": 3,
+      "crop_length": 200,
+      "repeat_per_residue": 3,
+      "esm_model": "esm1b_t33_650M_UR50S",
+      "aggressive_pruning": false,
+      "seq_attention_batch_size": 200
+    }
+}

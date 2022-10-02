@@ -1,0 +1,10 @@
+tqdm
+scipy
+biopython
+einops
+matplotlib
+mrcfile
+pandas
+fair-esm
+pyhmmer
+loguru
