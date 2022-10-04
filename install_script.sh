@@ -28,7 +28,13 @@ fi
 
 torch_home_path="${TORCH_HOME}"
 
-source `which activate` model_angelo
+if [[ `command -v activate` ]]
+then
+  source `which activate` model_angelo
+else
+  conda activate model_angelo
+fi
+  
 
 conda install -y pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 
