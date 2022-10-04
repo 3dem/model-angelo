@@ -55,8 +55,7 @@ Finally, you can make the following bash script available for all users to run:
 
 ```
 #!/bin/bash
-source /path/to/conda/profile/conda.sh 
-conda activate model_angelo
+source `which activate` model_angelo
 model_angelo "$@"
 ```
 
