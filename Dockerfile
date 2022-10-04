@@ -12,7 +12,7 @@
 
 FROM  continuumio/miniconda
 
-WORKDIR=/opt
+WORKDIR /opt
 
 RUN	git clone https://github.com/3dem/model-angelo.git && \
 	cd model-angelo && \
