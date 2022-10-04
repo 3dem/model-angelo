@@ -13,7 +13,11 @@
 FROM  continuumio/miniconda
 
 WORKDIR=/opt
+
 RUN	git clone https://github.com/3dem/model-angelo.git && \
 	cd model-angelo && \
-	bash install_script.sh
+	export RUN TORCH_HOME=/public/model_angelo_weights && \
+	mkdir -p /public/model_angelo_weights && \
+	bash install_script.sh --download-weights
+
 
