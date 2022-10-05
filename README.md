@@ -66,7 +66,7 @@ model_angelo "$@"
 **1. Binary activate not found**
 It appears that miniconda's activate binary is not added to `PATH` by default. You can either fix this by appending it yourself, like so:
 ```
-export PATH="/path/to/miniconda3/bin:$PATH"
+export PATH="$PATH:/path/to/miniconda3/bin"
 ```
 or running `conda init` and restarting your shell.
 
