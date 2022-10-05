@@ -44,7 +44,14 @@ fi
 
 conda install -y pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 
-conda env config vars set TORCH_HOME="${torch_home_path}"
+if [ "${torch_home_path}" ]
+then
+  conda env config vars set TORCH_HOME="${torch_home_path}"
+fi
+
+new_path="${CONDA_PREFIX}/bin:$PATH"
+
+conda env config vars set PATH="${new_path}"
 
 pip install -r requirements.txt
 python setup.py install
