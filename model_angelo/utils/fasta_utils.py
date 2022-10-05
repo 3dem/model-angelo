@@ -19,6 +19,15 @@ def download_pdb_entry_fasta_file(pdb_entry_name, output_dir):
     wget.download(pdb_link, out=output_dir)
 
 
+def is_valid_fasta_ending(fasta_path: str) -> bool:
+    return (
+        fasta_path.endswith(".fasta") or
+        fasta_path.endswith(".fa") or
+        fasta_path.endswith(".faa") or
+        fasta_path.endswith(".mpfa")
+    )
+
+
 def read_fasta(fasta_path, auth_chains=True):
     sequences = []
     sequence_names = []

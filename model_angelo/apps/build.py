@@ -18,6 +18,7 @@ import torch
 from model_angelo.c_alpha.inference import infer as c_alpha_infer
 from model_angelo.data.standardize_mrc import standardize_mrc
 from model_angelo.gnn.inference import infer as gnn_infer
+from model_angelo.utils.fasta_utils import is_valid_fasta_ending
 from model_angelo.utils.misc_utils import filter_useless_warnings, setup_logger, Args, is_relion_abort, \
     write_relion_job_exit_status, abort_if_relion_abort
 from model_angelo.utils.torch_utils import download_and_install_model, get_device_name
@@ -147,6 +148,10 @@ def main(parsed_args):
 
         # Try to open FASTA       --------------------------------------------------------------------------------------
         from model_angelo.utils.fasta_utils import read_fasta
+
+        if not is_valid_fasta_ending(parsed_args.fasta_path):
+            raise RuntimeError(f"File {parsed_args.fasta_path} is not a supported file format.")
+
         _ = read_fasta(parsed_args.fasta_path)
 
         # Standarize input volume --------------------------------------------------------------------------------------

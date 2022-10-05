@@ -16,7 +16,7 @@ from model_angelo.utils.affine_utils import (
     get_affine_translation,
     init_random_affine_from_translation,
 )
-from model_angelo.utils.fasta_utils import fasta_to_unified_seq
+from model_angelo.utils.fasta_utils import fasta_to_unified_seq, is_valid_fasta_ending
 from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
 from model_angelo.utils.misc_utils import get_esm_model, abort_if_relion_abort
 from model_angelo.utils.pdb_utils import load_cas_from_structure
@@ -260,7 +260,7 @@ def infer(args):
             )
     elif args.struct.endswith("cif") or args.struct.endswith("pdb"):
         if "output" in args.struct:
-            if not args.fasta.endswith("fasta"):
+            if not is_valid_fasta_ending(args.fasta):
                 raise RuntimeError(f"File {args.fasta} is not a supported file format.")
             protein = init_protein_from_see_alpha(args.struct, args.fasta)
         else:
