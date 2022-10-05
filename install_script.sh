@@ -35,6 +35,12 @@ else
   conda activate model_angelo
 fi
   
+# Check to make sure model_angelo is activated
+if [[ "${CONDA_DEFAULT_ENV}" != "model_angelo" ]]
+then
+  echo "Could not run conda activate model_angelo, please check the errors";
+  exit 1;
+fi
 
 conda install -y pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 
