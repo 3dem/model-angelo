@@ -49,7 +49,7 @@ Now, you run the following:
 ```
 export TORCH_HOME=/public/model_angelo_weights
 cd model-angelo
-bash install_script.sh --download-weights
+source install_script.sh --download-weights
 ```
 Once the script is finished running, make sure that where it installed the weights is in the directory you set.
 
