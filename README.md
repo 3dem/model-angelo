@@ -22,7 +22,7 @@ conda info
 
 Now, you can install ModelAngelo. First, you need to clone this Github repository with 
 ```
-git clone git@github.com:3dem/model-angelo.git
+git clone https://github.com/3dem/model-angelo.git
 ```
 
 **Step 3: Run install script**
