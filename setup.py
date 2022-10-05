@@ -7,7 +7,7 @@ Setup module for ModelAngelo
 import os
 import sys
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 sys.path.insert(0, f"{os.path.dirname(__file__)}/model_angelo")
 
@@ -22,6 +22,7 @@ setup(
             "model_angelo = model_angelo.__main__:main",
         ],
     },
+    packages=find_packages(),
     package_data={'': ['utils/stereo_chemical_props.txt']},
     version=model_angelo.__version__,
 )
