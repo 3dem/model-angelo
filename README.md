@@ -61,6 +61,15 @@ source `which activate` model_angelo
 model_angelo "$@"
 ```
 
+## Installation issues
+
+**1. Binary activate not found**
+It appears that miniconda's activate binary is not added to `PATH` by default. You can either fix this by appending it yourself, like so:
+```
+export PATH="/path/to/miniconda3/bin:$PATH"
+```
+or running `conda init` and restarting your shell.
+
 ## Usage
 ### Building a map with FASTA sequence
 This is the recommended use case, when you have access to a medium-high resolution cryo-EM map (resolutions exceeding 4 Å) as well as a FASTA file with all of your protein sequences.
