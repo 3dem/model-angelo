@@ -5,6 +5,8 @@ ModelAngelo is an automatic atomic model building program for cryo-EM maps.
 ## Compute requirements
 It is highly recommended to have access to GPUs with at least 8GB of memory. ModelAngelo performs well on NVIDIA GPUs such as 2080's and beyond.
 
+Please note that the weight files required by both ModelAngelo and the language model it uses combined are around 10 GB. So you need to have more disk space than that.
+
 ## Installation
 ### Personal use
 (If you manage a computational cluster, please skip to the next section)
@@ -30,7 +32,7 @@ git clone https://github.com/3dem/model-angelo.git
 After, all you need to do is go into the `model-angelo` directory and run the install script:
 ```
 cd model-angelo
-bash install_script.sh
+source install_script.sh
 ```
 You will now have a conda environment called `model_angelo` that is able to run the program. 
 You need to activate this conda environment with `conda activate model_angelo`. 
