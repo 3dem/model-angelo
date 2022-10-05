@@ -49,17 +49,15 @@ then
   conda env config vars set TORCH_HOME="${torch_home_path}"
 fi
 
-new_path="${CONDA_PREFIX}/bin:$PATH"
+python_exc="${CONDA_PREFIX}/bin/python"
 
-conda env config vars set PATH="${new_path}"
-
-pip install -r requirements.txt
-python setup.py install
+$python_exc -mpip install -r requirements.txt
+$python_exc setup.py install
 
 if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
   echo "Writing weights to ${TORCH_HOME}"
-  python model_angelo/utils/setup_weights.py --bundle-name original
-  python model_angelo/utils/setup_weights.py --bundle-name original_no_seq
+  $python_exc model_angelo/utils/setup_weights.py --bundle-name original
+  $python_exc model_angelo/utils/setup_weights.py --bundle-name original_no_seq
 else
   echo "Did not download weights because the flag -w or --download-weights was not specified"
 fi
