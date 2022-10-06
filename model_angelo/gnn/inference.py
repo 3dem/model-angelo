@@ -119,13 +119,10 @@ def run_inference_on_data(
 def init_empty_collate_results(num_residues, unified_seq_len, device="cpu"):
     result = {}
     result["counts"] = torch.zeros(num_residues, device=device)
-    result["edge_counts"] = torch.zeros(num_residues, num_residues, device=device)
-
     result["pred_positions"] = torch.zeros(num_residues, 3, device=device)
     result["pred_affines"] = torch.zeros(num_residues, 3, 4, device=device)
     result["pred_torsions"] = torch.zeros(num_residues, 83, 2, device=device)
     result["aa_logits"] = torch.zeros(num_residues, 20, device=device)
-    result["edges"] = torch.zeros(num_residues, num_residues, device=device)
     result["local_confidence"] = torch.zeros(num_residues, device=device)
     result["existence_mask"] = torch.zeros(num_residues, device=device)
     result["seq_attention_scores"] = torch.zeros(
@@ -165,27 +162,6 @@ def collate_nn_results(
         "seq_attention_scores"
     ][:num_pred_residues][..., 0].cpu()
 
-    source_idx = (
-        indices[results["cryo_edges"][-1][1]]
-        .reshape(crop_length, 20)[:num_pred_residues]
-        .flatten()
-    )
-    target_idx = (
-        indices[results["cryo_edges"][-1][0]]
-        .reshape(crop_length, 20)[:num_pred_residues]
-        .flatten()
-    )
-
-    collated_results["edges"][source_idx, target_idx] += results["cryo_edge_logits"][
-        -1
-    ][:num_pred_residues].flatten().cpu()
-    collated_results["edge_counts"][source_idx, target_idx] += 1
-
-    collated_results["edges"][target_idx, source_idx] += results["cryo_edge_logits"][
-        -1
-    ][:num_pred_residues].flatten().cpu()
-    collated_results["edge_counts"][target_idx, source_idx] += 1
-
     protein = update_protein_gt_frames(
         protein,
         indices[:num_pred_residues].cpu().numpy(),
@@ -213,9 +189,6 @@ def get_final_nn_results(collated_results):
     final_results["seq_attention_scores"] = (
         collated_results["seq_attention_scores"] / collated_results["counts"][..., None]
     )
-    final_results["edges"] = collated_results["edges"] / collated_results[
-        "edge_counts"
-    ].clamp(min=1)
     final_results["local_confidence"] = collated_results["local_confidence"]
     final_results["existence_mask"] = collated_results["existence_mask"]
 
