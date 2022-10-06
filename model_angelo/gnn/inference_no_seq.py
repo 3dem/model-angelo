@@ -132,7 +132,7 @@ def collate_nn_results(
     curr_pos_avg = (
         collated_results["pred_positions"][indices[:num_pred_residues]]
         / collated_results["counts"][indices[:num_pred_residues]][..., None]
-    ).cpu()
+    )
     collated_results["pred_affines"][indices[:num_pred_residues]] = get_affine(
         get_affine_rot(results["pred_affines"][-1][:num_pred_residues]), curr_pos_avg
     ).cpu()
