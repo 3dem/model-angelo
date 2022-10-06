@@ -140,30 +140,30 @@ def collate_nn_results(
     collated_results["counts"][indices[:num_pred_residues]] += 1
     collated_results["pred_positions"][indices[:num_pred_residues]] += results[
         "pred_positions"
-    ][-1][:num_pred_residues]
+    ][-1][:num_pred_residues].cpu()
     collated_results["pred_torsions"][indices[:num_pred_residues]] += F.normalize(
         results["pred_torsions"][:num_pred_residues], p=2, dim=-1
-    )
+    ).cpu()
 
     curr_pos_avg = (
         collated_results["pred_positions"][indices[:num_pred_residues]]
         / collated_results["counts"][indices[:num_pred_residues]][..., None]
-    )
+    ).cpu()
     collated_results["pred_affines"][indices[:num_pred_residues]] = get_affine(
         get_affine_rot(results["pred_affines"][-1][:num_pred_residues]), curr_pos_avg
-    )
+    ).cpu()
     collated_results["aa_logits"][indices[:num_pred_residues]] += results[
         "cryo_aa_logits"
-    ][-1][:num_pred_residues]
+    ][-1][:num_pred_residues].cpu()
     collated_results["local_confidence"][indices[:num_pred_residues]] = results[
         "local_confidence_score"
-    ][-1][:num_pred_residues][..., 0]
+    ][-1][:num_pred_residues][..., 0].cpu()
     collated_results["existence_mask"][indices[:num_pred_residues]] = results[
         "pred_existence_mask"
-    ][-1][:num_pred_residues][..., 0]
+    ][-1][:num_pred_residues][..., 0].cpu()
     collated_results["seq_attention_scores"][indices[:num_pred_residues]] += results[
         "seq_attention_scores"
-    ][:num_pred_residues][..., 0]
+    ][:num_pred_residues][..., 0].cpu()
 
     source_idx = (
         indices[results["cryo_edges"][-1][1]]
@@ -178,12 +178,12 @@ def collate_nn_results(
 
     collated_results["edges"][source_idx, target_idx] += results["cryo_edge_logits"][
         -1
-    ][:num_pred_residues].flatten()
+    ][:num_pred_residues].flatten().cpu()
     collated_results["edge_counts"][source_idx, target_idx] += 1
 
     collated_results["edges"][target_idx, source_idx] += results["cryo_edge_logits"][
         -1
-    ][:num_pred_residues].flatten()
+    ][:num_pred_residues].flatten().cpu()
     collated_results["edge_counts"][target_idx, source_idx] += 1
 
     protein = update_protein_gt_frames(
@@ -229,7 +229,7 @@ def get_final_nn_results(collated_results):
         final_results["normalized_aa_entropy"].max()
     )
 
-    return dict([(k, v.detach().cpu().numpy()) for (k, v) in final_results.items()])
+    return dict([(k, v.numpy()) for (k, v) in final_results.items()])
 
 
 def infer(args):
@@ -293,7 +293,7 @@ def infer(args):
     collated_results = init_empty_collate_results(
         num_res,
         protein.unified_seq_len,
-        device=get_module_device(module),
+        device="cpu",
     )
 
     residues_left = num_res
