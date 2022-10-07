@@ -435,6 +435,11 @@ def is_ndarray(x) -> bool:
 
 
 def download_and_install_model(bundle_name: str) -> str:
+    bundle_name_to_link = {
+        "original": "https://cloud.mrc-lmb.cam.ac.uk/s/syttED3Axgy2PY8/download/original.zip",
+        "original_no_sequence": "https://cloud.mrc-lmb.cam.ac.uk/s/pd67QRmPXBkTJf9/download/original_no_sequence.zip",
+        "small_gpu": "https://cloud.mrc-lmb.cam.ac.uk/s/MiTQZfm2o2QDGb5/download/small_gpu.zip",
+    }
     dest = os.path.join(
         torch.hub.get_dir(),
         "checkpoints",
@@ -448,7 +453,7 @@ def download_and_install_model(bundle_name: str) -> str:
     import zipfile
     os.makedirs(os.path.split(dest)[0], exist_ok=True)
     torch.hub.download_url_to_file(
-        f"ftp://ftp.mrc-lmb.cam.ac.uk/pub/scheres/modelangelo/{bundle_name}.zip",
+        bundle_name_to_link[bundle_name],
         dest + ".zip"
     )
 
