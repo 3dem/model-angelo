@@ -134,8 +134,9 @@ def collate_nn_results(
         / collated_results["counts"][indices[:num_pred_residues]][..., None]
     )
     collated_results["pred_affines"][indices[:num_pred_residues]] = get_affine(
-        get_affine_rot(results["pred_affines"][-1][:num_pred_residues]), curr_pos_avg
-    ).cpu()
+        get_affine_rot(results["pred_affines"][-1][:num_pred_residues]).cpu(),
+        curr_pos_avg.cpu()
+    )
     collated_results["aa_logits"][indices[:num_pred_residues]] += results[
         "cryo_aa_logits"
     ][-1][:num_pred_residues].cpu()
