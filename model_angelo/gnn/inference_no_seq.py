@@ -275,13 +275,15 @@ def infer(args):
 
     final_results = get_final_nn_results(collated_results)
     output_path = os.path.join(args.output_dir, "output.cif")
+
+    # Aggressive pruning does not make sense here
     final_results_to_cif(
         final_results,
         output_path,
         sequences=None,
         verbose=True,
         print_fn=logger.info,
-        aggressive_pruning=args.aggressive_pruning,
+        aggressive_pruning=False,
     )
 
     return output_path
