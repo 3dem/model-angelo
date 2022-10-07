@@ -19,8 +19,9 @@ class GNNOutput:
             "cryo_aa_logits",
             "local_confidence_score",
             "pred_existence_mask",
-            "x",
             "pred_affines",
+            "pred_torsions",
+            "x",
         ]
 
         self.refresh(
