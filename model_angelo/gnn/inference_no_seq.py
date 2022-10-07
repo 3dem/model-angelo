@@ -103,6 +103,7 @@ def run_inference_on_data(
         record_training=False,
         run_iters=run_iters,
     )
+    result.to("cpu")
     return result
 
 
