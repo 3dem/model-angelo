@@ -113,6 +113,7 @@ def run_inference_on_data(
         run_iters=run_iters,
         seq_attention_batch_size=seq_attention_batch_size,
     )
+    result.to("cpu")
     return result
 
 
@@ -137,10 +138,10 @@ def collate_nn_results(
     collated_results["counts"][indices[:num_pred_residues]] += 1
     collated_results["pred_positions"][indices[:num_pred_residues]] += results[
         "pred_positions"
-    ][-1][:num_pred_residues].cpu()
+    ][-1][:num_pred_residues]
     collated_results["pred_torsions"][indices[:num_pred_residues]] += F.normalize(
         results["pred_torsions"][:num_pred_residues], p=2, dim=-1
-    ).cpu()
+    )
 
     curr_pos_avg = (
         collated_results["pred_positions"][indices[:num_pred_residues]]
@@ -148,25 +149,25 @@ def collate_nn_results(
     )
     collated_results["pred_affines"][indices[:num_pred_residues]] = get_affine(
         get_affine_rot(results["pred_affines"][-1][:num_pred_residues]).cpu(),
-        curr_pos_avg.cpu()
+        curr_pos_avg
     )
     collated_results["aa_logits"][indices[:num_pred_residues]] += results[
         "cryo_aa_logits"
-    ][-1][:num_pred_residues].cpu()
+    ][-1][:num_pred_residues]
     collated_results["local_confidence"][indices[:num_pred_residues]] = results[
         "local_confidence_score"
-    ][-1][:num_pred_residues][..., 0].cpu()
+    ][-1][:num_pred_residues][..., 0]
     collated_results["existence_mask"][indices[:num_pred_residues]] = results[
         "pred_existence_mask"
-    ][-1][:num_pred_residues][..., 0].cpu()
+    ][-1][:num_pred_residues][..., 0]
     collated_results["seq_attention_scores"][indices[:num_pred_residues]] += results[
         "seq_attention_scores"
-    ][:num_pred_residues][..., 0].cpu()
+    ][:num_pred_residues][..., 0]
 
     protein = update_protein_gt_frames(
         protein,
-        indices[:num_pred_residues].cpu().numpy(),
-        collated_results["pred_affines"][indices[:num_pred_residues]].cpu().numpy(),
+        indices[:num_pred_residues].numpy(),
+        collated_results["pred_affines"][indices[:num_pred_residues]].numpy(),
     )
     return collated_results, protein
 

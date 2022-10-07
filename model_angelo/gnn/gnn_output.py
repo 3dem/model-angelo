@@ -11,6 +11,18 @@ class GNNOutput:
         init_affine: torch.Tensor = None,
     ):
         self.result_dict = {}
+        self.keys = [
+            "pred_positions",
+            "pred_ncac",
+            "cryo_edges",
+            "cryo_edge_logits",
+            "cryo_aa_logits",
+            "local_confidence_score",
+            "pred_existence_mask",
+            "x",
+            "pred_affines",
+        ]
+
         self.refresh(
             positions=positions,
             hidden_features=hidden_features,
@@ -37,15 +49,9 @@ class GNNOutput:
         hidden_features: int = 256,
         init_affine: torch.Tensor = None,
     ):
-        self.result_dict = {
-            "pred_positions": [],
-            "pred_ncac": [],
-            "cryo_edges": [],
-            "cryo_edge_logits": [],
-            "cryo_aa_logits": [],
-            "local_confidence_score": [],
-            "pred_existence_mask": [],
-        }
+        self.result_dict = {}
+        for key in self.keys:
+            self.result_dict[key] = []
 
         if positions is not None:
             self.result_dict["x"] = torch.zeros(
@@ -60,3 +66,10 @@ class GNNOutput:
                     else init_affine
                 ).requires_grad_()
             ]
+
+    def to(self, device: str):
+        for key in self.keys:
+            if torch.is_tensor(self.result_dict[key]):
+                self.result_dict[key] = self.result_dict[key].to(device)
+            else:
+                self.result_dict[key] = [x.to(device) for x in self.result_dict[key]]
