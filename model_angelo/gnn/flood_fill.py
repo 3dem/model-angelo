@@ -247,7 +247,13 @@ def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
     chain_ends = {}
     while np.any(b_factors_copy != -1):
         idx = np.argmax(b_factors_copy)
-        possible_indices = np.array(kdtree.query_ball_point(c_positions[idx], r=n_c_distance_threshold))
+        possible_indices = np.array(
+            kdtree.query_ball_point(
+                c_positions[idx], 
+                r=n_c_distance_threshold, 
+                return_sorted=True
+            )
+        )
         possible_indices = possible_indices[possible_indices != idx]
 
         got_chain = False
