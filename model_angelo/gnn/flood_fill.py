@@ -257,7 +257,7 @@ def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
         possible_indices = possible_indices[possible_indices != idx]
 
         got_chain = False
-        if np.sum(possible_indices) > 0:
+        if len(possible_indices) > 0:
             for possible_prev_residue in possible_indices:
                 if possible_prev_residue == idx:
                     continue
