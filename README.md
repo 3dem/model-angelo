@@ -99,6 +99,11 @@ hhblits -i output/hmm_profiles/A.hhm -d PATH_TO_DB -o A.hhr -oa3m A.a3m -M first
 ```
 You will have your result as a multiple sequence alignment here: `A.a3m`. 
 
+## Common issues
+1. ModelAngelo currently does not build nucleotides. It also may make mistakes if nucleotide sequences are in the sequence fasta file.
+
+2. If the result looks very bad, with many disconnected chains, take a look at the alpha helices. If these are made of short and disconnected chains, the map was probably in the wrong handedness. If you flip the map and run again, you should see much better results.
+
 ## Citation
 
 Currently, ModelAngelo is a pre-print on [arXiv](https://arxiv.org/abs/2210.00006)
