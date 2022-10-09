@@ -9,6 +9,9 @@ Please note that the weight files required by both ModelAngelo and the language 
 
 ## Installation
 ### Personal use
+
+(If you manage a computational cluster, please skip to the next section)
+
 **Step 1: Install Conda**
 
 To install ModelAngelo, you need Anaconda. We recommend installing miniconda3, as it is lighter. You can find that here: [miniconda](https://docs.conda.io/en/latest/miniconda.html)
@@ -24,8 +27,6 @@ Now, you can install ModelAngelo. First, you need to clone this Github repositor
 ```
 git clone https://github.com/3dem/model-angelo.git
 ```
-
-(If you manage a computational cluster, please skip to the next section)
 
 **Step 3: Run install script**
 
