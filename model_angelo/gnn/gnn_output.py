@@ -21,6 +21,7 @@ class GNNOutput:
             "pred_existence_mask",
             "pred_affines",
             "pred_torsions",
+            "seq_attention_scores",
             "x",
         ]
 
