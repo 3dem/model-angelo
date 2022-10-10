@@ -437,7 +437,7 @@ def is_ndarray(x) -> bool:
 def download_and_install_model(bundle_name: str) -> str:
     bundle_name_to_link = {
         "original": "https://cloud.mrc-lmb.cam.ac.uk/s/syttED3Axgy2PY8/download/original.zip",
-        "original_no_sequence": "https://cloud.mrc-lmb.cam.ac.uk/s/pd67QRmPXBkTJf9/download/original_no_sequence.zip",
+        "original_no_seq": "https://cloud.mrc-lmb.cam.ac.uk/s/pd67QRmPXBkTJf9/download/original_no_sequence.zip",
         "small_gpu": "https://cloud.mrc-lmb.cam.ac.uk/s/MiTQZfm2o2QDGb5/download/small_gpu.zip",
     }
     dest = os.path.join(
