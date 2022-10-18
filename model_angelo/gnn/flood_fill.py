@@ -173,7 +173,7 @@ def final_results_to_cif(
             chain_name = number_to_chain_str(i)
             dump_aa_logits_to_hmm_file(
                 chain_aa_logits,
-                os.path.join(hmm_dir_path, f"{chain_name}.hhm"),
+                os.path.join(hmm_dir_path, f"{chain_name}.hmm"),
                 name=f"{chain_name}",
             )
     else:
