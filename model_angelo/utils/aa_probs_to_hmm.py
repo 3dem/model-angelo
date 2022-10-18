@@ -199,10 +199,16 @@ def aa_logits_to_hmm(
 def dump_aa_logits_to_hmm_file(
     aa_logits: np.ndarray,
     output_file: str,
+    confidence: np.ndarray = None,
     name: str = "model_angelo_search"
 ):
     aa_probs = torch.from_numpy(aa_logits).softmax(dim=-1).numpy()
-    aa_probs_to_hmm_file(name, aa_probs, output_file)
+    aa_probs_to_hmm_file(
+        name,
+        aa_probs,
+        confidence=confidence,
+        output_path=output_file,
+    )
 
 
 def dump_aa_logits_to_hhm_file(

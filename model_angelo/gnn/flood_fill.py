@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from scipy.spatial import cKDTree
 
-from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hhm_file
+from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hhm_file, dump_aa_logits_to_hmm_file
 from model_angelo.utils.save_pdb_utils import number_to_chain_str
 
 from model_angelo.utils.hmm_sequence_align import (
@@ -171,7 +171,7 @@ def final_results_to_cif(
 
         for i, chain_aa_logits in enumerate(new_final_results["chain_aa_logits"]):
             chain_name = number_to_chain_str(i)
-            dump_aa_logits_to_hhm_file(
+            dump_aa_logits_to_hmm_file(
                 chain_aa_logits,
                 os.path.join(hmm_dir_path, f"{chain_name}.hhm"),
                 name=f"{chain_name}",
