@@ -40,6 +40,18 @@ def normalize_local_confidence_score(
     return normalized_score
 
 
+def local_confidence_score_sigmoid(
+    local_confidence_score: np.ndarray,
+    best_value: float = 0.5,
+    worst_value: float = 1.2,
+) -> np.ndarray:
+    scale = worst_value - best_value
+    x_naught = scale / 2
+    score = x_naught - local_confidence_score
+    normalized_score = 1 / (1 + np.exp(score / scale))
+    return normalized_score
+
+
 def chains_to_atoms(
     final_results: Dict,
     fix_chains_output: FixChainsOutput,
@@ -146,6 +158,11 @@ def final_results_to_cif(
     new_final_results["chain_aa_logits"] = [
         final_results["aa_logits"][existence_mask][c] for c in chains
     ]
+    new_final_results["hmm_confidence"] = [
+        local_confidence_score_sigmoid(
+            final_results["local_confidence"][existence_mask][c]
+        ) for c in chains
+    ]
 
     if sequences is None:
         # Can make HMM profiles with the aa_probs
@@ -167,6 +184,7 @@ def final_results_to_cif(
             chains,
             new_final_results["chain_aa_logits"],
             ca_pos,
+            chain_confidences=new_final_results["hmm_confidence"],
             base_dir=os.path.dirname(cif_path),
         )
 

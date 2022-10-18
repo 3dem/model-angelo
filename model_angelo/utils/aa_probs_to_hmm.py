@@ -1,3 +1,4 @@
+import math
 from typing import Iterable
 
 import numpy as np
@@ -11,7 +12,7 @@ import os
 
 
 def negative_log_prob_to_hmm_line(nlp: Iterable) -> str:
-    return "  ".join([f"{x:.5f}" if np.isfinite(x) else "*" for x in nlp])
+    return "  ".join([f"{x: >.5f}" if np.isfinite(x) else "*" for x in nlp])
 
 
 def pseudocount_to_hhm_line(nlp: Iterable) -> str:
@@ -41,7 +42,10 @@ terminal_fixed_transition_str_hhm = "       29       5644    *     737     1322 
 def aa_probs_to_hmm_file(
     name: str,
     aa_probs: np.ndarray,
-    output_path: str = None
+    confidence: np.ndarray = None,
+    output_path: str = None,
+    delta=0.05,
+    gamma=0.5,
 ):
     """
     This outputs an HMMER3 file.
@@ -52,53 +56,60 @@ def aa_probs_to_hmm_file(
     )
     if output_path is None:
         output_path = name + ".hmm"
+    if confidence is None:
+        confidence = np.ones(len(aa_probs))
 
     with open(output_path, "w") as file_handle:
-        file_handle.write(f"HMMER3/f [3.3.2 | Nov 2020]\n")
-        file_handle.write(f"NAME  {name}\n")
-        file_handle.write(f"LENG  {len(aa_probs)}\n")
-        file_handle.write(f"ALPH  amino\n")
-        file_handle.write(f"RF    no\n")
-        file_handle.write(f"MM    no\n")
-        file_handle.write(f"CONS  yes\n")  # Should this be highest AA prob?
-        file_handle.write(f"CS    no\n")
-        file_handle.write(f"MAP   no\n")
-        file_handle.write(f"DATE  Wed Sep 14 14:08:43 2022\n")
-        file_handle.write(f"COM   [1] hello\n")
-        file_handle.write(f"NSEQ  1\n")
         file_handle.write(
-            f"HMM          "
-            f"A        C        D        E        F        G        "
-            f"H        I        K        L        M        N        "
-            f"P        Q        R        S        T        V        "
-            f"W        Y\n"
+            f"""HMMER3/f [3.2 | April 2018]
+                NAME  {name}
+                LENG  {len(aa_probs)}
+                ALPH  amino
+                RF    no
+                MM    no
+                CONS  yes
+                CS    no
+                MAP   yes
+                STATS LOCAL MSV       -9.9014  0.70957
+                STATS LOCAL VITERBI  -10.7224  0.70957
+                STATS LOCAL FORWARD   -4.1637  0.70957
+                HMM          A        C        D        E        F        G        H        I        K        L        M        N        P        Q        R        S        T        V        W        Y   
+                            m->m     m->i     m->d     i->m     i->i     d->m     d->d
+                  COMPO   2.36553  4.52577  2.96709  2.70473  3.20818  3.02239  3.41069  2.90041  2.55332  2.35210  3.67329  3.19812  3.45595  3.16091  3.07934  2.66722  2.85475  2.56965  4.55393  3.62921
+                          2.68640  4.42247  2.77497  2.73145  3.46376  2.40504  3.72516  3.29302  2.67763  2.69377  4.24712  2.90369  2.73719  3.18168  2.89823  2.37879  2.77497  2.98431  4.58499  3.61525
+                          0.57544  1.78073  1.31293  1.75577  0.18968  0.00000        *
+            """
         )
-        file_handle.write(
-            f"            m->m     m->i     m->d     i->m     i->i     d->m     d->d\n"
-        )
-        avg_per_amino_acid = aa_probs.mean(axis=0)
-        nlp_avg_per_amino_acid = - np.log(avg_per_amino_acid)[restype_1_order_to_hmm]
-
-        file_handle.write(
-            "  COMPO   " + negative_log_prob_to_hmm_line(nlp_avg_per_amino_acid) + "\n"
-        )
-        file_handle.write(fixed_insertion_str_hmm)
-        file_handle.write(non_terminal_fixed_transition_str_hmm)
 
         negative_log_prob = - np.log(aa_probs)
         negative_log_prob = negative_log_prob[:, restype_1_order_to_hmm]  # Reorder to HMM order
 
         for res_index in range(len(aa_probs)):
-            aa_prob_str = f"      {res_index + 1}   "
+            aa_prob_str = f"      {res_index + 1: >7}   "
             aa_prob_str += negative_log_prob_to_hmm_line(negative_log_prob[res_index])
             # For now, might need to replace based on RF,MM,CONS,CS,MAP
-            aa_prob_str += f"      - {index_to_hmm_restype_1[np.argmin(negative_log_prob[res_index])].lower()} - - -\n"
+            aa_prob_str += f"{res_index + 1: >7} {index_to_hmm_restype_1[np.argmin(negative_log_prob[res_index])].lower()} - - -\n"
             file_handle.write(aa_prob_str)
-            file_handle.write(fixed_insertion_str_hmm)
-            if res_index != len(aa_probs) - 1:
-                file_handle.write(non_terminal_fixed_transition_str_hmm)
-            else:
-                file_handle.write(terminal_fixed_transition_str_hmm)
+            # Inserts
+            file_handle.write("        ")
+            file_handle.write(negative_log_prob_to_hmm_line(negative_log_prob[res_index]) + "\n")
+            # Transitions
+            mm = max(confidence[res_index] - delta, gamma)
+            file_handle.write("        ")
+            # m -> m
+            file_handle.write(f"  {-math.log(mm): >.5f}")
+            # m->i
+            file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
+            # m->d
+            file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
+            # i->m
+            file_handle.write(f"  {-math.log(1. - delta): >.5f}")
+            # i->i
+            file_handle.write(f"  {-math.log(delta): >.5f}")
+            # d->m
+            file_handle.write(f"  {-math.log(1 - delta): >.5f}")
+            # d->d
+            file_handle.write(f"  {-math.log(delta): >.5f}\n")
         file_handle.write("//\n")
 
 
@@ -164,10 +175,19 @@ def aa_probs_to_hhm_file(
         file_handle.write("//\n")
 
 
-def aa_logits_to_hmm(aa_logits: np.ndarray, base_dir: str = "/tmp") -> HMM:
+def aa_logits_to_hmm(
+    aa_logits: np.ndarray,
+    confidence: np.ndarray = None,
+    base_dir: str = "/tmp",
+) -> HMM:
     aa_probs = torch.from_numpy(aa_logits).softmax(dim=-1).numpy()
     tmp_path = os.path.join(base_dir, f"model_angelo_temp.hmm")
-    aa_probs_to_hmm_file("model_angelo_search", aa_probs, tmp_path)
+    aa_probs_to_hmm_file(
+        name="model_angelo_search",
+        aa_probs=aa_probs,
+        confidence=confidence,
+        output_path=tmp_path
+    )
 
     with HMMFile(tmp_path) as hmm_file:
         hmm = hmm_file.read()
