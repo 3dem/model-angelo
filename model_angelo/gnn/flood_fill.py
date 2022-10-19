@@ -44,11 +44,12 @@ def local_confidence_score_sigmoid(
     local_confidence_score: np.ndarray,
     best_value: float = 0.5,
     worst_value: float = 1.2,
+    mid_point: float = 0.7,
+    scale_multiplier: float = 6,
 ) -> np.ndarray:
     scale = worst_value - best_value
-    x_naught = scale / 2
-    score = x_naught - local_confidence_score
-    normalized_score = 1 / (1 + np.exp(score / scale))
+    score = scale_multiplier * (local_confidence_score - mid_point) / scale
+    normalized_score = 1 / (1 + np.exp(score))
     return normalized_score
 
 
