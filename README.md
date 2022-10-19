@@ -93,10 +93,10 @@ You run this command:
 ```
 model_angelo build_no_seq -v map.mrc -o output
 ```
-The model will be in `output/output.cif` as before. Now there are also HMM profiles for each chain in HHsearch's format here: `output/hmm_profiles`.
-To do a sequence search for chain A (for example), you should first install [HHblits](https://github.com/soedinglab/hh-suite) and download one of the [databases](https://github.com/soedinglab/hh-suite#available-databases). Then, you can run
+The model will be in `output/output.cif` as before. Now there are also HMM profiles for each chain in HMMER3 format here: `output/hmm_profiles`.
+To do a sequence search for chain A (for example), you should first install [HMMER](https://anaconda.org/bioconda/hmmer) and download a genome database, such as the [human genome](https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers/GRCh38_latest_genomic.fna.gz). Then, you can run
 ```
-hhblits -i output/hmm_profiles/A.hhm -d PATH_TO_DB -o A.hhr -oa3m A.a3m -M first
+hmmsearch -o A.txt -A A.a3m output/hmm_profiles/A.hmm PATH_TO_DB
 ```
 You will have your result as a multiple sequence alignment here: `A.a3m`. 
 
