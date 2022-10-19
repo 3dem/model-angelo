@@ -96,9 +96,9 @@ model_angelo build_no_seq -v map.mrc -o output
 The model will be in `output/output.cif` as before. Now there are also HMM profiles for each chain in HMMER3 format here: `output/hmm_profiles`.
 To do a sequence search for chain A (for example), you should first install [HMMER](https://anaconda.org/bioconda/hmmer) and download a genome database, such as the [human genome](https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers/GRCh38_latest_genomic.fna.gz). Then, you can run
 ```
-hmmsearch -o A.txt -A A.a3m output/hmm_profiles/A.hmm PATH_TO_DB
+hmmsearch -o A.txt -A A.sto output/hmm_profiles/A.hmm PATH_TO_DB
 ```
-You will have your result as a multiple sequence alignment here: `A.a3m`. 
+You will have your result as a multiple sequence alignment here: `A.sto`. 
 
 ## Common issues
 1. ModelAngelo currently does not build nucleotides. It also may make mistakes if nucleotide sequences are in the sequence fasta file.
