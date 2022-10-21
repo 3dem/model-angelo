@@ -491,56 +491,28 @@ restype_order_with_x = {restype: i for i, restype in enumerate(restypes_with_x)}
 # This mapping is used when we need to store atom data in a format that requires
 # fixed atom data size for every residue (e.g. a numpy array).
 atom_types = [
-    "N",
-    "CA",
-    "C",
-    "CB",
-    "O",
-    "CG",
-    "CG1",
-    "CG2",
-    "OG",
-    "OG1",
-    "SG",
-    "CD",
-    "CD1",
-    "CD2",
-    "ND1",
-    "ND2",
-    "OD1",
-    "OD2",
-    "SD",
-    "CE",
-    "CE1",
-    "CE2",
-    "CE3",
-    "NE",
-    "NE1",
-    "NE2",
-    "OE1",
-    "OE2",
-    "CH2",
-    "NH1",
-    "NH2",
-    "OH",
-    "CZ",
-    "CZ2",
-    "CZ3",
-    "NZ",
-    "OXT",
+    "N", "CA", "C", "O", "CB", "CG", "CD", "NE", "CZ", "NH1", "NH2", "OD1", "ND2", "OD2", "SG", "OE1", "NE2", "OE2",
+    "ND1", "CD2", "CE1", "CG1", "CG2", "CD1", "CE", "NZ", "SD", "CE2", "OG", "OG1", "NE1", "CE3", "CZ2", "CZ3", "CH2",
+    "OH", "OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N9", "C4", "N3", "C2", "N1", "C6",
+    "C5", "N7", "C8", "N6", "O2", "N4", "N2", "O6", "O4", "C7", "O2'", "OXT"
 ]
-atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
-atom_type_num = len(atom_types)  # := 37.
 
-atom37_backbone_mask = np.zeros((1, 37), dtype=np.float32)
+atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
+atom_type_num = len(atom_types)  # := 65.
+
+atom37_backbone_mask = np.zeros((1, atom_type_num), dtype=np.float32)
 atom37_backbone_mask[
-:,
-[
-    atom_order["N"],
-    atom_order["CA"],
-    atom_order["C"],
-    atom_order["O"],
-]
+    :,
+    [
+        atom_order["N"],
+        atom_order["CA"],
+        atom_order["C"],
+        atom_order["O"],
+        atom_order["OP1"],
+        atom_order["P"],
+        atom_order["OP2"],
+        atom_order["O5'"],
+    ]
 ] = 1
 
 cif_secondary_structure_to_index = {
@@ -605,6 +577,22 @@ restype3_to_atoms = {
     ],
     "TYR": ["N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ", "OH"],
     "VAL": ["N", "CA", "C", "O", "CB", "CG1", "CG2"],
+    "DA": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N9", "C4", "N3", "C2", "N1",
+           "C6", "C5", "N7", "C8", "N6"],
+    "DC": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N1", "C2", "O2", "N3", "C4",
+           "N4", "C5", "C6"],
+    "DG": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N9", "C4", "N3", "C2", "N1",
+           "C6", "C5", "N7", "C8", "N2", "O6"],
+    "DT": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N1", "C2", "O2", "N3", "C4",
+           "O4", "C5", "C7", "C6"],
+    "A": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "N3", "C4",
+          "C5", "C6", "N6", "N7", "C8", "N9"],
+    "C": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "O2", "N3",
+          "C4", "N4", "C5", "C6"],
+    "G": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "N2", "N3",
+          "C4", "C5", "C6", "O6", "N7", "C8", "N9"],
+    "U": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "O2", "N3",
+          "C4", "O4", "C5", "C6"],
 }
 
 restype3_to_atoms_index = dict(
@@ -1143,113 +1131,22 @@ rigid_group_atom_positions = {
     ]
 }
 
-restype_name_to_atom14_names = {
-    "ALA": ["N", "CA", "C", "O", "CB", "", "", "", "", "", "", "", "", ""],
-    "ARG": [
-        "N",
-        "CA",
-        "C",
-        "O",
-        "CB",
-        "CG",
-        "CD",
-        "NE",
-        "CZ",
-        "NH1",
-        "NH2",
-        "",
-        "",
-        "",
-    ],
-    "ASN": ["N", "CA", "C", "O", "CB", "CG", "OD1", "ND2", "", "", "", "", "", ""],
-    "ASP": ["N", "CA", "C", "O", "CB", "CG", "OD1", "OD2", "", "", "", "", "", ""],
-    "CYS": ["N", "CA", "C", "O", "CB", "SG", "", "", "", "", "", "", "", ""],
-    "GLN": ["N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "NE2", "", "", "", "", ""],
-    "GLU": ["N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "OE2", "", "", "", "", ""],
-    "GLY": ["N", "CA", "C", "O", "", "", "", "", "", "", "", "", "", ""],
-    "HIS": [
-        "N",
-        "CA",
-        "C",
-        "O",
-        "CB",
-        "CG",
-        "ND1",
-        "CD2",
-        "CE1",
-        "NE2",
-        "",
-        "",
-        "",
-        "",
-    ],
-    "ILE": ["N", "CA", "C", "O", "CB", "CG1", "CG2", "CD1", "", "", "", "", "", ""],
-    "LEU": ["N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "", "", "", "", "", ""],
-    "LYS": ["N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ", "", "", "", "", ""],
-    "MET": ["N", "CA", "C", "O", "CB", "CG", "SD", "CE", "", "", "", "", "", ""],
-    "PHE": [
-        "N",
-        "CA",
-        "C",
-        "O",
-        "CB",
-        "CG",
-        "CD1",
-        "CD2",
-        "CE1",
-        "CE2",
-        "CZ",
-        "",
-        "",
-        "",
-    ],
-    "PRO": ["N", "CA", "C", "O", "CB", "CG", "CD", "", "", "", "", "", "", ""],
-    "SER": ["N", "CA", "C", "O", "CB", "OG", "", "", "", "", "", "", "", ""],
-    "THR": ["N", "CA", "C", "O", "CB", "OG1", "CG2", "", "", "", "", "", "", ""],
-    "TRP": [
-        "N",
-        "CA",
-        "C",
-        "O",
-        "CB",
-        "CG",
-        "CD1",
-        "CD2",
-        "NE1",
-        "CE2",
-        "CE3",
-        "CZ2",
-        "CZ3",
-        "CH2",
-    ],
-    "TYR": [
-        "N",
-        "CA",
-        "C",
-        "O",
-        "CB",
-        "CG",
-        "CD1",
-        "CD2",
-        "CE1",
-        "CE2",
-        "CZ",
-        "OH",
-        "",
-        "",
-    ],
-    "VAL": ["N", "CA", "C", "O", "CB", "CG1", "CG2", "", "", "", "", "", "", ""],
-    "UNK": ["", "", "", "", "", "", "", "", "", "", "", "", "", ""],
-}
+restype_name_to_atom23_names = {}
+for k in restype3_to_atoms:
+    num_atoms = len(restype3_to_atoms)
+    atom_names = [""] * 23
+    atom_names[:num_atoms] = restype3_to_atoms[k]
+    restype_name_to_atom23_names[k] = atom_names
 
-atom14_backbone_mask = np.zeros((1, 14), dtype=np.float32)
-atom14_backbone_mask[:, :4] = 1
 
-atom14_names_arr = np.array(list(restype_name_to_atom14_names.values()))
+atom23_backbone_mask = np.zeros((1, 23), dtype=np.float32)
+atom23_backbone_mask[:, :4] = 1
+
+atom23_names_arr = np.array(list(restype_name_to_atom23_names.values()))
 element_names_arr = np.array(
     [
         [x if len(x) == 0 else x[:1] for x in y]
-        for y in restype_name_to_atom14_names.values()
+        for y in restype_name_to_atom23_names.values()
     ]
 )
 
