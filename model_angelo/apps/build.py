@@ -213,6 +213,7 @@ def main(parsed_args):
             gnn_infer_args.output_dir = current_output_dir
             gnn_infer_args.model_dir = gnn_model_logdir
             gnn_infer_args.device = parsed_args.device
+
             gnn_infer_args.aggressive_pruning = True
 
             logger.info(f"GNN model refinement round {i + 1} with args: {gnn_infer_args}")

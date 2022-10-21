@@ -33,6 +33,7 @@ HMMAlignment = namedtuple(
 def get_hmm_alignment(
     aa_logits: np.ndarray,
     digital_sequences: List[pyhmmer.easel.DigitalSequence],
+    confidence: np.ndarray = None,
     fix_flanks: bool = False,
     base_dir: str = "/tmp",
 ) -> HMMAlignment:
@@ -42,7 +43,7 @@ def get_hmm_alignment(
         )
 
     original_pred_seq = np.argmax(aa_logits, axis=-1)
-    hmm = aa_logits_to_hmm(aa_logits, base_dir=base_dir)
+    hmm = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir)
     msas = pyhmmer.hmmer.hmmalign(hmm, digital_sequences, all_consensus_cols=True)
     processed_msas = msas.alignment
     seq_idx = np.argmax(np.array([len(remove_non_aa(x)) for x in processed_msas]))
@@ -78,6 +79,7 @@ def get_hmm_alignment(
 def best_match_to_sequences(
     sequences: List[str],
     chain_aa_logits: List[np.ndarray],
+    chain_confidences: List[np.ndarray] = None,
     fix_flanks: bool = False,
     base_dir: str = "/tmp",
 ) -> MatchToSequence:
@@ -90,6 +92,9 @@ def best_match_to_sequences(
     ]
     digital_sequences = [x.digitize(alphabet) for x in digital_sequences]
 
+    if chain_confidences is None:
+        chain_confidences = [None] * len(chain_aa_logits)
+
     (
         new_sequences,
         residue_idxs,
@@ -101,7 +106,7 @@ def best_match_to_sequences(
         exists_in_sequence_mask,
     ) = ([], [], [], [], [], [], [], [])
     null_sequence_id = len(digital_sequences)
-    for aa_logits in chain_aa_logits:
+    for aa_logits, confidence in zip(chain_aa_logits, chain_confidences):
         chain_len = len(aa_logits)
         if chain_len < 3:
             new_sequences.append(np.argmax(aa_logits, axis=-1))
@@ -117,6 +122,7 @@ def best_match_to_sequences(
             hmm_alignment = get_hmm_alignment(
                 aa_logits,
                 digital_sequences=digital_sequences,
+                confidence=confidence,
                 fix_flanks=fix_flanks,
                 base_dir=base_dir,
             )
@@ -397,6 +403,7 @@ def fix_chains_pipeline(
     chains: List[int],
     chain_aa_logits: List[np.ndarray],
     ca_pos: np.ndarray,
+    chain_confidences: List[np.ndarray] = None,
     base_dir: str = "/tmp",
 ) -> FixChainsOutput:
     """
@@ -411,7 +418,11 @@ def fix_chains_pipeline(
 
     """
     best_match_output = best_match_to_sequences(
-        sequences, chain_aa_logits, fix_flanks=False, base_dir=base_dir,
+        sequences,
+        chain_aa_logits,
+        chain_confidences=chain_confidences,
+        fix_flanks=False,
+        base_dir=base_dir,
     )
     chains = best_match_output.remove_duplicates(chains, ca_pos)
     chains, best_match_output = sort_chains(
