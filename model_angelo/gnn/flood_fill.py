@@ -143,23 +143,19 @@ def final_results_to_cif(
 
     all_atoms_np = all_atoms.numpy()
     chains = flood_fill(all_atoms_np, bfactors)
-    chains_concat = np.concatenate(chains)
 
-    atom14_to_cif(
-        aatype[chains_concat],
-        all_atoms[chains_concat],
-        atom_mask[chains_concat],
+    chain_atom14_to_cif(
+        [aatype[c] for c in chains],
+        [all_atoms[c] for c in chains],
+        [atom_mask[c] for c in chains],
         cif_path,
-        bfactors=bfactors[chains_concat],
+        bfactors=[bfactors[c] for c in chains],
     )
 
-    new_final_results = dict(
-        [(k, v[chains_concat]) for (k, v) in final_results.items()]
-    )
-    new_final_results["chain_aa_logits"] = [
+    chain_aa_logits = [
         final_results["aa_logits"][existence_mask][c] for c in chains
     ]
-    new_final_results["hmm_confidence"] = [
+    chain_hmm_confidence = [
         local_confidence_score_sigmoid(
             final_results["local_confidence"][existence_mask][c]
         ) for c in chains
@@ -170,7 +166,7 @@ def final_results_to_cif(
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
 
-        for i, chain_aa_logits in enumerate(new_final_results["chain_aa_logits"]):
+        for i, chain_aa_logits in enumerate(chain_aa_logits):
             chain_name = number_to_chain_str(i)
             dump_aa_logits_to_hmm_file(
                 chain_aa_logits,
@@ -183,9 +179,9 @@ def final_results_to_cif(
         fix_chains_output = fix_chains_pipeline(
             sequences,
             chains,
-            new_final_results["chain_aa_logits"],
+            chain_aa_logits,
             ca_pos,
-            chain_confidences=new_final_results["hmm_confidence"],
+            chain_confidences=chain_hmm_confidence,
             base_dir=os.path.dirname(cif_path),
         )
 
@@ -253,7 +249,7 @@ def final_results_to_cif(
                 f"These sequence ids have been left unmodelled: {fix_chains_output.unmodelled_sequences}"
             )
 
-    return new_final_results
+    return final_results
 
 
 def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
