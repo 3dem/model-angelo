@@ -32,6 +32,13 @@ def get_residue_fit_report(
         input_cas, target_cas, max_dist, verbose, two_rounds=two_rounds, get_unmatched=True
     )
 
+    target_correspondence, input_correspondence, unmatched_target_idxs, unmatched_input_idxs = (
+        target_correspondence.astype(np.int32),
+        input_correspondence.astype(np.int32),
+        unmatched_target_idxs.astype(np.int32),
+        unmatched_input_idxs.astype(np.int32),
+    )
+
     input_cas_cor = input_cas[input_correspondence]
     target_cas_cor = target_cas[target_correspondence]
 
