@@ -15,7 +15,7 @@ from model_angelo.utils.hmm_sequence_align import (
     prune_and_connect_chains,
 )
 from model_angelo.utils.protein import (
-    frames_and_literature_positions_to_atom14_pos,
+    frames_and_literature_positions_to_atomc_pos,
     torsion_angles_to_frames,
 )
 from model_angelo.utils.residue_constants import restype_atom14_mask, select_torsion_angles
@@ -86,7 +86,7 @@ def chains_to_atoms(
             torsion_angles,
         )
         chain_all_atoms.append(
-            frames_and_literature_positions_to_atom14_pos(
+            frames_and_literature_positions_to_atomc_pos(
                 fixed_aatype_from_sequence[chain_id], all_frames
             )
         )
@@ -132,7 +132,7 @@ def final_results_to_cif(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype
     )
     all_frames = torsion_angles_to_frames(aatype, backbone_affine, torsion_angles)
-    all_atoms = frames_and_literature_positions_to_atom14_pos(aatype, all_frames)
+    all_atoms = frames_and_literature_positions_to_atomc_pos(aatype, all_frames)
     atom_mask = restype_atom14_mask[aatype]
     bfactors = (
         normalize_local_confidence_score(

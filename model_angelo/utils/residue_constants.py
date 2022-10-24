@@ -915,6 +915,7 @@ rigid_group_atom_positions = {
         ["C6", 8, (0.7378, -1.1648, 0.0000)],
     ]
 }
+num_frames = 9
 
 # atomc -> atom condensed
 num_atomc = max([len(c) for c in restype3_to_atoms_index.values()])
@@ -965,7 +966,7 @@ restype_atomc_to_rigid_group = np.zeros([num_residues, num_atomc], dtype=np.int)
 restype_atomc_mask = np.zeros([num_residues, num_atomc], dtype=np.float32)
 restype_atomc_rigid_group_positions = np.zeros([num_residues, num_atomc, 3], dtype=np.float32)
 restype_atom3_rigid_group_positions = np.zeros([num_residues, 3, 3], dtype=np.float32)
-restype_rigid_group_default_frame = np.zeros([num_residues, 9, 4, 4], dtype=np.float32)
+restype_rigid_group_default_frame = np.zeros([num_residues, num_frames, 4, 4], dtype=np.float32)
 
 
 def _make_rigid_group_constants():
@@ -1048,7 +1049,7 @@ def _make_rigid_group_constants():
             # alpha
             restype_rigid_group_default_frame[restype, 1, :, :] = _make_rigid_transformation_4x4(
                 ex=atom_positions["O5'"] - atom_positions["P"],
-                ey=atom_positions["OP1"] - atom_positions["P"],
+                ey=atom_positions["P"] - atom_positions["OP1"],
                 translation=atom_positions["O5'"],
             )
 

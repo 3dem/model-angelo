@@ -8,7 +8,7 @@ from model_angelo.gnn.violation_loss import (
 )
 from model_angelo.utils.protein import get_protein_from_file_path
 from model_angelo.utils.residue_constants import (
-    atom14_dists_bounds,
+    atomc_dists_bounds,
     element_names_arr,
     van_der_waals_radius,
 )
@@ -29,10 +29,10 @@ def relax(input_path, output_path, device="cpu", num_iterations: int = 500):
     bfactor = 1 - bfactor
 
     atom14_dists_lower_bound = torch.from_numpy(
-        atom14_dists_bounds["lower_bound"][to_numpy(aatype)]
+        atomc_dists_bounds["lower_bound"][to_numpy(aatype)]
     ).to(device=device)
     atom14_dists_upper_bound = torch.from_numpy(
-        atom14_dists_bounds["upper_bound"][to_numpy(aatype)]
+        atomc_dists_bounds["upper_bound"][to_numpy(aatype)]
     ).to(device=device)
     atom14_atom_radius = torch.from_numpy(
         np.vectorize(lambda x: van_der_waals_radius[x])(
