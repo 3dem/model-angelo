@@ -352,7 +352,7 @@ for residue in restype3_to_atoms_index:
 
 num_residues = len(restype3_to_atoms_index)
 backbone_atoms_prot = {"CA", "C", "N"}
-backbone_atoms_nuc = {"OP1", "P", "OP2"}
+backbone_atoms_nuc = {"OP1", "P", "O5'"}
 backbone_atoms = backbone_atoms_prot.union(backbone_atoms_nuc)
 
 secondary_structure_to_simplified_index = {
@@ -1364,3 +1364,24 @@ def select_torsion_angles(input, aatype):
     )[torch.arange(len(aatype)), ..., aatype]
     input_torsion_angles = torch.cat((input[..., :3, :], chi_angles), dim=-2)
     return input_torsion_angles
+
+
+nuc_torsion_frames = [
+    ["OP1", "P", "O5'", "C5'"],    # alpha
+    ["P", "O5'", "C5'", "C4'"],    # beta
+    ["O5'", "C5'", "C4'", "C3'"],  # gamma
+    ["C5'", "C4'", "C3'", "O3'"],  # delta
+    ["C5'", "C4'", "C3'", "C1'"],  # nu2
+    ["C4'", "C3'", "C1'", "C2'"],  # nu1
+    ["C4'", "C1'", "C2'", "O2'"],  # nu0
+]
+
+nuc_torsion_frames_idx = dict(
+    [
+        (resname, np.array(
+            [
+                restype_name_to_atomc_names[resname].index(atom) for atom in torsion_atoms[resname]
+            ] for torsion_atoms in nuc_torsion_frames
+        )) for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]
+    ]
+)

@@ -345,21 +345,21 @@ def atomf_to_frames(
                     ] = atom_names[1:]
         else:
             # 0: backbone frame
-            restype_rigidgroup_base_atom_names[restype, 0, :] = ["OP1", "P", "OP2"]
+            restype_rigidgroup_base_atom_names[restype, 0, :] = ["OP1", "P", "O5'"]
             # 1: alpha
-            restype_rigidgroup_base_atom_names[restype, 1, :] = ["P", "O5'", "OP1"]
+            restype_rigidgroup_base_atom_names[restype, 1, :] = ["P", "O5'", "C5'"]
             # 2: beta
-            restype_rigidgroup_base_atom_names[restype, 2, :] = ["O5'", "OP1", "C5'"]
+            restype_rigidgroup_base_atom_names[restype, 2, :] = ["O5'", "C5'", "C4'"]
             # 3: gamma
-            restype_rigidgroup_base_atom_names[restype, 3, :] = ["OP1", "C5'", "C4'"]
+            restype_rigidgroup_base_atom_names[restype, 3, :] = ["C5'", "C4'", "C3'"]
             # 4: delta
-            restype_rigidgroup_base_atom_names[restype, 4, :] = ["C5'", "C4'", "C3'"]
+            restype_rigidgroup_base_atom_names[restype, 4, :] = ["C4'", "C3'", "O3'"]
             # 5: nu2
-            restype_rigidgroup_base_atom_names[restype, 5, :] = ["C5'", "C4'", "O4'"]
+            restype_rigidgroup_base_atom_names[restype, 5, :] = ["C4'", "C3'", "C1'"]
             # 6: nu1
-            restype_rigidgroup_base_atom_names[restype, 6, :] = ["C4'", "O4'", "C1'"]
+            restype_rigidgroup_base_atom_names[restype, 6, :] = ["C4'", "C1'", "C2'"]
             # 7: nu0
-            restype_rigidgroup_base_atom_names[restype, 7, :] = ["O4'", "C1'", "C2'"]
+            restype_rigidgroup_base_atom_names[restype, 7, :] = ["C1'", "C2'", "O2'"]
             # 8: chi1
             restype_rigidgroup_base_atom_names[restype, 8, :] = _rc.chi_angles_atoms[resname][0][1:]
 
@@ -369,6 +369,7 @@ def atomf_to_frames(
     restype_rigidgroup_mask[:, 3] = 1
     restype_rigidgroup_mask[:_rc.num_prot, 4:] = _rc.chi_angles_mask
     restype_rigidgroup_mask[_rc.num_prot:, :] = 1
+    restype_rigidgroup_mask[_rc.num_prot:_rc.num_prot+4, 7] = 0  # DNA does not have nu0
 
     # Translate atom names into atomf indices.
     lookuptable = _rc.atom_order.copy()
@@ -490,6 +491,7 @@ def atomf_to_torsion_angles(
 
     # Map aatype > 28 to 'Unknown' (28).
     aatype = np.minimum(aatype, 28)
+    prot_mask = aatype < _rc.num_prot
 
     # Compute the backbone angles.
     num_batch, num_res = aatype.shape
@@ -501,40 +503,36 @@ def atomf_to_torsion_angles(
     prev_all_atom_mask = np.concatenate([pad, all_atom_mask[:, :-1, :]], axis=1)
 
     # For each torsion angle collect the 4 atom positions that define this angle.
+    torsions_atom_pos = np.zeros((num_batch, num_res, _rc.num_frames - 1, 4, 3), dtype=np.float32)
+    torsion_angles_mask = np.zeros((num_batch, num_res, _rc.num_frames - 1), dtype=np.float32)
+    
     # shape (B, N, atoms=4, xyz=3)
-    pre_omega_atom_pos = np.concatenate(
-        [
-            prev_all_atom_pos[:, :, 1:3, :],  # prev CA, C
-            all_atom_positions[:, :, 0:2, :],  # this N, CA
-        ],
-        axis=-2,
-    )
-    phi_atom_pos = np.concatenate(
-        [
-            prev_all_atom_pos[:, :, 2:3, :],  # prev C
-            all_atom_positions[:, :, 0:3, :],  # this N, CA, C
-        ],
-        axis=-2,
-    )
-    psi_atom_pos = np.concatenate(
-        [
-            all_atom_positions[:, :, 0:3, :],  # this N, CA, C
-            all_atom_positions[:, :, 4:5, :],  # this O
-        ],
-        axis=-2,
-    )
+    # Pre omega for proteins
+    torsions_atom_pos[prot_mask, 0, :2] = prev_all_atom_pos[prot_mask, 1:3, :]  # prev CA, C
+    torsions_atom_pos[prot_mask, 0, 2:] = all_atom_positions[prot_mask, :2, :],  # this N, CA
+    # Phi for proteins
+    torsions_atom_pos[prot_mask, 1, :1] = prev_all_atom_pos[prot_mask, 2:3, :]  # prev C
+    torsions_atom_pos[prot_mask, 1, 1:] = all_atom_positions[prot_mask, :3, :],  # this N, CA, C
+    # Psi for proteins
+    torsions_atom_pos[prot_mask, 2, :1] = all_atom_positions[prot_mask, 0:3, :]  # this N, CA, C
+    torsions_atom_pos[prot_mask, 2, 1:] = all_atom_positions[prot_mask, 4:5, :]  # this O
+
+    torsions_atom_pos[~prot_mask, 0, :2] = prev_all_atom_pos[~prot_mask, ]
 
     # Collect the masks from these atoms.
     # Shape [batch, num_res]
-    pre_omega_mask = np.prod(
+    # Pre omega protein
+    torsion_angles_mask[prot_mask, 0] = np.prod(
         prev_all_atom_mask[:, :, 1:3], axis=-1
     ) * np.prod(  # prev CA, C
         all_atom_mask[:, :, 0:2], axis=-1
     )  # this N, CA
-    phi_mask = prev_all_atom_mask[:, :, 2] * np.prod(  # prev C
+    # Phi protein
+    torsion_angles_mask[prot_mask, 1] = prev_all_atom_mask[:, :, 2] * np.prod(  # prev C
         all_atom_mask[:, :, 0:3], axis=-1
     )  # this N, CA, C
-    psi_mask = (
+    # Psi protein
+    torsion_angles_mask[prot_mask, 2] = (
         np.prod(all_atom_mask[:, :, 0:3], axis=-1)
         * all_atom_mask[:, :, 4]  # this N, CA, C
     )  # this O
@@ -544,7 +542,7 @@ def atomf_to_torsion_angles(
     chi_atom_indices = _rc.chi_atom_indices
     # Select atoms to compute chis. Shape: [batch, num_res, chis=4, atoms=4].
     atom_indices = chi_atom_indices[aatype] + np.arange(
-        num_res * num_batch * 37, step=37
+        num_res * num_batch * _rc.num_atoms, step=_rc.num_atoms
     ).reshape(num_batch, num_res, 1, 1)
     # Gather atom positions. Shape: [batch, num_res, chis=4, atoms=4, xyz=3].
 
@@ -567,35 +565,17 @@ def atomf_to_torsion_angles(
     chi_angle_atoms_mask = np.prod(chi_angle_atoms_mask, axis=-1)
     chis_mask = chis_mask * (chi_angle_atoms_mask).astype(np.float32)
 
-    # Stack all torsion angle atom positions.
-    # Shape (B, N, torsions=7, atoms=4, xyz=3)
-    torsions_atom_pos = np.concatenate(
-        [
-            pre_omega_atom_pos[:, :, None, :, :],
-            phi_atom_pos[:, :, None, :, :],
-            psi_atom_pos[:, :, None, :, :],
-            chis_atom_pos,
-        ],
-        axis=2,
-    )
+    torsions_atom_pos[prot_mask][..., -4:] = chis_atom_pos[prot_mask]
+    torsions_atom_pos[~prot_mask][..., -1] = chis_atom_pos[~prot_mask][..., 0, :, :]
 
-    # Stack up masks for all torsion angles.
-    # shape (B, N, torsions=7)
-    torsion_angles_mask = np.concatenate(
-        [
-            pre_omega_mask[:, :, None],
-            phi_mask[:, :, None],
-            psi_mask[:, :, None],
-            chis_mask,
-        ],
-        axis=2,
-    )
+    torsion_angles_mask[prot_mask][..., -4:] = chis_mask[prot_mask]
+    torsion_angles_mask[~prot_mask][..., -1] = chis_mask[~prot_mask][..., 0]
 
     # Create a frame from the first three atoms:
     # First atom: point on x-y-plane
     # Second atom: point on negative x-axis
     # Third atom: origin
-    # Affine matrices (B, N, torsions=7, 3, 4)
+    # Affine matrices (B, N, torsions=8, 3, 4)
     torsion_frames = affine_from_3_points(
         point_on_neg_x_axis=torch.Tensor(torsions_atom_pos[:, :, :, 1, :]),
         origin=torch.Tensor(torsions_atom_pos[:, :, :, 2, :]),
