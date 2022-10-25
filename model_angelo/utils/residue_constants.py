@@ -924,8 +924,9 @@ num_atomc = max([len(c) for c in restype3_to_atoms_index.values()])
 restype_name_to_atomc_names = {}
 for k in restype3_to_atoms:
     res_num_atoms = len(restype3_to_atoms)
-    atom_names = [""] * num_atomc
-    atom_names[:res_num_atoms] = restype3_to_atoms[k]
+    atom_names = restype3_to_atoms[k]
+    if len(atom_names) < num_atomc:
+        atom_names += [""] * (num_atomc - len(atom_names))
     restype_name_to_atomc_names[k] = atom_names
 
 
