@@ -223,7 +223,12 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
         chain_seq = "".join(chain_seq)
         if len(chain_seq) == 0:
             continue
-        if chain_seq not in temp_sequences_seen:
+        if chain_seq.islower():
+            # If nucleotides, residue_to_seq_id is just -1 and chain_seq doesn't get inserted into unified_seq
+           residue_to_seq_id.extend(
+               [-1] * len(chain_seq)
+           )
+        elif chain_seq not in temp_sequences_seen:
             temp_sequences_seen[chain_seq] = seq_len_so_far
             residue_to_seq_id.extend(
                 list(range(seq_len_so_far, seq_len_so_far + len(chain_seq)))
