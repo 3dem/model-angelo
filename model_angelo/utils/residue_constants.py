@@ -935,7 +935,7 @@ atomc_backbone_mask[:, :4] = 1
 atomc_names_arr = np.array(list(restype_name_to_atomc_names.values()), dtype=object)
 element_names_arr = np.array(
     [
-        np.array([x if len(x) == 0 else x[:1] for x in y], dtype=object)
+        [x if len(x) == 0 else x[:1] for x in y]
         for y in restype_name_to_atomc_names.values()
     ],
     dtype=object,
