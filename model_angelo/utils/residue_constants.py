@@ -348,7 +348,8 @@ restype3_to_atoms_index = dict(
     ]
 )
 for residue in restype3_to_atoms_index:
-    restype3_to_atoms_index[residue]["OXT"] = restype3_to_atoms_index[residue]["O"]
+    if restype3_is_prot(residue):
+        restype3_to_atoms_index[residue]["OXT"] = restype3_to_atoms_index[residue]["O"]
 
 num_residues = len(restype3_to_atoms_index)
 backbone_atoms_prot = {"CA", "C", "N"}
@@ -809,7 +810,7 @@ rigid_group_atom_positions = {
         ["C3'", 3, (0.6388, 1.3889, 0.000)],
         ["O4'", 3, (0.4804, -0.6610, -1.1947)],
         ["C1'", 5, (0.4913, 1.3316, 0.0000)],
-        ["N1 ", 6, (0.4467, -0.7474, -1.1746)],
+        ["N1", 6, (0.4467, -0.7474, -1.1746)],
         ["C2'", 6, (0.4167, 1.4603, 0.0000)],
         ["O3'", 4, (0.4966, 1.3432, 0.000)],
         ["C2", 8, (0.6495, 1.2140, 0.0000)],
@@ -831,7 +832,7 @@ rigid_group_atom_positions = {
         ["C3'", 3, (0.6673, 1.3669, 0.000)],
         ["O4'", 3, (0.4914, -0.6338, -1.2098)],
         ["C1'", 5, (0.4828, 1.3277, -0.0000)],
-        ["N9 ", 6, (0.4722, -0.7339, -1.1894)],
+        ["N9", 6, (0.4722, -0.7339, -1.1894)],
         ["C2'", 6, (0.4641, 1.4573, 0.0000)],
         ["O2'", 7, (0.4613, -0.6189, 1.1921)],
         ["O3'", 4, (0.5548, 1.3039, 0.000)],
@@ -930,12 +931,13 @@ for k in restype3_to_atoms:
 atomc_backbone_mask = np.zeros((1, num_atomc), dtype=np.float32)
 atomc_backbone_mask[:, :4] = 1
 
-atomc_names_arr = np.array(list(restype_name_to_atomc_names.values()))
+atomc_names_arr = np.array(list(restype_name_to_atomc_names.values()), dtype=object)
 element_names_arr = np.array(
     [
-        [x if len(x) == 0 else x[:1] for x in y]
+        np.array([x if len(x) == 0 else x[:1] for x in y], dtype=object)
         for y in restype_name_to_atomc_names.values()
-    ]
+    ],
+    dtype=object,
 )
 
 
@@ -986,6 +988,8 @@ def _make_rigid_group_constants():
             restype_atomc_rigid_group_positions[restype, atomcidx, :] = atom_position
 
             if atomname in backbone_atoms:
+                if atomname == "O5'":
+                    atomcidx = 2
                 restype_atom3_rigid_group_positions[
                 restype, atomcidx, :
                 ] = atom_position
@@ -1327,18 +1331,19 @@ def get_atomc_dists_bounds(overlap_tolerance=1.5, bond_length_tolerance_factor=1
                 restype_atomc_bond_upper_bound[restype, atom1_idx, atom2_idx] = upper
                 restype_atomc_bond_upper_bound[restype, atom2_idx, atom1_idx] = upper
 
-        # overwrite lower and upper bounds for bonds and angles
-        for b in residue_bonds[resname] + residue_virtual_bonds[resname]:
-            atom1_idx = atom_list.index(b.atom1_name)
-            atom2_idx = atom_list.index(b.atom2_name)
-            lower = b.length - bond_length_tolerance_factor * b.stddev
-            upper = b.length + bond_length_tolerance_factor * b.stddev
-            restype_atomc_bond_lower_bound[restype, atom1_idx, atom2_idx] = lower
-            restype_atomc_bond_lower_bound[restype, atom2_idx, atom1_idx] = lower
-            restype_atomc_bond_upper_bound[restype, atom1_idx, atom2_idx] = upper
-            restype_atomc_bond_upper_bound[restype, atom2_idx, atom1_idx] = upper
-            restype_atomc_bond_stddev[restype, atom1_idx, atom2_idx] = b.stddev
-            restype_atomc_bond_stddev[restype, atom2_idx, atom1_idx] = b.stddev
+        if resname in residue_bonds:
+            # overwrite lower and upper bounds for bonds and angles
+            for b in residue_bonds[resname] + residue_virtual_bonds[resname]:
+                atom1_idx = atom_list.index(b.atom1_name)
+                atom2_idx = atom_list.index(b.atom2_name)
+                lower = b.length - bond_length_tolerance_factor * b.stddev
+                upper = b.length + bond_length_tolerance_factor * b.stddev
+                restype_atomc_bond_lower_bound[restype, atom1_idx, atom2_idx] = lower
+                restype_atomc_bond_lower_bound[restype, atom2_idx, atom1_idx] = lower
+                restype_atomc_bond_upper_bound[restype, atom1_idx, atom2_idx] = upper
+                restype_atomc_bond_upper_bound[restype, atom2_idx, atom1_idx] = upper
+                restype_atomc_bond_stddev[restype, atom1_idx, atom2_idx] = b.stddev
+                restype_atomc_bond_stddev[restype, atom2_idx, atom1_idx] = b.stddev
     return {
         "lower_bound": restype_atomc_bond_lower_bound,  # shape (28,23,23)
         "upper_bound": restype_atomc_bond_upper_bound,  # shape (28,23,23)
@@ -1376,12 +1381,27 @@ nuc_torsion_frames = [
     ["C4'", "C1'", "C2'", "O2'"],  # nu0
 ]
 
-nuc_torsion_frames_idx = dict(
-    [
-        (resname, np.array(
-            [
-                restype_name_to_atomc_names[resname].index(atom) for atom in torsion_atoms[resname]
-            ] for torsion_atoms in nuc_torsion_frames
-        )) for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]
-    ]
-)
+
+nuc_torsion_atom_indices = []
+nuc_torsion_atom_mask = []
+for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]:
+    resname_torsion_atom_indices = []
+    resname_torsion_atom_mask = []
+    for torsion_atoms in nuc_torsion_frames[:-1]:
+        resname_torsion_atom_indices.append(
+            [restype_name_to_atomc_names[resname].index(atom) for atom in torsion_atoms]
+        )
+        resname_torsion_atom_mask.append([1, 1, 1, 1])
+    if len(resname) == 2:
+        # Is DNA
+        resname_torsion_atom_indices.append([0, 0, 0, 0])
+        resname_torsion_atom_mask.append([1, 1, 1, 1])
+    else:
+        resname_torsion_atom_indices.append(
+            [restype_name_to_atomc_names[resname].index(atom) for atom in nuc_torsion_frames[-1]]
+        )
+        resname_torsion_atom_mask.append([1, 1, 1, 1])
+    nuc_torsion_atom_indices.append(resname_torsion_atom_indices)
+    nuc_torsion_atom_mask.append(resname_torsion_atom_mask)
+nuc_torsion_atom_indices = np.array(nuc_torsion_atom_indices, dtype=np.int32)
+nuc_torsion_atom_mask = np.array(nuc_torsion_atom_mask, dtype=np.int32)

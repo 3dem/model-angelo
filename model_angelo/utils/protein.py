@@ -517,8 +517,6 @@ def atomf_to_torsion_angles(
     torsions_atom_pos[prot_mask, 2, :1] = all_atom_positions[prot_mask, 0:3, :]  # this N, CA, C
     torsions_atom_pos[prot_mask, 2, 1:] = all_atom_positions[prot_mask, 4:5, :]  # this O
 
-    torsions_atom_pos[~prot_mask, 0, :2] = prev_all_atom_pos[~prot_mask, ]
-
     # Collect the masks from these atoms.
     # Shape [batch, num_res]
     # Pre omega protein
@@ -536,6 +534,22 @@ def atomf_to_torsion_angles(
         np.prod(all_atom_mask[:, :, 0:3], axis=-1)
         * all_atom_mask[:, :, 4]  # this N, CA, C
     )  # this O
+
+    # Grabbing atoms used for angles in NA is a bit complicated:
+    na_aatype = aatype[~prot_mask]
+    na_aatype -= _rc.num_prot  # Now 0 is DA, etc
+    # Select atoms to compute angles. Shape: [batch, num_aa_res, angles=7, atoms=4].
+    na_atom_indices = _rc.nuc_torsion_atom_indices[na_aatype] + np.arange(
+        len(na_aatype) * _rc.num_atoms, step=_rc.num_atoms
+    ).reshape(len(na_aatype), 1, 1)
+    # Gather atom positions. Shape: [len(na_aatype), angles=7, atoms=4, xyz=3].
+    torsions_atom_pos[~prot_mask, :7] = np.take(all_atom_positions.reshape(-1, 3), na_atom_indices, axis=0)
+
+    # Compute the mask in a similar way
+    na_mask = _rc.nuc_torsion_atom_mask[na_aatype]
+    na_atoms_mask = np.take(all_atom_mask.reshape(-1), na_atom_indices, axis=0)
+    na_atoms_mask = np.prod(na_atoms_mask, axis=-1)
+    torsion_angles_mask[~prot_mask, :7] = na_mask * (na_atoms_mask).astype(np.float32)
 
     # Collect the atoms for the chi-angles.
     # Compute the table of chi angle indices. Shape: [restypes, chis=4, atoms=4].
@@ -636,9 +650,9 @@ def atomf_to_torsion_angles(
         torsion_angles_mask = torsion_angles_mask[0]
 
     return {
-        "torsion_angles_sin_cos": torsion_angles_sin_cos,  # (B, N, 7, 2)
-        "alt_torsion_angles_sin_cos": alt_torsion_angles_sin_cos,  # (B, N, 7, 2)
-        "torsion_angles_mask": torsion_angles_mask,  # (B, N, 7)
+        "torsion_angles_sin_cos": torsion_angles_sin_cos,  # (B, N, 8, 2)
+        "alt_torsion_angles_sin_cos": alt_torsion_angles_sin_cos,  # (B, N, 8, 2)
+        "torsion_angles_mask": torsion_angles_mask,  # (B, N, 8)
     }
 
 
