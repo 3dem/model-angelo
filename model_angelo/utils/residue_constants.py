@@ -244,6 +244,7 @@ atom_types = [
 
 atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
 atom_type_num = len(atom_types)  # := 65.
+num_atoms = atom_type_num
 
 # atomf -> atom full
 atomf_backbone_mask = np.zeros((1, atom_type_num), dtype=np.float32)
@@ -922,9 +923,9 @@ num_frames = 9
 num_atomc = max([len(c) for c in restype3_to_atoms_index.values()])
 restype_name_to_atomc_names = {}
 for k in restype3_to_atoms:
-    num_atoms = len(restype3_to_atoms)
+    res_num_atoms = len(restype3_to_atoms)
     atom_names = [""] * num_atomc
-    atom_names[:num_atoms] = restype3_to_atoms[k]
+    atom_names[:res_num_atoms] = restype3_to_atoms[k]
     restype_name_to_atomc_names[k] = atom_names
 
 
@@ -1391,16 +1392,16 @@ for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]:
         resname_torsion_atom_indices.append(
             [restype_name_to_atomc_names[resname].index(atom) for atom in torsion_atoms]
         )
-        resname_torsion_atom_mask.append([1, 1, 1, 1])
+        resname_torsion_atom_mask.append(1)
     if len(resname) == 2:
         # Is DNA
         resname_torsion_atom_indices.append([0, 0, 0, 0])
-        resname_torsion_atom_mask.append([1, 1, 1, 1])
+        resname_torsion_atom_mask.append(0)
     else:
         resname_torsion_atom_indices.append(
             [restype_name_to_atomc_names[resname].index(atom) for atom in nuc_torsion_frames[-1]]
         )
-        resname_torsion_atom_mask.append([1, 1, 1, 1])
+        resname_torsion_atom_mask.append(1)
     nuc_torsion_atom_indices.append(resname_torsion_atom_indices)
     nuc_torsion_atom_mask.append(resname_torsion_atom_mask)
 nuc_torsion_atom_indices = np.array(nuc_torsion_atom_indices, dtype=np.int32)

@@ -24,10 +24,10 @@ PDB_MAX_CHAINS = len(PDB_CHAIN_IDS)  # := 62.
 
 PROTEIN_KEYS = [
     "atom_positions",
-    "atom14_positions",
+    "atomc_positions",
     "aatype",
     "atom_mask",
-    "atom14_mask",
+    "atomc_mask",
     "residue_index",
     "chain_index",
     "b_factors",
@@ -52,11 +52,11 @@ class Protein:
 
     # Cartesian coordinates of atoms in angstroms. The atom types correspond to
     # _rc.atom_types, i.e. the first three are N, CA, CB.
-    atom_positions: np.ndarray  # [num_res, 37, 3]
+    atom_positions: np.ndarray  # [num_res, 65, 3]
 
     # Cartesian coordinates of atoms in angstroms. The atom types correspond to
     # _rc.atom_types, i.e. the first three are N, CA, CB.
-    atom14_positions: np.ndarray  # [num_res, 14, 3]
+    atomc_positions: np.ndarray  # [num_res, _rc.num_atomc, 3]
 
     # Amino-acid type for each residue represented as an integer between 0 and
     # 20, where 20 is 'X'.
@@ -66,8 +66,8 @@ class Protein:
     # is present and 0.0 if not. This should be used for loss masking.
     atom_mask: np.ndarray  # [num_res, num_atom_type]
 
-    # Same as above, but for atom14
-    atom14_mask: np.ndarray
+    # Same as above, but for atomc
+    atomc_mask: np.ndarray
 
     # Residue index as used in PDB. It is not necessarily continuous or 0-indexed.
     residue_index: np.ndarray  # [num_res]
@@ -165,10 +165,10 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     model = models[0]
 
     atom_positions = []
-    atom14_positions = []
+    atomc_positions = []
     aatype = []
     atom_mask = []
-    atom14_mask = []
+    atomc_mask = []
     residue_index = []
     chain_ids = []
     b_factors = []
@@ -195,17 +195,17 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             restype_idx = _rc.restype_order.get(res_shortname, _rc.restype_num)
 
             pos = np.zeros((_rc.atom_type_num, 3))
-            pos14 = np.zeros((14, 3))
+            posc = np.zeros((_rc.num_atomc, 3))
             mask = np.zeros((_rc.atom_type_num,))
-            mask14 = np.zeros((14,))
+            maskc = np.zeros((_rc.num_atomc,))
             res_b_factors = np.zeros((_rc.atom_type_num,))
             for atom in res:
                 if atom.name not in _rc.atom_types:
                     continue
                 pos[_rc.atom_order[atom.name]] = atom.coord
-                pos14[_rc.restype3_to_atoms_index[res.resname][atom.name]] = atom.coord
+                posc[_rc.restype3_to_atoms_index[res.resname][atom.name]] = atom.coord
                 mask[_rc.atom_order[atom.name]] = 1.0
-                mask14[_rc.restype3_to_atoms_index[res.resname][atom.name]] = 1.0
+                maskc[_rc.restype3_to_atoms_index[res.resname][atom.name]] = 1.0
                 res_b_factors[_rc.atom_order[atom.name]] = atom.bfactor
             if np.sum(mask) < 0.5:
                 # If no known atom positions are reported for the residue then skip it.
@@ -213,9 +213,9 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             chain_seq.append(res_shortname)
             aatype.append(restype_idx)
             atom_positions.append(pos)
-            atom14_positions.append(pos14)
+            atomc_positions.append(posc)
             atom_mask.append(mask)
-            atom14_mask.append(mask14)
+            atomc_mask.append(maskc)
             residue_index.append(res.id[1])
             chain_ids.append(chain.id)
             b_factors.append(res_b_factors)
@@ -242,9 +242,9 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     chain_index = np.array([chain_id_mapping[cid] for cid in chain_ids])
 
     atom_positions = np.array(atom_positions)
-    atom14_positions = np.array(atom14_positions)
+    atomc_positions = np.array(atomc_positions)
     atom_mask = np.array(atom_mask)
-    atom14_mask = np.array(atom14_mask)
+    atomc_mask = np.array(atomc_mask)
     aatype = np.array(aatype)
     residue_index = np.array(residue_index)
     b_factors = np.array(b_factors)
@@ -257,9 +257,9 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
 
     return Protein(
         atom_positions=atom_positions,
-        atom14_positions=atom14_positions,
+        atomc_positions=atomc_positions,
         atom_mask=atom_mask,
-        atom14_mask=atom14_mask,
+        atomc_mask=atomc_mask,
         aatype=aatype,
         residue_index=residue_index,
         chain_index=chain_index,
@@ -367,7 +367,7 @@ def atomf_to_frames(
     restype_rigidgroup_mask = np.zeros([_rc.num_residues, _rc.num_frames], dtype=np.float32)
     restype_rigidgroup_mask[:, 0] = 1
     restype_rigidgroup_mask[:, 3] = 1
-    restype_rigidgroup_mask[:_rc.num_prot, 4:] = _rc.chi_angles_mask
+    restype_rigidgroup_mask[:_rc.num_prot, 4:-1] = _rc.chi_angles_mask[:_rc.num_prot]
     restype_rigidgroup_mask[_rc.num_prot:, :] = 1
     restype_rigidgroup_mask[_rc.num_prot:_rc.num_prot+4, 7] = 0  # DNA does not have nu0
 
@@ -514,25 +514,25 @@ def atomf_to_torsion_angles(
     torsions_atom_pos[prot_mask, 1, :1] = prev_all_atom_pos[prot_mask, 2:3, :]  # prev C
     torsions_atom_pos[prot_mask, 1, 1:] = all_atom_positions[prot_mask, :3, :],  # this N, CA, C
     # Psi for proteins
-    torsions_atom_pos[prot_mask, 2, :1] = all_atom_positions[prot_mask, 0:3, :]  # this N, CA, C
-    torsions_atom_pos[prot_mask, 2, 1:] = all_atom_positions[prot_mask, 4:5, :]  # this O
+    torsions_atom_pos[prot_mask, 2, 1:] = all_atom_positions[prot_mask, 0:3, :]  # this N, CA, C
+    torsions_atom_pos[prot_mask, 2, :1] = all_atom_positions[prot_mask, 4:5, :]  # this O
 
     # Collect the masks from these atoms.
     # Shape [batch, num_res]
     # Pre omega protein
     torsion_angles_mask[prot_mask, 0] = np.prod(
-        prev_all_atom_mask[:, :, 1:3], axis=-1
+        prev_all_atom_mask[prot_mask, 1:3], axis=-1
     ) * np.prod(  # prev CA, C
-        all_atom_mask[:, :, 0:2], axis=-1
+        all_atom_mask[prot_mask, 0:2], axis=-1
     )  # this N, CA
     # Phi protein
-    torsion_angles_mask[prot_mask, 1] = prev_all_atom_mask[:, :, 2] * np.prod(  # prev C
-        all_atom_mask[:, :, 0:3], axis=-1
+    torsion_angles_mask[prot_mask, 1] = prev_all_atom_mask[prot_mask, 2] * np.prod(  # prev C
+        all_atom_mask[prot_mask, 0:3], axis=-1
     )  # this N, CA, C
     # Psi protein
     torsion_angles_mask[prot_mask, 2] = (
-        np.prod(all_atom_mask[:, :, 0:3], axis=-1)
-        * all_atom_mask[:, :, 4]  # this N, CA, C
+        np.prod(all_atom_mask[prot_mask, 0:3], axis=-1)
+        * all_atom_mask[prot_mask, 4]  # this N, CA, C
     )  # this O
 
     # Grabbing atoms used for angles in NA is a bit complicated:
@@ -579,11 +579,11 @@ def atomf_to_torsion_angles(
     chi_angle_atoms_mask = np.prod(chi_angle_atoms_mask, axis=-1)
     chis_mask = chis_mask * (chi_angle_atoms_mask).astype(np.float32)
 
-    torsions_atom_pos[prot_mask][..., -4:] = chis_atom_pos[prot_mask]
-    torsions_atom_pos[~prot_mask][..., -1] = chis_atom_pos[~prot_mask][..., 0, :, :]
+    torsions_atom_pos[prot_mask, -5:-1] = chis_atom_pos[prot_mask]
+    torsions_atom_pos[~prot_mask, -1] = chis_atom_pos[~prot_mask][..., 0, :, :]
 
-    torsion_angles_mask[prot_mask][..., -4:] = chis_mask[prot_mask]
-    torsion_angles_mask[~prot_mask][..., -1] = chis_mask[~prot_mask][..., 0]
+    torsion_angles_mask[prot_mask, -5:-1] = chis_mask[prot_mask]
+    torsion_angles_mask[~prot_mask, -1] = chis_mask[~prot_mask][..., 0]
 
     # Create a frame from the first three atoms:
     # First atom: point on x-y-plane
@@ -613,15 +613,16 @@ def atomf_to_torsion_angles(
     )
 
     # Mirror psi, because we computed it from the Oxygen-atom.
-    torsion_angles_sin_cos *= np.asarray([1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0])[
-        None, None, :, None
+    torsion_angles_sin_cos[prot_mask] *= np.asarray([1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0])[
+        None, :, None
     ]
 
     # Create alternative angles for ambiguous atom names.
+    # Does not affect nucleotides
     chi_is_ambiguous = np.asarray(_rc.chi_pi_periodic)[aatype]
 
     mirror_torsion_angles = np.concatenate(
-        [np.ones([num_batch, num_res, 3]), 1.0 - 2.0 * chi_is_ambiguous], axis=-1
+        [np.ones([num_batch, num_res, 3]), 1.0 - 2.0 * chi_is_ambiguous, np.ones([num_batch, num_res, 1])], axis=-1
     )
     alt_torsion_angles_sin_cos = (
         torsion_angles_sin_cos * mirror_torsion_angles[:, :, :, None]
