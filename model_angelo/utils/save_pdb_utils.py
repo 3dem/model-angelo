@@ -11,7 +11,7 @@ from Bio.PDB.StructureBuilder import StructureBuilder
 from model_angelo.utils.misc_utils import assertion_check
 from model_angelo.utils.residue_constants import (
     index_to_restype_3,
-    restype_name_to_atom14_names, index_to_restype_1,
+    restype_name_to_atomc_names, index_to_restype_1,
 )
 
 PDB_CHAIN_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -124,6 +124,7 @@ def atom14_to_cif(
     atom_mask: np.ndarray,
     path_to_save: str,
     bfactors: np.ndarray = None,
+    max_distance: float = 5,
 ):
     if bfactors is None:
         bfactors = np.zeros(len(aatype))
@@ -141,9 +142,9 @@ def atom14_to_cif(
     for i in range(aatype.shape[0]):
         res_name_3 = index_to_restype_3[aatype[i]]
         bfactor = bfactors[i]
-        atom_names = restype_name_to_atom14_names[res_name_3]
+        atom_names = restype_name_to_atomc_names[res_name_3]
         res_counter = 0
-        if np.linalg.norm(prev_loc - atom14[i][0]) > 5:
+        if np.linalg.norm(prev_loc - atom14[i][0]) > max_distance:
             curr_chain += 1
             struct.init_chain(number_to_chain_str(curr_chain))
         prev_loc = atom14[i][0]
@@ -220,7 +221,7 @@ def chain_atom14_to_cif(
         for i in range(aatype[chain_id].shape[0]):
             res_name_3 = index_to_restype_3[aatype[chain_id][i]]
             bfactor = bfactors[chain_id][i]
-            atom_names = restype_name_to_atom14_names[res_name_3]
+            atom_names = restype_name_to_atomc_names[res_name_3]
             res_counter = 0
 
             struct.init_residue(res_name_3, " ", res_idxs[chain_id][i], " ")
