@@ -898,60 +898,6 @@ def get_sequence_context_from_idx(idx_arr, num_residues, residue_to_seq_id, cont
     return unique_seq, reverse_idx[idx_to_seq_context]
 
 
-def tmp_check_nucleotides(file_path: str, chain_id: str = None) -> Protein:
-    """Takes a file path containing a PDB/mmCIF file and constructs a Protein object.
-    WARNING: All non-standard residue types will be ignored. All
-      non-standard atoms will be ignored.
-    Args:
-      pdb_str: The path to the PDB file
-      chain_id: If chain_id is specified (e.g. A), then only that chain
-        is parsed. Otherwise all chains are parsed.
-    Returns:
-      A new `Protein` parsed from the pdb contents.
-    """
-    if file_path.split(".")[-1][:3] == "pdb":
-        parser = PDBParser(QUIET=True)
-    elif file_path.split(".")[-1][:3] == "cif":
-        parser = MMCIFParser(QUIET=True)
-    else:
-        raise RuntimeError("Unknown type for structure file:", file_path[-3:])
-    structure = parser.get_structure("none", file_path)
-    models = list(structure.get_models())
-    if len(models) != 1:
-        warnings.warn(
-            f"Only single model PDBs are supported. Found {len(models)} models."
-        )
-    model = models[0]
-    positions = []
-    atom_mask = []
-    nuc_types = []
-
-    for chain in model:
-        if chain_id is not None and chain.id != chain_id:
-            continue
-        for res in chain:
-            if res.id[2] != " ":
-                raise ValueError(
-                    f"PDB contains an insertion code at chain {chain.id} and residue "
-                    f"index {res.id[1]}. These are not supported."
-                )
-            if res.resname not in _rc.nuc_order:
-                continue
-            pos = np.zeros((28, 3), dtype=np.float32)
-            mask = np.zeros((28,), dtype=np.float32)
-            nuc_type = _rc.nuc_order[res.resname]
-            for atom in res:
-                if atom.name not in _rc.nuc_atom_order:
-                    continue
-                pos[_rc.nuc_atom_order[atom.name]] = atom.coord
-                mask[_rc.nuc_atom_order[atom.name]] = 1
-            positions.append(pos)
-            atom_mask.append(mask)
-            nuc_types.append(nuc_type)
-
-    return np.array(positions), np.array(atom_mask), np.array(nuc_types)
-
-
 if __name__ == "__main__":
     import argparse
 
