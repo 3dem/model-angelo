@@ -659,8 +659,8 @@ def atomf_to_torsion_angles(
 def torsion_angles_to_frames(
     aatype: np.ndarray,  # (N)
     backb_to_global: torch.Tensor,  # (N, 3, 4)
-    torsion_angles_sin_cos: torch.Tensor,  # (N, 7, 2)
-):  # (N, 8)
+    torsion_angles_sin_cos: torch.Tensor,  # (N, 8, 2)
+):  # (N, 9)
     """Compute rigid group frames from torsion angles.
     Jumper et al. (2021) Suppl. Alg. 24 "computeAllAtomCoordinates" lines 2-10
     Jumper et al. (2021) Suppl. Alg. 25 "makeRotX"
@@ -668,18 +668,18 @@ def torsion_angles_to_frames(
       aatype: aatype for each residue
       backb_to_global: Rigid transformations describing transformation from
         backbone frame to global frame.
-      torsion_angles_sin_cos: sin and cosine of the 7 torsion angles
+      torsion_angles_sin_cos: sin and cosine of the 8 torsion angles
     Returns:
       Frames corresponding to all the Sidechain Rigid Transforms
     """
     assert len(aatype.shape) == 1
     assert len(torsion_angles_sin_cos.shape) == 3
-    assert torsion_angles_sin_cos.shape[1] == 7
+    assert torsion_angles_sin_cos.shape[1] == 8
     assert torsion_angles_sin_cos.shape[2] == 2
 
     device = torsion_angles_sin_cos.device
     # Gather the default frames for all rigid groups.
-    # Affines with shape (N, 8, 3, 4)
+    # Affines with shape (N, 9, 3, 4)
     m = _rc.restype_rigid_group_default_frame[aatype]
 
     default_frames = affine_from_tensor4x4(torch.Tensor(m).to(device))
@@ -716,25 +716,52 @@ def torsion_angles_to_frames(
     # Apply rotations to the frames.
     all_frames = affine_mul_rots(default_frames, all_rots)
 
+    # Nucleotide and protein torsions are defined very differently.
+    # Thus, we need to split the computation
+    all_frames_to_backb = torch.zeros_like(all_frames)
+    prot_mask = aatype < _rc.num_prot
+    
+    # Proteins:
     # chi2, chi3, and chi4 frames do not transform to the backbone frame but to
     # the previous frame. So chain them up accordingly.
-    chi2_frame_to_frame = all_frames[:, 5]
-    chi3_frame_to_frame = all_frames[:, 6]
-    chi4_frame_to_frame = all_frames[:, 7]
 
-    chi1_frame_to_backb = all_frames[:, 4]
-    chi2_frame_to_backb = affine_composition(chi1_frame_to_backb, chi2_frame_to_frame)
-    chi3_frame_to_backb = affine_composition(chi2_frame_to_backb, chi3_frame_to_frame)
-    chi4_frame_to_backb = affine_composition(chi3_frame_to_backb, chi4_frame_to_frame)
+    all_frames_to_backb[prot_mask, :5] = all_frames[prot_mask, :5]
+    all_frames_to_backb[prot_mask, 5] = affine_composition(
+        all_frames_to_backb[prot_mask, 4], all_frames[prot_mask, 5]
+    )  # chi2
+    all_frames_to_backb[prot_mask, 6] = affine_composition(
+        all_frames_to_backb[prot_mask, 5], all_frames[prot_mask, 6]
+    )  # chi3
+    all_frames_to_backb[prot_mask, 7] = affine_composition(
+        all_frames_to_backb[prot_mask, 6], all_frames[prot_mask, 7]
+    )  # chi4
 
-    all_frames_to_backb = torch.stack(
-        [all_frames[:, i] for i in range(5)]
-        + [chi2_frame_to_backb, chi3_frame_to_backb, chi4_frame_to_backb],
-        dim=1,
-    )
+    # Nucleotides:
+    all_frames_to_backb[~prot_mask, :2] = all_frames[~prot_mask, :2]
+    all_frames_to_backb[~prot_mask, 2] = affine_composition(
+        all_frames_to_backb[~prot_mask, 1], all_frames[~prot_mask, 2]
+    )  # beta
+    all_frames_to_backb[~prot_mask, 3] = affine_composition(
+        all_frames_to_backb[~prot_mask, 2], all_frames[~prot_mask, 3]
+    )  # gamma
+    all_frames_to_backb[~prot_mask, 4] = affine_composition(
+        all_frames_to_backb[~prot_mask, 3], all_frames[~prot_mask, 4]
+    )  # delta
+    all_frames_to_backb[~prot_mask, 5] = affine_composition(
+        all_frames_to_backb[~prot_mask, 3], all_frames[~prot_mask, 5]
+    )  # nu2, from gamma
+    all_frames_to_backb[~prot_mask, 6] = affine_composition(
+        all_frames_to_backb[~prot_mask, 5], all_frames[~prot_mask, 6]
+    )  # nu1
+    all_frames_to_backb[~prot_mask, 7] = affine_composition(
+        all_frames_to_backb[~prot_mask, 6], all_frames[~prot_mask, 7]
+    )  # nu0
+    all_frames_to_backb[~prot_mask, 8] = affine_composition(
+        all_frames_to_backb[~prot_mask, 6], all_frames[~prot_mask, 8]
+    )  # chi, from nu1
 
     # Create the global frames.
-    # shape (N, 8, 3, 4)
+    # shape (N, 9, 3, 4)
     all_frames_to_global = affine_composition(
         backb_to_global[:, None], all_frames_to_backb
     )
@@ -743,9 +770,9 @@ def torsion_angles_to_frames(
 
 
 def frames_and_literature_positions_to_atomc_pos(
-    aatype: np.ndarray, all_frames_to_global: torch.Tensor  # (N)  # (N, 8, 3, 4)
-):  # (N, 14, 3)
-    """Put atom literature positions (atom14 encoding) in each rigid group.
+    aatype: np.ndarray, all_frames_to_global: torch.Tensor  # (N)  # (N, 9, 3, 4)
+):  # (N, 23, 3)
+    """Put atom literature positions (atom23 encoding) in each rigid group.
     Jumper et al. (2021) Suppl. Alg. 24 "computeAllAtomCoordinates" line 11
     Args:
       aatype: aatype for each residue.
@@ -757,11 +784,11 @@ def frames_and_literature_positions_to_atomc_pos(
     device = all_frames_to_global.device
     # Pick the appropriate transform for every atom.
     residx_to_group_idx = _rc.restype_atomc_to_rigid_group[aatype]
-    group_mask = torch.eye(8, device=device)[residx_to_group_idx.reshape(-1)].reshape(
-        *residx_to_group_idx.shape, 8
-    )  # shape (N, 14, 8)
+    group_mask = torch.eye(9, device=device)[residx_to_group_idx.reshape(-1)].reshape(
+        *residx_to_group_idx.shape, 9
+    )  # shape (N, 23, 8)
 
-    # Affines with shape (N, 14, 3, 4)
+    # Affines with shape (N, 23, 3, 4)
     # map_atoms_to_global = torch.sum(
     #     all_frames_to_global[:, None] * group_mask[..., None, None], dim=1
     # )
@@ -770,13 +797,13 @@ def frames_and_literature_positions_to_atomc_pos(
     )
 
     # Gather the literature atom positions for each residue.
-    # Vectors with shape (N, 14, 3)
+    # Vectors with shape (N, 23, 3)
     lit_positions = torch.Tensor(_rc.restype_atomc_rigid_group_positions[aatype]).to(
         device
     )
 
     # Transform each atom from its local frame to the global frame.
-    # Vectors with shape (N, 14, 3)
+    # Vectors with shape (N, 23, 3)
     pred_positions = affine_mul_vecs(map_atoms_to_global, lit_positions)
 
     # Mask out non-existing atoms.
