@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from scipy.spatial import cKDTree
 
-from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hhm_file, dump_aa_logits_to_hmm_file
+from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hmm_file
 from model_angelo.utils.save_pdb_utils import number_to_chain_str
 
 from model_angelo.utils.hmm_sequence_align import (
@@ -18,7 +18,7 @@ from model_angelo.utils.protein import (
     frames_and_literature_positions_to_atomc_pos,
     torsion_angles_to_frames,
 )
-from model_angelo.utils.residue_constants import restype_atom14_mask, select_torsion_angles
+from model_angelo.utils.residue_constants import restype_atomc_mask, select_torsion_angles, restype3_to_atoms, num_prot
 from model_angelo.utils.save_pdb_utils import (
     atom14_to_cif,
     chain_atom14_to_cif,
@@ -91,7 +91,7 @@ def chains_to_atoms(
             )
         )
         chain_atom_mask.append(
-            restype_atom14_mask[fixed_aatype_from_sequence[chain_id]]
+            restype_atomc_mask[fixed_aatype_from_sequence[chain_id]]
         )
         chain_bfactors.append(
             normalize_local_confidence_score(
@@ -112,6 +112,7 @@ def chains_to_atoms(
 
 def final_results_to_cif(
     final_results,
+    prot_mask,
     cif_path,
     sequences=None,
     aatype=None,
@@ -119,21 +120,21 @@ def final_results_to_cif(
     print_fn=print,
     aggressive_pruning=False,
 ):
-    """
-    Currently assumes the ordering it comes with, I will change this later
-    """
     existence_mask = (
         torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3
     ).numpy()
     if aatype is None:
-        aatype = np.argmax(final_results["aa_logits"], axis=-1)[existence_mask]
+        aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int32)
+        aatype[prot_mask] = np.argmax(final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1)
+        aatype[~prot_mask] = np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1) + num_prot
+        aatype = aatype[existence_mask]
     backbone_affine = torch.from_numpy(final_results["pred_affines"])[existence_mask]
     torsion_angles = select_torsion_angles(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype
     )
     all_frames = torsion_angles_to_frames(aatype, backbone_affine, torsion_angles)
     all_atoms = frames_and_literature_positions_to_atomc_pos(aatype, all_frames)
-    atom_mask = restype_atom14_mask[aatype]
+    atom_mask = restype_atomc_mask[aatype]
     bfactors = (
         normalize_local_confidence_score(
             final_results["local_confidence"][existence_mask]
@@ -142,7 +143,15 @@ def final_results_to_cif(
     )
 
     all_atoms_np = all_atoms.numpy()
-    chains = flood_fill(all_atoms_np, bfactors)
+    chains = []
+    if np.any(prot_mask):
+        idxs = np.arange(len(all_atoms_np))[prot_mask]
+        prot_chains = flood_fill(all_atoms_np[prot_mask], bfactors[prot_mask], is_nucleotide=False)
+        chains += [idxs[c] for c in prot_chains]
+    if np.any(~prot_mask):
+        idxs = np.arange(len(all_atoms_np))[~prot_mask]
+        nuc_chains = flood_fill(all_atoms_np[~prot_mask], bfactors[~prot_mask], is_nucleotide=True)
+        chains += [idxs[c] for c in nuc_chains]
 
     # Prune chains based on length
     pruned_chains = [c for c in chains if len(c) > 3]
@@ -258,9 +267,19 @@ def final_results_to_cif(
     return final_results
 
 
-def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
-    n_positions = atom14_positions[:, 0]
-    c_positions = atom14_positions[:, 2]
+def flood_fill(
+    atomc_positions,
+    b_factors,
+    n_c_distance_threshold=2.1,
+    is_nucleotide=False,
+):
+    if is_nucleotide:
+        n_idx, c_idx = restype3_to_atoms["A"].index("P"), restype3_to_atoms["A"].index("O3'")
+    else:
+        n_idx, c_idx = restype3_to_atoms["ALA"].index("N"), restype3_to_atoms["ALA"].index("C")
+
+    n_positions = atomc_positions[:, n_idx]
+    c_positions = atomc_positions[:, c_idx]
     kdtree = cKDTree(c_positions)
     b_factors_copy = np.copy(b_factors)
 

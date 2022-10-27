@@ -1367,7 +1367,7 @@ between_res_cos_angles_ca_c_n = [-0.4473, 0.0311]  # degrees: 116.568 +- 1.995
 
 def select_torsion_angles(input, aatype):
     chi_angles = einops.rearrange(
-        input[..., 3:, :], "... (f a) d -> ... f d a", f=4, a=num_residues, d=2
+        input[..., 3:, :], "... (f a) d -> ... f d a", f=5, a=num_residues, d=2
     )[torch.arange(len(aatype)), ..., aatype]
     input_torsion_angles = torch.cat((input[..., :3, :], chi_angles), dim=-2)
     return input_torsion_angles

@@ -4,7 +4,7 @@ from typing import List, Tuple
 import numpy as np
 import pyhmmer
 
-from model_angelo.utils.aa_probs_to_hmm import aa_logits_to_hmm
+from model_angelo.utils.aa_probs_to_hmm import aa_logits_to_hmm, alphabet_to_slice, alphabet_to_index
 from model_angelo.utils.fasta_utils import (
     find_match_range,
     in_seq_dict,
@@ -13,7 +13,7 @@ from model_angelo.utils.fasta_utils import (
     sequence_match,
 )
 from model_angelo.utils.match_to_sequence import MatchToSequence
-from model_angelo.utils.residue_constants import index_to_restype_1, restype_1_to_index
+from model_angelo.utils.residue_constants import restype_1_to_index
 
 HMMAlignment = namedtuple(
     "HMMAlignment",
@@ -32,35 +32,71 @@ HMMAlignment = namedtuple(
 
 def get_hmm_alignment(
     aa_logits: np.ndarray,
-    digital_sequences: List[pyhmmer.easel.DigitalSequence],
+    digital_prot_sequences: List[pyhmmer.easel.DigitalSequence],
+    digital_rna_sequences: List[pyhmmer.easel.DigitalSequence] = [],
+    digital_dna_sequences: List[pyhmmer.easel.DigitalSequence] = [],
     confidence: np.ndarray = None,
-    fix_flanks: bool = False,
     base_dir: str = "/tmp",
+    is_nucleotide: bool = False,
 ) -> HMMAlignment:
-    if fix_flanks:
-        raise NotImplementedError(
-            "Sorry, fix_flanks has not been implemented yet because of the in_sequence_existence"
-        )
+    if not is_nucleotide:
+        hmm = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir, alphabet_type="amino")
+        msas = pyhmmer.hmmer.hmmalign(hmm, digital_prot_sequences, all_consensus_cols=True)
+        processed_msas = msas.alignment
+        seq_idx = np.argmax(np.array([len(remove_non_aa(x)) for x in processed_msas]))
+        msa_index_corr = get_msa_index_correspondence(processed_msas[seq_idx])
+        index_dict = alphabet_to_index["amino"]
+        match_sequence = msa_index_corr.sequence
+    else:
+        has_rna_seq = len(digital_rna_sequences) > 0
+        has_dna_seq = len(digital_dna_sequences) > 0
+        match_type = ""
+        if has_rna_seq:
+            hmm_rna = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir, alphabet_type="RNA")
+            rna_processed_msas = pyhmmer.hmmer.hmmalign(
+                hmm_rna, digital_rna_sequences, all_consensus_cols=True
+            ).alignment
+            rna_seq_idx = np.argmax(np.array([len(remove_non_aa(x)) for x in rna_processed_msas]))
+            rna_seq_val = np.max(np.array([len(remove_non_aa(x)) for x in rna_processed_msas]))
+        if has_dna_seq:
+            hmm_dna = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir, alphabet_type="DNA")
+            dna_processed_msas = pyhmmer.hmmer.hmmalign(
+                hmm_dna, digital_rna_sequences, all_consensus_cols=True
+            ).alignment
+            dna_seq_idx = np.argmax(np.array([len(remove_non_aa(x)) for x in dna_processed_msas]))
+            dna_seq_val = np.max(np.array([len(remove_non_aa(x)) for x in dna_processed_msas]))
+        if has_rna_seq and has_dna_seq:
+            if rna_seq_val <= dna_seq_val:
+                match_type = "RNA"
+            else:
+                match_type = "DNA"
+        elif has_rna_seq:
+            match_type = "RNA"
+        elif has_dna_seq:
+            match_type = "DNA"
 
-    original_pred_seq = np.argmax(aa_logits, axis=-1)
-    hmm = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir)
-    msas = pyhmmer.hmmer.hmmalign(hmm, digital_sequences, all_consensus_cols=True)
-    processed_msas = msas.alignment
-    seq_idx = np.argmax(np.array([len(remove_non_aa(x)) for x in processed_msas]))
-    msa_index_corr = get_msa_index_correspondence(processed_msas[seq_idx])
-
-    match_sequence = msa_index_corr.sequence
-    if fix_flanks:
-        match_sequence = fix_flanking_regions(
-            msa_index_corr.sequence, processed_msas[seq_idx], msa_index_corr.res_idx
-        )
+        if match_type == "":
+            made_up_match = "-" * len(aa_logits)
+            msa_index_corr = get_msa_index_correspondence(made_up_match)
+            index_dict = alphabet_to_index["RNA"]
+            seq_idx = len(digital_prot_sequences)
+        elif match_type == "RNA":
+            msa_index_corr = get_msa_index_correspondence(rna_processed_msas[rna_seq_idx])
+            index_dict = alphabet_to_index["RNA"]
+            seq_idx = rna_seq_idx
+        else:
+            msa_index_corr = get_msa_index_correspondence(dna_processed_msas[dna_seq_idx])
+            index_dict = alphabet_to_index["DNA"]
+            seq_idx = dna_seq_idx
+        match_sequence = msa_index_corr.sequence
 
     msa_sequence = np.array(
         [
-            restype_1_to_index[x] if x in restype_1_to_index else -1
+            index_dict[x] if x in index_dict else -1
             for x in match_sequence
         ]
     )
+    original_pred_seq = np.argmax(aa_logits, axis=-1)
     new_sequence = np.where(msa_sequence != -1, msa_sequence, original_pred_seq)
 
     match_score = len(remove_non_aa(match_sequence)) / len(match_sequence)
