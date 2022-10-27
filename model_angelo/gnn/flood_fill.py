@@ -143,23 +143,25 @@ def final_results_to_cif(
 
     all_atoms_np = all_atoms.numpy()
     chains = flood_fill(all_atoms_np, bfactors)
-    chains_concat = np.concatenate(chains)
 
-    atom14_to_cif(
-        aatype[chains_concat],
-        all_atoms[chains_concat],
-        atom_mask[chains_concat],
+    # Prune chains based on length
+    pruned_chains = [c for c in chains if len(c) > 3]
+
+    chain_atom14_to_cif(
+        [aatype[c] for c in pruned_chains],
+        [all_atoms[c] for c in pruned_chains],
+        [atom_mask[c] for c in pruned_chains],
         cif_path,
-        bfactors=bfactors[chains_concat],
+        bfactors=[bfactors[c] for c in pruned_chains],
     )
 
-    new_final_results = dict(
-        [(k, v[chains_concat]) for (k, v) in final_results.items()]
-    )
-    new_final_results["chain_aa_logits"] = [
+    chain_aa_logits = [
         final_results["aa_logits"][existence_mask][c] for c in chains
     ]
-    new_final_results["hmm_confidence"] = [
+    pruned_chain_aa_logits = [
+        final_results["aa_logits"][existence_mask][c] for c in pruned_chains
+    ]
+    chain_hmm_confidence = [
         local_confidence_score_sigmoid(
             final_results["local_confidence"][existence_mask][c]
         ) for c in chains
@@ -170,7 +172,7 @@ def final_results_to_cif(
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
 
-        for i, chain_aa_logits in enumerate(new_final_results["chain_aa_logits"]):
+        for i, chain_aa_logits in enumerate(pruned_chain_aa_logits):
             chain_name = number_to_chain_str(i)
             dump_aa_logits_to_hmm_file(
                 chain_aa_logits,
@@ -183,9 +185,9 @@ def final_results_to_cif(
         fix_chains_output = fix_chains_pipeline(
             sequences,
             chains,
-            new_final_results["chain_aa_logits"],
+            chain_aa_logits,
             ca_pos,
-            chain_confidences=new_final_results["hmm_confidence"],
+            chain_confidences=chain_hmm_confidence,
             base_dir=os.path.dirname(cif_path),
         )
 
@@ -253,31 +255,30 @@ def final_results_to_cif(
                 f"These sequence ids have been left unmodelled: {fix_chains_output.unmodelled_sequences}"
             )
 
-    return new_final_results
+    return final_results
 
 
 def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
     n_positions = atom14_positions[:, 0]
     c_positions = atom14_positions[:, 2]
-    n_c_distances = np.linalg.norm(n_positions[:, None] - c_positions[None], axis=-1)
+    kdtree = cKDTree(c_positions)
     b_factors_copy = np.copy(b_factors)
-    idxs = np.arange(len(atom14_positions))
 
     chains = []
     chain_ends = {}
     while np.any(b_factors_copy != -1):
         idx = np.argmax(b_factors_copy)
-        possible_edges = (n_c_distances[idx] < n_c_distance_threshold) * (
-            n_c_distances[idx] > 0
+        possible_indices = np.array(
+            kdtree.query_ball_point(
+                n_positions[idx], 
+                r=n_c_distance_threshold, 
+                return_sorted=True
+            )
         )
+        possible_indices = possible_indices[possible_indices != idx]
+
         got_chain = False
-        if np.sum(possible_edges) > 0:
-            idx_n_c_distances = n_c_distances[idx][possible_edges]
-            possible_indices = idxs[possible_edges]
-
-            sorted_indices = np.argsort(idx_n_c_distances)
-            possible_indices = possible_indices[sorted_indices]
-
+        if len(possible_indices) > 0:
             for possible_prev_residue in possible_indices:
                 if possible_prev_residue == idx:
                     continue
