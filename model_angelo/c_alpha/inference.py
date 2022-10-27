@@ -22,7 +22,7 @@ from model_angelo.utils.grid import (
     save_mrc,
 )
 from model_angelo.utils.misc_utils import abort_if_relion_abort
-from model_angelo.utils.save_pdb_utils import points_to_pdb
+from model_angelo.utils.save_pdb_utils import points_to_pdb, ca_ps_to_pdb
 from model_angelo.utils.torch_utils import get_model_from_file
 
 
@@ -305,7 +305,7 @@ def infer(args):
     if args.do_nucleotides:
         logger.info("Starting P grid to points...")
         output_p_points, output_p_points_before_pruning = grid_to_points(
-            p_grid, args.threshold, 12 / voxel_size
+            p_grid, args.threshold, 10 / voxel_size
         )
         logger.info(
             f"Have {len(output_p_points_before_pruning)} P points before pruning and {len(output_p_points)} after pruning"
@@ -317,6 +317,11 @@ def infer(args):
         )
         points_to_pdb(
             os.path.join(args.output_path, "see_alpha_output_p.cif"),
+            voxel_size * output_p_points,
+        )
+        ca_ps_to_pdb(
+            os.path.join(args.output_path, "see_alpha_merged_output.cif"),
+            voxel_size * output_ca_points,
             voxel_size * output_p_points,
         )
 

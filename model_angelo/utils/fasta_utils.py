@@ -173,8 +173,6 @@ def remove_non_aa(sequence: str) -> str:
 
 def fasta_to_unified_seq(fasta_path, auth_chains=True) -> Tuple[str, int]:
     sequences, sequence_names = read_fasta(fasta_path, auth_chains=auth_chains)
-    sequences, sequence_names = filter_small_sequences(sequences, sequence_names)
-    sequences, sequence_names = filter_nucleotide_sequences(sequences, sequence_names)
     sequences = [s.seq for s in sequences]
     unified_seq_len = sum([len(s) for s in sequences])
     unified_seq = "|||".join(sequences)

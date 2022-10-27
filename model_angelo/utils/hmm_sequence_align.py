@@ -4,7 +4,7 @@ from typing import List, Tuple
 import numpy as np
 import pyhmmer
 
-from model_angelo.utils.aa_probs_to_hmm import aa_logits_to_hmm, alphabet_to_slice, alphabet_to_index
+from model_angelo.utils.aa_probs_to_hmm import aa_logits_to_hmm, alphabet_to_index
 from model_angelo.utils.fasta_utils import (
     find_match_range,
     in_seq_dict,
@@ -13,7 +13,6 @@ from model_angelo.utils.fasta_utils import (
     sequence_match,
 )
 from model_angelo.utils.match_to_sequence import MatchToSequence
-from model_angelo.utils.residue_constants import restype_1_to_index
 
 HMMAlignment = namedtuple(
     "HMMAlignment",
@@ -32,7 +31,7 @@ HMMAlignment = namedtuple(
 
 def get_hmm_alignment(
     aa_logits: np.ndarray,
-    digital_prot_sequences: List[pyhmmer.easel.DigitalSequence],
+    digital_prot_sequences: List[pyhmmer.easel.DigitalSequence] = [],
     digital_rna_sequences: List[pyhmmer.easel.DigitalSequence] = [],
     digital_dna_sequences: List[pyhmmer.easel.DigitalSequence] = [],
     confidence: np.ndarray = None,
@@ -113,20 +112,24 @@ def get_hmm_alignment(
 
 
 def best_match_to_sequences(
-    sequences: List[str],
+    prot_sequences: List[str],
+    rna_sequences: List[str],
+    dna_sequences: List[str],
     chain_aa_logits: List[np.ndarray],
     chain_confidences: List[np.ndarray] = None,
-    fix_flanks: bool = False,
     base_dir: str = "/tmp",
 ) -> MatchToSequence:
     alphabet = pyhmmer.easel.Alphabet.amino()
     digital_sequences = [
-        pyhmmer.easel.TextSequence(
-            name=bytes(f"seq_{i}", encoding="utf-8"), sequence=seq
-        )
-        for i, seq in enumerate(sequences)
+        [
+            pyhmmer.easel.TextSequence(
+                name=bytes(f"seq_{i}", encoding="utf-8"), sequence=seq
+            )
+            for i, seq in enumerate(sequences)
+        ]
+        for sequences in [prot_sequences, rna_sequences, dna_sequences]
     ]
-    digital_sequences = [x.digitize(alphabet) for x in digital_sequences]
+    digital_sequences = [[x.digitize(alphabet) for x in sequences] for sequences in digital_sequences]
 
     if chain_confidences is None:
         chain_confidences = [None] * len(chain_aa_logits)
@@ -157,9 +160,10 @@ def best_match_to_sequences(
         else:
             hmm_alignment = get_hmm_alignment(
                 aa_logits,
-                digital_sequences=digital_sequences,
+                digital_prot_sequences=digital_sequences[0],
+                digital_rna_sequences=digital_sequences[1],
+                digital_dna_sequences=digital_sequences[2],
                 confidence=confidence,
-                fix_flanks=fix_flanks,
                 base_dir=base_dir,
             )
             new_sequences.append(hmm_alignment.sequence)
@@ -435,7 +439,9 @@ FixChainsOutput = namedtuple(
 
 
 def fix_chains_pipeline(
-    sequences: List[str],
+    prot_sequences: List[str],
+    rna_sequences: List[str],
+    dna_sequences: List[str],
     chains: List[int],
     chain_aa_logits: List[np.ndarray],
     ca_pos: np.ndarray,
@@ -454,10 +460,11 @@ def fix_chains_pipeline(
 
     """
     best_match_output = best_match_to_sequences(
-        sequences,
+        prot_sequences,
+        rna_sequences,
+        dna_sequences,
         chain_aa_logits,
         chain_confidences=chain_confidences,
-        fix_flanks=False,
         base_dir=base_dir,
     )
     chains = best_match_output.remove_duplicates(chains, ca_pos)
@@ -466,14 +473,11 @@ def fix_chains_pipeline(
         chains,
         ca_pos,
     )
-    unmodelled_sequences = set(range(len(sequences))).difference(
-        set(np.unique(best_match_output.sequence_idxs))
-    )
     chains, best_match_output = sort_chains_by_match(chains, best_match_output)
     return FixChainsOutput(
         chains=chains,
         best_match_output=best_match_output,
-        unmodelled_sequences=unmodelled_sequences,
+        unmodelled_sequences=None,
     )
 
 

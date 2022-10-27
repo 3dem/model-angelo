@@ -80,6 +80,26 @@ def points_to_pdb(path_to_save, points):
     io.save(path_to_save)
 
 
+def ca_ps_to_pdb(path_to_save, ca_points, p_points):
+    struct = StructureBuilder()
+    struct.init_structure("1")
+    struct.init_seg("1")
+    struct.init_model("1")
+    struct.init_chain("1")
+    for i, point in enumerate(ca_points):
+        struct.set_line_counter(i)
+        struct.init_residue(f"ALA", " ", i, " ")
+        struct.init_atom("CA", point, 0, 1, " ", "CA", "C")
+    for i, point in enumerate(p_points):
+        struct.set_line_counter(i)
+        struct.init_residue(f"A", " ", i, " ")
+        struct.init_atom("P", point, 0, 1, " ", "P", "P")
+    struct = struct.get_structure()
+    io = MMCIFIO()
+    io.set_structure(struct)
+    io.save(path_to_save)
+
+
 def chains_to_pdb(path_to_save, chains):
     struct = StructureBuilder()
     struct.init_structure("1")

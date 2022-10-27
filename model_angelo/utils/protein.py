@@ -43,6 +43,7 @@ PROTEIN_KEYS = [
     "unified_seq_len",
     "residue_to_seq_id",
     "residue_to_lm_embedding",
+    "prot_mask",
 ]
 
 
@@ -126,7 +127,8 @@ class Protein:
     # The mapping of residues to their language model static embeddings, can be empty at construction
     residue_to_lm_embedding: np.ndarray  # (unified_seq_len, embedding_dim)
 
-    #
+    # Whether or not the residue is a protein residue
+    prot_mask: np.ndarray
 
     keys = PROTEIN_KEYS
 
@@ -273,6 +275,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
         unified_seq_len=unified_seq_len,
         residue_to_seq_id=residue_to_seq_id,
         residue_to_lm_embedding=None,
+        prot_mask=aatype < _rc.num_prot,
         **frames,
         **torsion_angles,
     )
@@ -609,7 +612,7 @@ def atomf_to_torsion_angles(
     ).numpy()
 
     # Normalize to have the sin and cos of the torsion angle.
-    # np.ndarray (B, N, torsions=7, sincos=2)
+    # np.ndarray (B, N, torsions=8, sincos=2)
     torsion_angles_sin_cos = np.stack(
         [fourth_atom_rel_pos[..., 2], fourth_atom_rel_pos[..., 1]], axis=-1
     )

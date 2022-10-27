@@ -20,7 +20,6 @@ from model_angelo.utils.protein import (
 )
 from model_angelo.utils.residue_constants import restype_atomc_mask, select_torsion_angles, restype3_to_atoms, num_prot
 from model_angelo.utils.save_pdb_utils import (
-    atom14_to_cif,
     chain_atom14_to_cif,
     write_chain_report, write_chain_probabilities,
 )
@@ -114,7 +113,9 @@ def final_results_to_cif(
     final_results,
     prot_mask,
     cif_path,
-    sequences=None,
+    prot_sequences=None,
+    rna_sequences=None,
+    dna_sequences=None,
     aatype=None,
     verbose=False,
     print_fn=print,
@@ -170,29 +171,50 @@ def final_results_to_cif(
     pruned_chain_aa_logits = [
         final_results["aa_logits"][existence_mask][c] for c in pruned_chains
     ]
+    pruned_chain_prot_mask = [
+        prot_mask[existence_mask][c] for c in pruned_chains
+    ]
     chain_hmm_confidence = [
         local_confidence_score_sigmoid(
             final_results["local_confidence"][existence_mask][c]
         ) for c in chains
     ]
 
-    if sequences is None:
+    if prot_sequences is None and rna_sequences is None and dna_sequences is None:
         # Can make HMM profiles with the aa_probs
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
 
         for i, chain_aa_logits in enumerate(pruned_chain_aa_logits):
             chain_name = number_to_chain_str(i)
-            dump_aa_logits_to_hmm_file(
-                chain_aa_logits,
-                os.path.join(hmm_dir_path, f"{chain_name}.hmm"),
-                name=f"{chain_name}",
-            )
+            if np.any(pruned_chain_prot_mask[i]):
+                dump_aa_logits_to_hmm_file(
+                    chain_aa_logits,
+                    os.path.join(hmm_dir_path, f"{chain_name}.hmm"),
+                    name=f"{chain_name}",
+                    alphabet_type="amino"
+                )
+            else:
+                dump_aa_logits_to_hmm_file(
+                    chain_aa_logits,
+                    os.path.join(hmm_dir_path, f"{chain_name}_rna.hmm"),
+                    name=f"{chain_name}",
+                    alphabet_type="RNA"
+                )
+                dump_aa_logits_to_hmm_file(
+                    chain_aa_logits,
+                    os.path.join(hmm_dir_path, f"{chain_name}_dna.hmm"),
+                    name=f"{chain_name}",
+                    alphabet_type="DNA"
+                )
+
     else:
         ca_pos = all_atoms_np[:, 1]
 
         fix_chains_output = fix_chains_pipeline(
-            sequences,
+            prot_sequences,
+            rna_sequences,
+            dna_sequences,
             chains,
             chain_aa_logits,
             ca_pos,
