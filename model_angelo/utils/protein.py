@@ -522,8 +522,8 @@ def atomf_to_torsion_angles(
     torsions_atom_pos[prot_mask, 1, :1] = prev_all_atom_pos[prot_mask, 2:3, :]  # prev C
     torsions_atom_pos[prot_mask, 1, 1:] = all_atom_positions[prot_mask, :3, :],  # this N, CA, C
     # Psi for proteins
-    torsions_atom_pos[prot_mask, 2, 1:] = all_atom_positions[prot_mask, 0:3, :]  # this N, CA, C
-    torsions_atom_pos[prot_mask, 2, :1] = all_atom_positions[prot_mask, 4:5, :]  # this O
+    torsions_atom_pos[prot_mask, 2, :3] = all_atom_positions[prot_mask, 0:3, :]  # this N, CA, C
+    torsions_atom_pos[prot_mask, 2, 3:] = all_atom_positions[prot_mask, 4:5, :]  # this O
 
     # Collect the masks from these atoms.
     # Shape [batch, num_res]
