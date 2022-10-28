@@ -987,7 +987,7 @@ def _make_rigid_group_constants():
             restype_atomf_rigid_group_positions[restype, atomtype, :] = atom_position
 
             atomcidx = restype_name_to_atomc_names[resname].index(atomname)
-            restype_atomf_to_rigid_group[restype, atomcidx] = group_idx
+            restype_atomc_to_rigid_group[restype, atomcidx] = group_idx
             restype_atomc_mask[restype, atomcidx] = 1
             restype_atomc_rigid_group_positions[restype, atomcidx, :] = atom_position
 
