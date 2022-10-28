@@ -12,6 +12,7 @@ from model_angelo.gnn.sequence_attention import SequenceAttention
 from model_angelo.gnn.spatial_ipa import SpatialIPA
 from model_angelo.models.common_modules import FcResBlock
 from model_angelo.utils.misc_utils import assertion_check
+from model_angelo.utils.residue_constants import num_residues
 
 
 class MultiLayerSeparableIPA(nn.Module):
@@ -90,10 +91,10 @@ class MultiLayerSeparableIPA(nn.Module):
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
-            nn.Linear(self.hfz, (20 * 4 + 3) * 2, bias=True),
+            nn.Linear(self.hfz, (num_residues * 5 + 3) * 2, bias=True),
             Rearrange(
                 "n (f d) -> n f d",
-                f=83,
+                f=num_residues * 5 + 3,
                 d=2,
             ),
         )

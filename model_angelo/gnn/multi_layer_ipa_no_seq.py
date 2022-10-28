@@ -10,6 +10,7 @@ from model_angelo.gnn.backbone_frame_net import BackboneFrameNet
 from model_angelo.gnn.cryo_attention import CryoAttention
 from model_angelo.gnn.spatial_ipa import SpatialIPA
 from model_angelo.gnn.gnn_output import GNNOutput
+from model_angelo.utils.residue_constants import num_residues
 
 
 class MultiLayerSeparableIPANoSeq(nn.Module):
@@ -77,10 +78,10 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
-            nn.Linear(self.hfz, (20 * 4 + 3) * 2, bias=True),
+            nn.Linear(self.hfz, (num_residues * 5 + 3) * 2, bias=True),
             Rearrange(
                 "n (f d) -> n f d",
-                f=83,
+                f=num_residues * 5 + 3,
                 d=2,
             ),
         )
