@@ -335,7 +335,7 @@ def atomf_to_frames(
 
     # Create an array with the atom names.
     # shape (num_restypes, num_rigidgroups, 3_atoms): (28, 9, 3)
-    restype_rigidgroup_base_atom_names = np.full([_rc.num_residues, _rc.num_frames, 3], "", dtype=object)
+    restype_rigidgroup_base_atom_names = np.full([_rc.canonical_num_residues, _rc.num_frames, 3], "", dtype=object)
 
     # 4,5,6,7: 'chi1,2,3,4-group'
     for restype, restype_letter in enumerate(_rc.index_to_restype_1):
@@ -372,7 +372,7 @@ def atomf_to_frames(
             restype_rigidgroup_base_atom_names[restype, 8, :] = _rc.chi_angles_atoms[resname][0][1:]
 
     # Create mask for existing rigid groups.
-    restype_rigidgroup_mask = np.zeros([_rc.num_residues, _rc.num_frames], dtype=np.float32)
+    restype_rigidgroup_mask = np.zeros([_rc.canonical_num_residues, _rc.num_frames], dtype=np.float32)
     restype_rigidgroup_mask[:, 0] = 1
     restype_rigidgroup_mask[:, 3] = 1
     restype_rigidgroup_mask[:_rc.num_prot, 4:-1] = _rc.chi_angles_mask[:_rc.num_prot]
@@ -427,8 +427,8 @@ def atomf_to_frames(
 
     # The frames for ambiguous rigid groups are just rotated by 180 degree around
     # the x-axis. The ambiguous group is always the last chi-group.
-    restype_rigidgroup_is_ambiguous = np.zeros([_rc.num_residues, _rc.num_frames], dtype=np.float32)
-    restype_rigidgroup_rots = np.tile(np.eye(3, dtype=np.float32), [_rc.num_residues, _rc.num_frames, 1, 1])
+    restype_rigidgroup_is_ambiguous = np.zeros([_rc.canonical_num_residues, _rc.num_frames], dtype=np.float32)
+    restype_rigidgroup_rots = np.tile(np.eye(3, dtype=np.float32), [_rc.canonical_num_residues, _rc.num_frames, 1, 1])
 
     for resname, _ in _rc.residue_atom_renaming_swaps.items():
         restype = _rc.restype_order[_rc.restype_3to1[resname]]
@@ -904,6 +904,15 @@ def get_sequence_context_from_idx(idx_arr, num_residues, residue_to_seq_id, cont
     non_unique_seq = residue_to_seq_id[np.array(sequence_context, dtype=np.int64)]
     unique_seq, reverse_idx = np.unique(non_unique_seq, return_inverse=True)
     return unique_seq, reverse_idx[idx_to_seq_context]
+
+
+def make_up_fr_from_prot(prot: Protein):
+    final_results = {}
+    final_results["existence_mask"] = np.ones(len(prot.aatype)) > 0.5
+    final_results["aa_logits"] = np.zeros((len(prot.aatype, 28)))
+    final_results["aa_logits"][np.arange(len(prot.aatype)), prot.aatype] = 2
+    final_results["pred_affines"] = prot.rigidgroups_gt_frames[:, 0]
+
 
 
 if __name__ == "__main__":

@@ -142,6 +142,7 @@ def final_results_to_cif(
         )
         * 100
     )
+    prot_mask = prot_mask[existence_mask]
 
     all_atoms_np = all_atoms.numpy()
     chains = []
@@ -172,7 +173,7 @@ def final_results_to_cif(
         final_results["aa_logits"][existence_mask][c] for c in pruned_chains
     ]
     pruned_chain_prot_mask = [
-        prot_mask[existence_mask][c] for c in pruned_chains
+        prot_mask[c] for c in pruned_chains
     ]
     chain_hmm_confidence = [
         local_confidence_score_sigmoid(
@@ -411,18 +412,3 @@ def flood_fill(
             chain_end_match = (chain_end_match + 1) % N
 
     return chains
-
-
-if __name__ == "__main__":
-    from model_angelo.utils.fasta_utils import read_fasta
-    from model_angelo.utils.misc_utils import pickle_load
-
-    f = pickle_load("/home/kjamali/Downloads/sofia_struct/nn_output_dict.pkl")
-    seq = read_fasta("/home/kjamali/Downloads/sofia_struct/sequence.fasta")
-    seq_list = [x.seq for x in seq[0]]
-    final_results = final_results_to_cif(
-        f,
-        "/home/kjamali/Downloads/sofia_struct/testing2.cif",
-        seq_list,
-        aggressive_pruning=True,
-    )

@@ -26,7 +26,12 @@ from model_angelo.utils.save_pdb_utils import points_to_pdb, ca_ps_to_pdb
 from model_angelo.utils.torch_utils import get_model_from_file
 
 
-def grid_to_points(grid, threshold, neighbour_distance_threshold):
+def grid_to_points(
+    grid,
+    threshold,
+    neighbour_distance_threshold,
+    prune_distance=1.1,
+):
     lattice = np.flip(get_lattice_meshgrid_np(grid.shape[-1], no_shift=True), -1)
 
     output_points_before_pruning = np.copy(lattice[grid > threshold, :].reshape(-1, 3))
@@ -40,7 +45,7 @@ def grid_to_points(grid, threshold, neighbour_distance_threshold):
 
         new_points = np.copy(points)
         for p in points:
-            neighbours = kdtree.query_ball_point(p, 1.1)
+            neighbours = kdtree.query_ball_point(p, prune_distance)
             selection = list(neighbours)
             if len(neighbours) > 1 and np.sum(probs[selection]) > 0:
                 keep_idx = np.argmax(probs[selection])
@@ -305,7 +310,7 @@ def infer(args):
     if args.do_nucleotides:
         logger.info("Starting P grid to points...")
         output_p_points, output_p_points_before_pruning = grid_to_points(
-            p_grid, args.threshold, 10 / voxel_size
+            p_grid, args.threshold, 10 / voxel_size, prune_distance=3.2 / voxel_size,
         )
         logger.info(
             f"Have {len(output_p_points_before_pruning)} P points before pruning and {len(output_p_points)} after pruning"

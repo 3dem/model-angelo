@@ -205,6 +205,8 @@ prot_restype3 = set(index_to_restype_3[:num_prot])
 prot_restype1 = set(index_to_restype_1[:num_prot])
 
 
+index_to_nuc = index_to_restype_3[num_prot:]
+
 def restype3_is_na(restype3: str) -> bool:
     return not (restype3 in prot_restype3)
 
@@ -221,7 +223,7 @@ def restype1_is_prot(restype1: str) -> bool:
     return restype1 in prot_restype1
 
 
-index_to_hmm_restype_1 = sorted(index_to_restype_1)
+index_to_hmm_restype_1 = sorted(index_to_restype_1[:num_prot])
 hmm_restype_1_to_index = {hmm_restype: i for i, hmm_restype in enumerate(index_to_hmm_restype_1)}
 restype_1_order_to_hmm = [restype_1_to_index[aa] for aa in index_to_hmm_restype_1]
 
@@ -352,7 +354,7 @@ for residue in restype3_to_atoms_index:
     if restype3_is_prot(residue):
         restype3_to_atoms_index[residue]["OXT"] = restype3_to_atoms_index[residue]["O"]
 
-num_residues = len(restype3_to_atoms_index)
+canonical_num_residues = len(restype3_to_atoms_index)
 backbone_atoms_prot = {"CA", "C", "N"}
 backbone_atoms_nuc = {"OP1", "P", "O5'"}
 backbone_atoms = backbone_atoms_prot.union(backbone_atoms_nuc)
@@ -963,14 +965,14 @@ def _make_rigid_transformation_4x4(ex, ey, translation):
 # and an array with (restype, atomtype, coord) for the atom positions
 # and compute affine transformation matrices (4,4) from one rigid group to the
 # previous group
-restype_atomf_to_rigid_group = np.zeros([num_residues, atom_type_num], dtype=np.int)
-restype_atomf_mask = np.zeros([num_residues, atom_type_num], dtype=np.float32)
-restype_atomf_rigid_group_positions = np.zeros([num_residues, atom_type_num, 3], dtype=np.float32)
-restype_atomc_to_rigid_group = np.zeros([num_residues, num_atomc], dtype=np.int)
-restype_atomc_mask = np.zeros([num_residues, num_atomc], dtype=np.float32)
-restype_atomc_rigid_group_positions = np.zeros([num_residues, num_atomc, 3], dtype=np.float32)
-restype_atom3_rigid_group_positions = np.zeros([num_residues, 3, 3], dtype=np.float32)
-restype_rigid_group_default_frame = np.zeros([num_residues, num_frames, 4, 4], dtype=np.float32)
+restype_atomf_to_rigid_group = np.zeros([canonical_num_residues, atom_type_num], dtype=np.int)
+restype_atomf_mask = np.zeros([canonical_num_residues, atom_type_num], dtype=np.float32)
+restype_atomf_rigid_group_positions = np.zeros([canonical_num_residues, atom_type_num, 3], dtype=np.float32)
+restype_atomc_to_rigid_group = np.zeros([canonical_num_residues, num_atomc], dtype=np.int)
+restype_atomc_mask = np.zeros([canonical_num_residues, num_atomc], dtype=np.float32)
+restype_atomc_rigid_group_positions = np.zeros([canonical_num_residues, num_atomc, 3], dtype=np.float32)
+restype_atom3_rigid_group_positions = np.zeros([canonical_num_residues, 3, 3], dtype=np.float32)
+restype_rigid_group_default_frame = np.zeros([canonical_num_residues, num_frames, 4, 4], dtype=np.float32)
 
 
 def _make_rigid_group_constants():
@@ -1309,9 +1311,9 @@ def load_stereo_chemical_props() -> Tuple[
 
 def get_atomc_dists_bounds(overlap_tolerance=1.5, bond_length_tolerance_factor=15):
     """compute upper and lower bounds for bonds to assess violations."""
-    restype_atomc_bond_lower_bound = np.zeros([num_residues, num_atomc, num_atomc], np.float32)
-    restype_atomc_bond_upper_bound = np.zeros([num_residues, num_atomc, num_atomc], np.float32)
-    restype_atomc_bond_stddev = np.zeros([num_residues, num_atomc, num_atomc], np.float32)
+    restype_atomc_bond_lower_bound = np.zeros([canonical_num_residues, num_atomc, num_atomc], np.float32)
+    restype_atomc_bond_upper_bound = np.zeros([canonical_num_residues, num_atomc, num_atomc], np.float32)
+    restype_atomc_bond_stddev = np.zeros([canonical_num_residues, num_atomc, num_atomc], np.float32)
     residue_bonds, residue_virtual_bonds, _ = load_stereo_chemical_props()
     for restype, restype_letter in enumerate(index_to_restype_1):
         resname = restype_1to3[restype_letter]
@@ -1367,11 +1369,13 @@ between_res_cos_angles_ca_c_n = [-0.4473, 0.0311]  # degrees: 116.568 +- 1.995
 
 def select_torsion_angles(input, aatype):
     chi_angles = einops.rearrange(
-        input[..., 3:, :], "... (f a) d -> ... f d a", f=5, a=num_residues, d=2
+        input[..., 3:, :], "... (f a) d -> ... f d a", f=5, a=canonical_num_residues, d=2
     )[torch.arange(len(aatype)), ..., aatype]
     input_torsion_angles = torch.cat((input[..., :3, :], chi_angles), dim=-2)
     return input_torsion_angles
 
+
+num_net_torsions = canonical_num_residues * 5 + 3
 
 nuc_torsion_frames = [
     ["OP1", "P", "O5'", "C5'"],    # alpha

@@ -17,13 +17,14 @@ from model_angelo.utils.affine_utils import (
 )
 from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
 from model_angelo.utils.misc_utils import abort_if_relion_abort
-from model_angelo.utils.pdb_utils import load_cas_from_structure
+from model_angelo.utils.pdb_utils import load_cas_ps_from_structure 
 from model_angelo.utils.protein import (
     Protein,
     get_protein_empty_except,
     get_protein_from_file_path,
     load_protein_from_prot,
 )
+from model_angelo.utils.residue_constants import num_net_torsions
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
@@ -32,15 +33,27 @@ from model_angelo.utils.torch_utils import (
 
 
 def init_protein_from_see_alpha(see_alpha_file: str) -> Protein:
-    ca_locations = torch.from_numpy(load_cas_from_structure(see_alpha_file)).float()
+    ca_ps_dict = load_cas_ps_from_structure(see_alpha_file) 
+    ca_locations = torch.cat(
+        (
+            torch.from_numpy(ca_ps_dict["CA"]),
+            torch.from_numpy(ca_ps_dict["P"]),
+        ),
+        dim=0,
+    ).float()
     rigidgroups_gt_frames = np.zeros((len(ca_locations), 1, 3, 4), dtype=np.float32)
     rigidgroups_gt_frames[:, 0] = init_random_affine_from_translation(
         ca_locations
     ).numpy()
     rigidgroups_gt_exists = np.ones((len(ca_locations), 1), dtype=np.float32)
+    prot_mask = np.array(
+        [True] * len(ca_ps_dict["CA"]) + [False] * len(ca_ps_dict["P"]),
+        dtype=np.bool,
+    )
     return get_protein_empty_except(
         rigidgroups_gt_frames=rigidgroups_gt_frames,
         rigidgroups_gt_exists=rigidgroups_gt_exists,
+        prot_mask=prot_mask,
     )
 
 
@@ -80,6 +93,7 @@ def get_inference_data(protein, grid_data, idx, crop_length=200):
         ),
         "cryo_voxel_sizes": torch.Tensor([grid_data.voxel_size]),
         "indices": torch.from_numpy(picked_indices),
+        "prot_mask": torch.from_numpy(protein.prot_mask[picked_indices]),
         "num_nodes": len(picked_indices),
     }
 
@@ -99,6 +113,7 @@ def run_inference_on_data(
         cryo_grids=[data["cryo_grids"].to(device)],
         cryo_global_origins=[data["cryo_global_origins"].to(device)],
         cryo_voxel_sizes=[data["cryo_voxel_sizes"].to(device)],
+        prot_mask=data["prot_mask"].to(device),
         init_affine=affines,
         record_training=False,
         run_iters=run_iters,
@@ -112,7 +127,7 @@ def init_empty_collate_results(num_residues, device="cpu"):
     result["counts"] = torch.zeros(num_residues, device=device)
     result["pred_positions"] = torch.zeros(num_residues, 3, device=device)
     result["pred_affines"] = torch.zeros(num_residues, 3, 4, device=device)
-    result["pred_torsions"] = torch.zeros(num_residues, 83, 2, device=device)
+    result["pred_torsions"] = torch.zeros(num_residues, num_net_torsions, 2, device=device)
     result["aa_logits"] = torch.zeros(num_residues, 20, device=device)
     result["local_confidence"] = torch.zeros(num_residues, device=device)
     result["existence_mask"] = torch.zeros(num_residues, device=device)

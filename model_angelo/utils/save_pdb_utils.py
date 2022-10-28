@@ -86,13 +86,14 @@ def ca_ps_to_pdb(path_to_save, ca_points, p_points):
     struct.init_seg("1")
     struct.init_model("1")
     struct.init_chain("1")
+    ca_num = len(ca_points)
     for i, point in enumerate(ca_points):
         struct.set_line_counter(i)
         struct.init_residue(f"ALA", " ", i, " ")
         struct.init_atom("CA", point, 0, 1, " ", "CA", "C")
     for i, point in enumerate(p_points):
-        struct.set_line_counter(i)
-        struct.init_residue(f"A", " ", i, " ")
+        struct.set_line_counter(ca_num + i)
+        struct.init_residue(f"A", " ", ca_num + i, " ")
         struct.init_atom("P", point, 0, 1, " ", "P", "P")
     struct = struct.get_structure()
     io = MMCIFIO()

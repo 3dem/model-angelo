@@ -6,7 +6,7 @@ import torch.nn as nn
 from einops.layers.torch import Rearrange
 
 from model_angelo.models.common_modules import FcResBlock
-from model_angelo.utils.residue_constants import num_residues
+from model_angelo.utils.residue_constants import canonical_num_residues
 from model_angelo.utils.torch_utils import get_batch_slices, padded_sequence_softmax
 
 SequenceAttentionOutput = namedtuple(
@@ -123,25 +123,35 @@ class SequenceAttention(nn.Module):
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
-            nn.Linear(self.ifz, num_residues),
+            nn.Linear(self.ifz, canonical_num_residues),
         )
         self.en = nn.LayerNorm(self.ifz)
 
         self.forward = self.forward_checkpoint if checkpoint else self.forward_normal
 
     def forward_normal(
-        self, x, packed_sequence_emb, packed_sequence_mask, prot_mask, batch=None, **kwargs
+        self,
+        x,
+        packed_sequence_emb,
+        packed_sequence_mask,
+        prot_mask,
+        batch=None,
+        attention_batch_size=200,
+        **kwargs
     ):
-        return self._intern_forward(x, packed_sequence_emb, packed_sequence_mask, prot_mask, batch)
+        return self._intern_forward(
+            x, packed_sequence_emb, packed_sequence_mask, prot_mask, batch, attention_batch_size
+        )
 
     def forward_checkpoint(
-            self,
-            x: torch.Tensor,
-            packed_sequence_emb: torch.Tensor,
-            packed_sequence_mask: torch.Tensor,
-            prot_mask: torch.LongTensor,
-            batch=None,
-            **kwargs,
+        self,
+        x: torch.Tensor,
+        packed_sequence_emb: torch.Tensor,
+        packed_sequence_mask: torch.Tensor,
+        prot_mask: torch.LongTensor,
+        batch=None,
+        attention_batch_size: int = 200,
+        **kwargs,
     ) -> SequenceAttentionOutput:
         return torch.utils.checkpoint.checkpoint(
             self._intern_forward,
@@ -150,6 +160,7 @@ class SequenceAttention(nn.Module):
             packed_sequence_mask,
             prot_mask,
             batch,
+            attention_batch_size,
             preserve_rng_state=False,
         )
 
@@ -160,6 +171,7 @@ class SequenceAttention(nn.Module):
             packed_sequence_mask: torch.Tensor,
             prot_mask: torch.LongTensor,
             batch,
+            attention_batch_size: int,
     ) -> SequenceAttentionOutput:
         device = x.device
         if batch is None:
@@ -175,7 +187,7 @@ class SequenceAttention(nn.Module):
             sequence_key,
             batch,
             self.attention_scale,
-            batch_size=200,
+            batch_size=attention_batch_size,
             device=device,
         )
         batched_mask = packed_sequence_mask[batch].unsqueeze(-1)  # (n, seq_len, 1)
@@ -189,7 +201,7 @@ class SequenceAttention(nn.Module):
             x.shape[0], *sequence_attention_scores.shape[1:], device=sequence_attention_scores.device
         )
         seq_aa_logits = torch.zeros(
-            x.shape[0], num_residues, device=sequence_attention_scores.device
+            x.shape[0], canonical_num_residues, device=sequence_attention_scores.device
         )
         unpacked_sequence_attention_scores[prot_mask] = sequence_attention_scores
 
@@ -197,7 +209,7 @@ class SequenceAttention(nn.Module):
             sequence_attention_weights,
             sequence_value,
             batch,
-            batch_size=200,
+            batch_size=attention_batch_size,
             device=device,
         )
         new_features[prot_mask] = self.ag(new_features_attention)

@@ -82,11 +82,11 @@ def get_hmm_alignment(
         elif match_type == "RNA":
             msa_index_corr = get_msa_index_correspondence(rna_processed_msas[rna_seq_idx])
             index_dict = alphabet_to_index["RNA"]
-            seq_idx = rna_seq_idx
+            seq_idx = rna_seq_idx + len(digital_prot_sequences)
         else:
             msa_index_corr = get_msa_index_correspondence(dna_processed_msas[dna_seq_idx])
             index_dict = alphabet_to_index["DNA"]
-            seq_idx = dna_seq_idx
+            seq_idx = dna_seq_idx + len(digital_prot_sequences) + len(digital_rna_sequences)
         match_sequence = msa_index_corr.sequence
 
     msa_sequence = np.array(

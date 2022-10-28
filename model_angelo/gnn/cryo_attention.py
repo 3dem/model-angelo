@@ -13,7 +13,7 @@ from model_angelo.utils.grid import (
     sample_centered_cube_rot_matrix,
     sample_centered_rectangle_along_vector,
 )
-from model_angelo.utils.residue_constants import num_residues
+from model_angelo.utils.residue_constants import canonical_num_residues
 from model_angelo.utils.torch_utils import get_batches_to_idx
 
 
@@ -138,7 +138,7 @@ class CryoAttention(nn.Module):
             ),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
-            nn.Linear(self.ifz, num_residues),
+            nn.Linear(self.ifz, canonical_num_residues),
         )
 
     def forward(
