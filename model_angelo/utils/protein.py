@@ -353,9 +353,9 @@ def atomf_to_frames(
                     ] = atom_names[1:]
         else:
             # 0: backbone frame
-            restype_rigidgroup_base_atom_names[restype, 0, :] = ["OP1", "P", "O5'"]
+            restype_rigidgroup_base_atom_names[restype, 0, :] = ["OP2", "P", "OP1"]
             # 1: alpha
-            restype_rigidgroup_base_atom_names[restype, 1, :] = ["P", "O5'", "C5'"]
+            restype_rigidgroup_base_atom_names[restype, 1, :] = ["P", "OP1", "O5'"]
             # 2: beta
             restype_rigidgroup_base_atom_names[restype, 2, :] = ["O5'", "C5'", "C4'"]
             # 3: gamma
@@ -623,6 +623,9 @@ def atomf_to_torsion_angles(
     torsion_angles_sin_cos[prot_mask] *= np.asarray([1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0])[
         None, :, None
     ]
+    # torsion_angles_sin_cos[~prot_mask] *= np.asarray([1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])[
+    #     None, :, None
+    #  ]
 
     # Create alternative angles for ambiguous atom names.
     # Does not affect nucleotides

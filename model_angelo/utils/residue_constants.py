@@ -356,7 +356,7 @@ for residue in restype3_to_atoms_index:
 
 canonical_num_residues = len(restype3_to_atoms_index)
 backbone_atoms_prot = {"CA", "C", "N"}
-backbone_atoms_nuc = {"OP1", "P", "O5'"}
+backbone_atoms_nuc = {"OP1", "P", "OP2"}
 backbone_atoms = backbone_atoms_prot.union(backbone_atoms_nuc)
 
 secondary_structure_to_simplified_index = {
@@ -992,8 +992,6 @@ def _make_rigid_group_constants():
             restype_atomc_rigid_group_positions[restype, atomcidx, :] = atom_position
 
             if atomname in backbone_atoms:
-                if atomname == "O5'":
-                    atomcidx = 2
                 restype_atom3_rigid_group_positions[
                 restype, atomcidx, :
                 ] = atom_position
