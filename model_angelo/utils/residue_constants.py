@@ -1055,7 +1055,7 @@ def _make_rigid_group_constants():
             # alpha
             restype_rigid_group_default_frame[restype, 1, :, :] = _make_rigid_transformation_4x4(
                 ex=atom_positions["O5'"] - atom_positions["P"],
-                ey=atom_positions["P"] - atom_positions["OP1"],
+                ey=atom_positions["OP1"] - atom_positions["P"],
                 translation=atom_positions["O5'"],
             )
 
