@@ -1082,9 +1082,9 @@ def _make_rigid_group_constants():
 
             # nu2
             restype_rigid_group_default_frame[restype, 5, :, :] = _make_rigid_transformation_4x4(
-                ex=atom_positions["O4'"],
+                ex=atom_positions["C3'"],
                 ey=np.array([-1., 0., 0.]),
-                translation=atom_positions["O4'"],
+                translation=atom_positions["C3'"],
             )
 
             # nu1
@@ -1393,7 +1393,7 @@ for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]:
     resname_torsion_atom_mask = []
     for torsion_atoms in nuc_torsion_frames[:-1]:
         resname_torsion_atom_indices.append(
-            [restype_name_to_atomc_names[resname].index(atom) for atom in torsion_atoms]
+            [atom_order[atom] for atom in torsion_atoms]
         )
         resname_torsion_atom_mask.append(1)
     if len(resname) == 2:
@@ -1402,7 +1402,7 @@ for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]:
         resname_torsion_atom_mask.append(0)
     else:
         resname_torsion_atom_indices.append(
-            [restype_name_to_atomc_names[resname].index(atom) for atom in nuc_torsion_frames[-1]]
+            [atom_order[atom] for atom in nuc_torsion_frames[-1]]
         )
         resname_torsion_atom_mask.append(1)
     nuc_torsion_atom_indices.append(resname_torsion_atom_indices)

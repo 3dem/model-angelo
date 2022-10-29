@@ -550,11 +550,15 @@ def atomf_to_torsion_angles(
         len(na_aatype) * _rc.num_atoms, step=_rc.num_atoms
     ).reshape(len(na_aatype), 1, 1)
     # Gather atom positions. Shape: [len(na_aatype), angles=7, atoms=4, xyz=3].
-    torsions_atom_pos[~prot_mask, :7] = np.take(all_atom_positions.reshape(-1, 3), na_atom_indices, axis=0)
+    torsions_atom_pos[~prot_mask, :7] = np.take(
+        all_atom_positions[~prot_mask].reshape(-1, 3), na_atom_indices, axis=0
+    )
 
     # Compute the mask in a similar way
     na_mask = _rc.nuc_torsion_atom_mask[na_aatype]
-    na_atoms_mask = np.take(all_atom_mask.reshape(-1), na_atom_indices, axis=0)
+    na_atoms_mask = np.take(
+        all_atom_mask[~prot_mask].reshape(-1), na_atom_indices, axis=0
+    )
     na_atoms_mask = np.prod(na_atoms_mask, axis=-1)
     torsion_angles_mask[~prot_mask, :7] = na_mask * (na_atoms_mask).astype(np.float32)
 
