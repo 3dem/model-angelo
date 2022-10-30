@@ -10,7 +10,7 @@ from model_angelo.utils.save_pdb_utils import (
     write_chain_report, write_chain_probabilities,
 )
 
-prot = get_protein_from_file_path("7ozs.cif")
+prot = get_protein_from_file_path("7aib.cif")
 backbone_affine = torch.from_numpy(prot.rigidgroups_gt_frames[:, 0])
 torsion_angles = torch.from_numpy(prot.torsion_angles_sin_cos)
 all_frames = torsion_angles_to_frames(
@@ -33,10 +33,10 @@ import model_angelo.utils.residue_constants as rc
 import torch
 import numpy as np
 
-idx = 2
+idx = 9
 aatype = prot.aatype[~prot.prot_mask][idx]
 aa_str = rc.index_to_restype_3[aatype]
-frame_idx = 8
+frame_idx = 6
 print(aa_str)
 atoms = []
 atom_names = []
