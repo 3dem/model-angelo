@@ -355,7 +355,7 @@ def atomf_to_frames(
             # 0: backbone frame
             restype_rigidgroup_base_atom_names[restype, 0, :] = ["OP2", "P", "OP1"]
             # 1: alpha
-            restype_rigidgroup_base_atom_names[restype, 1, :] = ["P", "OP1", "O5'"]
+            restype_rigidgroup_base_atom_names[restype, 1, :] = ["P", "O5'", "C5'"]
             # 2: beta
             restype_rigidgroup_base_atom_names[restype, 2, :] = ["O5'", "C5'", "C4'"]
             # 3: gamma
@@ -363,11 +363,11 @@ def atomf_to_frames(
             # 4: delta
             restype_rigidgroup_base_atom_names[restype, 4, :] = ["C4'", "C3'", "O3'"]
             # 5: nu2
-            restype_rigidgroup_base_atom_names[restype, 5, :] = ["C4'", "C3'", "C1'"]
+            restype_rigidgroup_base_atom_names[restype, 5, :] = ["C4'", "C3'", "C2'"]
             # 6: nu1
-            restype_rigidgroup_base_atom_names[restype, 6, :] = ["C4'", "C1'", "C2'"]
+            restype_rigidgroup_base_atom_names[restype, 6, :] = ["C3'", "C2'", "C1'"]
             # 7: nu0
-            restype_rigidgroup_base_atom_names[restype, 7, :] = ["C1'", "C2'", "O2'"]
+            restype_rigidgroup_base_atom_names[restype, 7, :] = ["C2'", "C1'", "O2'"]
             # 8: chi1
             restype_rigidgroup_base_atom_names[restype, 8, :] = _rc.chi_angles_atoms[resname][0][1:]
 
