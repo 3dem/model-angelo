@@ -13,12 +13,12 @@ from model_angelo.utils.save_pdb_utils import (
 prot = get_protein_from_file_path("7ozs.cif")
 backbone_affine = torch.from_numpy(prot.rigidgroups_gt_frames[:, 0])
 torsion_angles = torch.from_numpy(prot.torsion_angles_sin_cos)
-# all_frames = torsion_angles_to_frames(
-#     prot.aatype,
-#     backbone_affine,
-#     torsion_angles,
-# )
-all_frames = torch.from_numpy(prot.rigidgroups_gt_frames)
+all_frames = torsion_angles_to_frames(
+    prot.aatype,
+    backbone_affine,
+    torsion_angles,
+)
+# all_frames = torch.from_numpy(prot.rigidgroups_gt_frames)
 all_atoms = frames_and_literature_positions_to_atomc_pos(prot.aatype, all_frames)
 atom_mask = torch.from_numpy(prot.atomc_mask)
 atom14_to_cif(
@@ -33,7 +33,7 @@ import model_angelo.utils.residue_constants as rc
 import torch
 import numpy as np
 
-idx = 3
+idx = 2
 aatype = prot.aatype[~prot.prot_mask][idx]
 aa_str = rc.index_to_restype_3[aatype]
 frame_idx = 8
