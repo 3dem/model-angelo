@@ -185,6 +185,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
         if chain_id is not None and chain.id != chain_id:
             continue
         chain_seq = []
+        chain_aatype = []
         for res in chain:
             if res.resname not in _rc.restype_3to1:
                 continue
@@ -212,8 +213,9 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             if np.sum(mask) < 0.5:
                 # If no known atom positions are reported for the residue then skip it.
                 continue
-            chain_seq.append(res_shortname)
-            aatype.append(restype_idx)
+            if res_shortname.isupper():
+                chain_seq.append(res_shortname)
+            chain_aatype.append(restype_idx)
             atom_positions.append(pos)
             atomc_positions.append(posc)
             atom_mask.append(mask)
@@ -223,23 +225,23 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             b_factors.append(res_b_factors)
 
         chain_seq = "".join(chain_seq)
-        if len(chain_seq) == 0:
-            continue
-        if chain_seq.islower():
-            # If nucleotides, residue_to_seq_id is just -1 and chain_seq doesn't get inserted into unified_seq
-           residue_to_seq_id.extend(
-               [-1] * len(chain_seq)
-           )
-        elif chain_seq not in temp_sequences_seen:
+        aatype.extend(chain_aatype)
+        chain_aatype = np.array(chain_aatype, dtype=int)
+        if chain_seq not in temp_sequences_seen:
             temp_sequences_seen[chain_seq] = seq_len_so_far
-            residue_to_seq_id.extend(
-                list(range(seq_len_so_far, seq_len_so_far + len(chain_seq)))
-            )
+            chain_residue_to_seq_id = list(range(seq_len_so_far, seq_len_so_far + len(chain_seq))) 
             unified_seq.append(chain_seq)
             seq_len_so_far += len(chain_seq)
         else:
             offset = temp_sequences_seen[chain_seq]
-            residue_to_seq_id.extend(list(range(offset, offset + len(chain_seq))))
+            chain_residue_to_seq_id = list(range(offset, offset + len(chain_seq)))
+        if len(chain_seq) < len(chain_aatype):
+            res_to_seq_id_array = np.array(chain_residue_to_seq_id, dtype=int)
+            chain_residue_to_seq_id = np.zeros_like(chain_aatype)
+            chain_residue_to_seq_id[chain_aatype < _rc.num_prot] = res_to_seq_id_array
+            chain_residue_to_seq_id[chain_aatype >= _rc.num_prot] = -1
+        residue_to_seq_id.extend(chain_residue_to_seq_id)
+
     unified_seq = "|||".join(unified_seq)
     unified_seq_len = seq_len_so_far
     residue_to_seq_id = np.array(residue_to_seq_id, dtype=int)
