@@ -152,11 +152,13 @@ def final_results_to_cif(
         chains += [idxs[c] for c in prot_chains]
     if np.any(~prot_mask):
         idxs = np.arange(len(all_atoms_np))[~prot_mask]
-        nuc_chains = flood_fill(all_atoms_np[~prot_mask], bfactors[~prot_mask], is_nucleotide=True)
+        nuc_chains = flood_fill(
+            all_atoms_np[~prot_mask], bfactors[~prot_mask], is_nucleotide=True, n_c_distance_threshold=4
+        )
         chains += [idxs[c] for c in nuc_chains]
 
     # Prune chains based on length
-    pruned_chains = [c for c in chains if len(c) > 3]
+    pruned_chains = [c for c in chains if len(c) > 0]
 
     chain_atom14_to_cif(
         [aatype[c] for c in pruned_chains],
