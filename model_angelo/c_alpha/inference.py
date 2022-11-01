@@ -352,12 +352,13 @@ def infer(args):
             voxel_size * cas,
         )
     if args.save_output_grid:
-        save_mrc(
-            output.astype(np.float32),
-            voxel_size,
-            global_origin,
-            os.path.join(args.output_path, "output_grid.mrc"),
-        )
+        for i, name in enumerate(["ca_output_grid", "p_output_grid"]):
+            save_mrc(
+                output[i].astype(np.float32),
+                voxel_size,
+                global_origin,
+                os.path.join(args.output_path, f"{name}.mrc"),
+            )
     logger.info("Finished inference!")
 
     return output_file_path
