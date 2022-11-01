@@ -129,6 +129,10 @@ def final_results_to_cif(
         aatype[prot_mask] = np.argmax(final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1)
         aatype[~prot_mask] = np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1) + num_prot
         aatype = aatype[existence_mask]
+
+        final_results["aa_logits"][prot_mask][..., num_prot:] = -100
+        final_results["aa_logits"][~prot_mask][..., :num_prot] = -100
+
     backbone_affine = torch.from_numpy(final_results["pred_affines"])[existence_mask]
     torsion_angles = select_torsion_angles(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype
