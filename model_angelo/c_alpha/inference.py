@@ -351,12 +351,12 @@ def infer(args):
             os.path.join(args.output_path, "real_points.cif"),
             voxel_size * cas,
         )
-    if args.save_ca_grid:
+    if args.save_output_grid:
         save_mrc(
-            ca_grid.astype(np.float32),
+            output.astype(np.float32),
             voxel_size,
             global_origin,
-            os.path.join(args.output_path, "ca_grid.mrc"),
+            os.path.join(args.output_path, "output_grid.mrc"),
         )
     logger.info("Finished inference!")
 
@@ -438,7 +438,7 @@ if __name__ == "__main__":
         help="Save predicted backbone trace of the grid",
     )
     parser.add_argument(
-        "--save-ca-grid",
+        "--save-output-grid",
         action="store_true",
         help="For debug purposes, the output grid of the network.",
     )
