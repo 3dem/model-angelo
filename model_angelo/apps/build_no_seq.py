@@ -89,6 +89,11 @@ def add_args(parser):
         default=None,
         help="Inference model bundle path. If this is set, --model-bundle-name is not used."
     )
+    advanced_args.add_argument(
+        "--keep-intermediate-results",
+        action="store_true",
+        help="Keep intermediate results, ie see_alpha_output and gnn_round_x_output"
+    )
 
     # Below are RELION arguments, make sure to always add help=argparse.SUPPRESS
 
@@ -221,6 +226,15 @@ def main(parsed_args):
         os.replace(hmm_profiles_src, hmm_profiles_dst)
 
         os.remove(standarized_mrc_path)
+        
+        if not parsed_args.keep_intermediate_output:
+            shutil.rmtree(ca_infer_args.output_path, ignore_errors=True)
+            for i in range(total_gnn_rounds):
+                shutil.rmtree(
+                    os.path.join(
+                        parsed_args.output_dir, f"gnn_output_round_{i + 1}"
+                    )
+                )
 
         print("-" * 70)
         print("ModelAngelo build_no_seq has been completed successfully!")

@@ -240,25 +240,24 @@ def final_results_to_cif(
 def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
     n_positions = atom14_positions[:, 0]
     c_positions = atom14_positions[:, 2]
-    n_c_distances = np.linalg.norm(n_positions[:, None] - c_positions[None], axis=-1)
+    kdtree = cKDTree(c_positions)
     b_factors_copy = np.copy(b_factors)
-    idxs = np.arange(len(atom14_positions))
 
     chains = []
     chain_ends = {}
     while np.any(b_factors_copy != -1):
         idx = np.argmax(b_factors_copy)
-        possible_edges = (n_c_distances[idx] < n_c_distance_threshold) * (
-            n_c_distances[idx] > 0
+        possible_indices = np.array(
+            kdtree.query_ball_point(
+                n_positions[idx], 
+                r=n_c_distance_threshold, 
+                return_sorted=True
+            )
         )
+        possible_indices = possible_indices[possible_indices != idx]
+
         got_chain = False
-        if np.sum(possible_edges) > 0:
-            idx_n_c_distances = n_c_distances[idx][possible_edges]
-            possible_indices = idxs[possible_edges]
-
-            sorted_indices = np.argsort(idx_n_c_distances)
-            possible_indices = possible_indices[sorted_indices]
-
+        if len(possible_indices) > 0:
             for possible_prev_residue in possible_indices:
                 if possible_prev_residue == idx:
                     continue

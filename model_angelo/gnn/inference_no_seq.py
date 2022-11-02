@@ -103,19 +103,17 @@ def run_inference_on_data(
         record_training=False,
         run_iters=run_iters,
     )
+    result.to("cpu")
     return result
 
 
 def init_empty_collate_results(num_residues, device="cpu"):
     result = {}
     result["counts"] = torch.zeros(num_residues, device=device)
-    result["edge_counts"] = torch.zeros(num_residues, num_residues, device=device)
-
     result["pred_positions"] = torch.zeros(num_residues, 3, device=device)
     result["pred_affines"] = torch.zeros(num_residues, 3, 4, device=device)
     result["pred_torsions"] = torch.zeros(num_residues, 83, 2, device=device)
     result["aa_logits"] = torch.zeros(num_residues, 20, device=device)
-    result["edges"] = torch.zeros(num_residues, num_residues, device=device)
     result["local_confidence"] = torch.zeros(num_residues, device=device)
     result["existence_mask"] = torch.zeros(num_residues, device=device)
     return result
@@ -137,7 +135,8 @@ def collate_nn_results(
         / collated_results["counts"][indices[:num_pred_residues]][..., None]
     )
     collated_results["pred_affines"][indices[:num_pred_residues]] = get_affine(
-        get_affine_rot(results["pred_affines"][-1][:num_pred_residues]), curr_pos_avg
+        get_affine_rot(results["pred_affines"][-1][:num_pred_residues]),
+        curr_pos_avg
     )
     collated_results["aa_logits"][indices[:num_pred_residues]] += results[
         "cryo_aa_logits"
@@ -149,31 +148,10 @@ def collate_nn_results(
         "pred_existence_mask"
     ][-1][:num_pred_residues][..., 0]
 
-    source_idx = (
-        indices[results["cryo_edges"][-1][1]]
-        .reshape(crop_length, 20)[:num_pred_residues]
-        .flatten()
-    )
-    target_idx = (
-        indices[results["cryo_edges"][-1][0]]
-        .reshape(crop_length, 20)[:num_pred_residues]
-        .flatten()
-    )
-
-    collated_results["edges"][source_idx, target_idx] += results["cryo_edge_logits"][
-        -1
-    ][:num_pred_residues].flatten()
-    collated_results["edge_counts"][source_idx, target_idx] += 1
-
-    collated_results["edges"][target_idx, source_idx] += results["cryo_edge_logits"][
-        -1
-    ][:num_pred_residues].flatten()
-    collated_results["edge_counts"][target_idx, source_idx] += 1
-
     protein = update_protein_gt_frames(
         protein,
-        indices[:num_pred_residues].cpu().numpy(),
-        collated_results["pred_affines"][indices[:num_pred_residues]].cpu().numpy(),
+        indices[:num_pred_residues].numpy(),
+        collated_results["pred_affines"][indices[:num_pred_residues]].numpy(),
     )
     return collated_results, protein
 
@@ -194,9 +172,6 @@ def get_final_nn_results(collated_results):
     final_results["aa_logits"] = (
         collated_results["aa_logits"] / collated_results["counts"][..., None]
     )
-    final_results["edges"] = collated_results["edges"] / collated_results[
-        "edge_counts"
-    ].clamp(min=1)
     final_results["local_confidence"] = collated_results["local_confidence"]
     final_results["existence_mask"] = collated_results["existence_mask"]
 
@@ -210,7 +185,7 @@ def get_final_nn_results(collated_results):
         final_results["normalized_aa_entropy"].max()
     )
 
-    return dict([(k, v.detach().cpu().numpy()) for (k, v) in final_results.items()])
+    return dict([(k, v.numpy()) for (k, v) in final_results.items()])
 
 
 def infer(args):
@@ -262,7 +237,7 @@ def infer(args):
 
     collated_results = init_empty_collate_results(
         num_res,
-        device=get_module_device(module),
+        device="cpu",
     )
 
     residues_left = num_res
@@ -300,13 +275,15 @@ def infer(args):
 
     final_results = get_final_nn_results(collated_results)
     output_path = os.path.join(args.output_dir, "output.cif")
+
+    # Aggressive pruning does not make sense here
     final_results_to_cif(
         final_results,
         output_path,
         sequences=None,
         verbose=True,
         print_fn=logger.info,
-        aggressive_pruning=args.aggressive_pruning,
+        aggressive_pruning=False,
     )
 
     return output_path

@@ -11,6 +11,7 @@ You can also input a custom config file with --config-path/--c/-c
 import argparse
 import json
 import os
+import shutil
 import sys
 
 import torch
@@ -93,6 +94,11 @@ def add_args(parser):
         type=str,
         default=None,
         help="Inference model bundle path. If this is set, --model-bundle-name is not used."
+    )
+    advanced_args.add_argument(
+        "--keep-intermediate-results",
+        action="store_true",
+        help="Keep intermediate results, ie see_alpha_output and gnn_round_x_output"
     )
 
     # Below are RELION arguments, make sure to always add help=argparse.SUPPRESS
@@ -213,9 +219,7 @@ def main(parsed_args):
             gnn_infer_args.output_dir = current_output_dir
             gnn_infer_args.model_dir = gnn_model_logdir
             gnn_infer_args.device = parsed_args.device
-
-            if i == total_gnn_rounds - 1:
-                gnn_infer_args.aggressive_pruning = True
+            gnn_infer_args.aggressive_pruning = True
 
             logger.info(f"GNN model refinement round {i + 1} with args: {gnn_infer_args}")
             gnn_output = gnn_infer(gnn_infer_args)
@@ -236,7 +240,16 @@ def main(parsed_args):
         os.replace(raw_file_src, raw_file_dst)
 
         os.remove(standarized_mrc_path)
-
+        
+        if not parsed_args.keep_intermediate_output:
+            shutil.rmtree(ca_infer_args.output_path, ignore_errors=True)
+            for i in range(total_gnn_rounds):
+                shutil.rmtree(
+                    os.path.join(
+                        parsed_args.output_dir, f"gnn_output_round_{i + 1}"
+                    )
+                )
+    
         print("-" * 70)
         print("ModelAngelo build has been completed successfully!")
         print("-" * 70)
