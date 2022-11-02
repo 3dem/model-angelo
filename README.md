@@ -9,6 +9,7 @@ Please note that the weight files required by both ModelAngelo and the language 
 
 ## Installation
 ### Personal use
+
 (If you manage a computational cluster, please skip to the next section)
 
 **Step 1: Install Conda**
@@ -98,3 +99,26 @@ To do a sequence search for chain A (for example), you should first install [HHb
 hhblits -i output/hmm_profiles/A.hhm -d PATH_TO_DB -o A.hhr -oa3m A.a3m -M first
 ```
 You will have your result as a multiple sequence alignment here: `A.a3m`. 
+
+## Common issues
+1. ModelAngelo currently does not build nucleotides. It also may make mistakes if nucleotide sequences are in the sequence fasta file.
+
+2. If the result looks very bad, with many disconnected chains, take a look at the alpha helices. If these are made of short and disconnected chains, the map was probably in the wrong handedness. If you flip the map and run again, you should see much better results.
+
+## Citation
+
+Currently, ModelAngelo is a pre-print on [arXiv](https://arxiv.org/abs/2210.00006)
+
+Here is the BibTex
+```
+@misc{https://doi.org/10.48550/arxiv.2210.00006,
+  doi = {10.48550/ARXIV.2210.00006},
+  url = {https://arxiv.org/abs/2210.00006},
+  author = {Jamali, Kiarash and Kimanius, Dari and Scheres, Sjors},
+  keywords = {Quantitative Methods (q-bio.QM), Artificial Intelligence (cs.AI), Machine Learning (cs.LG), Biomolecules (q-bio.BM), FOS: Biological sciences, FOS: Biological sciences, FOS: Computer and information sciences, FOS: Computer and information sciences},
+  title = {ModelAngelo: Automated Model Building in Cryo-EM Maps},
+  publisher = {arXiv},
+  year = {2022},
+  copyright = {Creative Commons Attribution 4.0 International}
+}
+```

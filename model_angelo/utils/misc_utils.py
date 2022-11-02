@@ -134,6 +134,8 @@ def write_relion_job_exit_status(
 ):
     if pipeline_control:
         open(os.path.join(directory, f"RELION_JOB_EXIT_{status}"), "a").close()
+    elif status == "FAILURE":
+        sys.exit(1)
 
 
 def abort_if_relion_abort(directory: str):
