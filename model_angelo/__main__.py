@@ -24,12 +24,14 @@ def main():
     import model_angelo.apps.build_no_seq
     import model_angelo.apps.evaluate
     import model_angelo.apps.eval_per_resid
+    import model_angelo.apps.hmm_search
 
     modules = {
         "build": model_angelo.apps.build,
         "build_no_seq": model_angelo.apps.build_no_seq,
         "evaluate": model_angelo.apps.evaluate,
         "eval_per_resid": model_angelo.apps.eval_per_resid,
+        "hmm_search": model_angelo.apps.hmm_search,
     }
 
     subparsers = parser.add_subparsers(
