@@ -241,7 +241,7 @@ def main(parsed_args):
 
         os.remove(standarized_mrc_path)
         
-        if not parsed_args.keep_intermediate_output:
+        if not parsed_args.keep_intermediate_results:
             shutil.rmtree(ca_infer_args.output_path, ignore_errors=True)
             for i in range(total_gnn_rounds):
                 shutil.rmtree(
