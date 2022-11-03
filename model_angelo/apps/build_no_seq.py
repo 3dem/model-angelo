@@ -233,11 +233,12 @@ def main(parsed_args):
             f"For example, chain A's profile is in {os.path.join(hmm_profiles_dst, 'A.hmm')}"
         )
         print(
-            f"You can use HMMER to search these HMM profiles against a database"
+            f"You can use model_angelo hmm_search to search these HMM profiles against a database"
         )
         print(
             f"Example command: \n"
-            f"hmmsearch -o A.txt -A A.sto {os.path.join(hmm_profiles_dst, 'A.hhm')} PATH_TO_DB.fasta"
+            f"model_angelo hmm_search -i {parsed_args.output_dir} -f PATH_TO_DB.fasta "
+            f"-o {os.path.join(parsed_args.output_dir, 'hmm_search_output')}"
         )
         print("-" * 70)
         print("Enjoy!")
