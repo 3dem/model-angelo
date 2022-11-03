@@ -131,12 +131,15 @@ def final_results_to_cif(
     chains = flood_fill(all_atoms_np, bfactors)
     chains_concat = np.concatenate(chains)
 
+    # Prune chains based on length
+    pruned_chains = [c for c in chains if len(c) > 2]
+
     chain_atom14_to_cif(
-        [aatype[c] for c in chains],
-        [all_atoms[c] for c in chains],
-        [atom_mask[c] for c in chains],
+        [aatype[c] for c in pruned_chains],
+        [all_atoms[c] for c in pruned_chains],
+        [atom_mask[c] for c in pruned_chains],
         cif_path,
-        bfactors=[bfactors[c] for c in chains],
+        bfactors=[bfactors[c] for c in pruned_chains],
     )
 
     new_final_results = dict(
@@ -145,13 +148,16 @@ def final_results_to_cif(
     new_final_results["chain_aa_logits"] = [
         final_results["aa_logits"][existence_mask][c] for c in chains
     ]
+    new_final_results["pruned_chain_aa_logits"] = [
+        final_results["aa_logits"][existence_mask][c] for c in pruned_chains
+    ]
 
     if sequences is None:
         # Can make HMM profiles with the aa_probs
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
 
-        for i, chain_aa_logits in enumerate(new_final_results["chain_aa_logits"]):
+        for i, chain_aa_logits in enumerate(new_final_results["pruned_chain_aa_logits"]):
             chain_name = number_to_chain_str(i)
             dump_aa_logits_to_hhm_file(
                 chain_aa_logits,
