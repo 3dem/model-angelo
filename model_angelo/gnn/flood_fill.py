@@ -20,7 +20,6 @@ from model_angelo.utils.protein import (
 )
 from model_angelo.utils.residue_constants import restype_atom14_mask, select_torsion_angles
 from model_angelo.utils.save_pdb_utils import (
-    atom14_to_cif,
     chain_atom14_to_cif,
     write_chain_report, write_chain_probabilities,
 )
@@ -132,12 +131,12 @@ def final_results_to_cif(
     chains = flood_fill(all_atoms_np, bfactors)
     chains_concat = np.concatenate(chains)
 
-    atom14_to_cif(
-        aatype[chains_concat],
-        all_atoms[chains_concat],
-        atom_mask[chains_concat],
+    chain_atom14_to_cif(
+        [aatype[c] for c in chains],
+        [all_atoms[c] for c in chains],
+        [atom_mask[c] for c in chains],
         cif_path,
-        bfactors=bfactors[chains_concat],
+        bfactors=[bfactors[c] for c in chains],
     )
 
     new_final_results = dict(
