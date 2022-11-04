@@ -418,3 +418,21 @@ def flood_fill(
             chain_end_match = (chain_end_match + 1) % N
 
     return chains
+
+
+if __name__ == "__main__":
+    from model_angelo.utils.protein import load_protein_from_prot
+    from model_angelo.utils.misc_utils import pickle_load
+    protein = load_protein_from_prot("test.prot")
+    final_results = pickle_load("test.pkl")
+    rna_sequences = pickle_load("rna_seq.pkl")
+    dna_sequences = pickle_load("dna_seq.pkl")
+
+    final_results_to_cif(
+        final_results,
+        prot_mask=protein.prot_mask,
+        cif_path="test.cif",
+        prot_sequences=protein.unified_seq.split("|||"),
+        rna_sequences=rna_sequences,
+        dna_sequences=dna_sequences,
+    )

@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from model_angelo.utils.misc_utils import assertion_check
-from model_angelo.utils.residue_constants import restype_1_order_to_hmm, index_to_hmm_restype_1, index_to_restype_1, \
+from model_angelo.utils.residue_constants import restype_1_order_to_hmm, index_to_hmm_restype_1, \
     num_prot, restype_1_to_index
 
 from pyhmmer.plan7 import HMM, HMMFile
@@ -147,7 +147,9 @@ def aa_logits_to_hmm(
     base_dir: str = "/tmp",
     alphabet_type: str = "amino",
 ) -> HMM:
-    aa_probs = torch.from_numpy(aa_logits).softmax(dim=-1).numpy()
+    processed_aa_logits = np.ones_like(aa_logits) * -10
+    processed_aa_logits[alphabet_to_slice[alphabet_type]] = aa_logits[alphabet_to_slice[alphabet_type]]
+    aa_probs = torch.from_numpy(processed_aa_logits).softmax(dim=-1).numpy()
     tmp_path = os.path.join(base_dir, f"model_angelo_temp.hmm")
     aa_probs_to_hmm_file(
         name="model_angelo_search",

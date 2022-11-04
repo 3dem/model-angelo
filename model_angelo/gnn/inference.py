@@ -24,7 +24,7 @@ from model_angelo.utils.protein import (
     Protein,
     get_protein_empty_except,
     get_protein_from_file_path,
-    load_protein_from_prot,
+    load_protein_from_prot, dump_protein_to_prot,
 )
 from model_angelo.utils.residue_constants import num_net_torsions, canonical_num_residues
 from model_angelo.utils.torch_utils import (
@@ -340,6 +340,10 @@ def infer(args):
         dna_unified_seq, dna_seq_len = fasta_to_unified_seq(args.dna_fasta)
         if dna_seq_len > 0:
             dna_sequences = dna_unified_seq.split("|||")
+
+    dump_protein_to_prot(protein, "test.prot")
+    pickle_dump(rna_sequences, "rna_seq.pkl")
+    pickle_dump(dna_sequences, "dna_seq.pkl")
 
     final_results_to_cif(
         final_results,
