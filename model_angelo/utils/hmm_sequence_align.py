@@ -115,6 +115,7 @@ def best_match_to_sequences(
     prot_sequences: List[str],
     rna_sequences: List[str],
     dna_sequences: List[str],
+    chain_prot_mask: List[np.ndarray],
     chain_aa_logits: List[np.ndarray],
     chain_confidences: List[np.ndarray] = None,
     base_dir: str = "/tmp",
@@ -145,7 +146,7 @@ def best_match_to_sequences(
         exists_in_sequence_mask,
     ) = ([], [], [], [], [], [], [], [])
     null_sequence_id = len(digital_sequences)
-    for aa_logits, confidence in zip(chain_aa_logits, chain_confidences):
+    for aa_logits, confidence, prot_mask in zip(chain_aa_logits, chain_confidences, chain_prot_mask):
         chain_len = len(aa_logits)
         if chain_len < 3:
             new_sequences.append(np.argmax(aa_logits, axis=-1))
@@ -165,6 +166,7 @@ def best_match_to_sequences(
                 digital_dna_sequences=digital_sequences[2],
                 confidence=confidence,
                 base_dir=base_dir,
+                is_nucleotide=np.all(~prot_mask),
             )
             new_sequences.append(hmm_alignment.sequence)
             residue_idxs.append(hmm_alignment.res_idx)
@@ -445,6 +447,7 @@ def fix_chains_pipeline(
     chains: List[int],
     chain_aa_logits: List[np.ndarray],
     ca_pos: np.ndarray,
+    chain_prot_mask: List[np.ndarray],
     chain_confidences: List[np.ndarray] = None,
     base_dir: str = "/tmp",
 ) -> FixChainsOutput:
@@ -460,10 +463,11 @@ def fix_chains_pipeline(
 
     """
     best_match_output = best_match_to_sequences(
-        prot_sequences,
-        rna_sequences,
-        dna_sequences,
-        chain_aa_logits,
+        prot_sequences=prot_sequences,
+        rna_sequences=rna_sequences,
+        dna_sequences=dna_sequences,
+        chain_aa_logits=chain_aa_logits,
+        chain_prot_mask=chain_prot_mask,
         chain_confidences=chain_confidences,
         base_dir=base_dir,
     )

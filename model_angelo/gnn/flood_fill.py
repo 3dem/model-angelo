@@ -178,9 +178,8 @@ def final_results_to_cif(
     pruned_chain_aa_logits = [
         final_results["aa_logits"][existence_mask][c] for c in pruned_chains
     ]
-    pruned_chain_prot_mask = [
-        prot_mask[c] for c in pruned_chains
-    ]
+    chain_prot_mask = [prot_mask[c] for c in chains]
+    pruned_chain_prot_mask = [prot_mask[c] for c in pruned_chains]
     chain_hmm_confidence = [
         local_confidence_score_sigmoid(
             final_results["local_confidence"][existence_mask][c]
@@ -219,12 +218,13 @@ def final_results_to_cif(
         ca_pos = all_atoms_np[:, 1]
 
         fix_chains_output = fix_chains_pipeline(
-            prot_sequences,
-            rna_sequences,
-            dna_sequences,
-            chains,
-            chain_aa_logits,
-            ca_pos,
+            prot_sequences=prot_sequences,
+            rna_sequences=rna_sequences,
+            dna_sequences=dna_sequences,
+            chains=chains,
+            chain_aa_logits=chain_aa_logits,
+            ca_pos=ca_pos,
+            chain_prot_mask=chain_prot_mask,
             chain_confidences=chain_hmm_confidence,
             base_dir=os.path.dirname(cif_path),
         )
