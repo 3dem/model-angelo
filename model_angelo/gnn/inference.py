@@ -329,7 +329,7 @@ def infer(args):
 
     final_results = get_final_nn_results(collated_results)
     output_path = os.path.join(args.output_dir, "output.cif")
-    pickle_dump(final_results, "test.pkl")
+    # pickle_dump(final_results, "test.pkl")
 
     rna_sequences, dna_sequences = [], []
     if args.rna_fasta is not None:
@@ -341,9 +341,9 @@ def infer(args):
         if dna_seq_len > 0:
             dna_sequences = dna_unified_seq.split("|||")
 
-    dump_protein_to_prot(protein, "test.prot")
-    pickle_dump(rna_sequences, "rna_seq.pkl")
-    pickle_dump(dna_sequences, "dna_seq.pkl")
+    # dump_protein_to_prot(protein, "test.prot")
+    # pickle_dump(rna_sequences, "rna_seq.pkl")
+    # pickle_dump(dna_sequences, "dna_seq.pkl")
 
     final_results_to_cif(
         final_results,
