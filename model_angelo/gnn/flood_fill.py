@@ -118,6 +118,7 @@ def final_results_to_cif(
     verbose=False,
     print_fn=print,
     aggressive_pruning=False,
+    save_hmms=False,
 ):
     """
     Currently assumes the ordering it comes with, I will change this later
@@ -127,6 +128,9 @@ def final_results_to_cif(
     ).numpy()
     if aatype is None:
         aatype = np.argmax(final_results["aa_logits"], axis=-1)[existence_mask]
+    else:
+        # If aatype is an input, then everything exists
+        existence_mask = np.ones_like(final_results["existence_mask"])
     backbone_affine = torch.from_numpy(final_results["pred_affines"])[existence_mask]
     torsion_angles = select_torsion_angles(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype
@@ -167,7 +171,7 @@ def final_results_to_cif(
         ) for c in chains
     ]
 
-    if sequences is None:
+    if sequences is None or save_hmms:
         # Can make HMM profiles with the aa_probs
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
@@ -179,7 +183,7 @@ def final_results_to_cif(
                 os.path.join(hmm_dir_path, f"{chain_name}.hmm"),
                 name=f"{chain_name}",
             )
-    else:
+    if sequences is not None:
         ca_pos = all_atoms_np[:, 1]
 
         fix_chains_output = fix_chains_pipeline(

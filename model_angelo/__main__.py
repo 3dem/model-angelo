@@ -25,6 +25,7 @@ def main():
     import model_angelo.apps.evaluate
     import model_angelo.apps.eval_per_resid
     import model_angelo.apps.hmm_search
+    import model_angelo.apps.refine
 
     modules = {
         "build": model_angelo.apps.build,
@@ -32,6 +33,7 @@ def main():
         "evaluate": model_angelo.apps.evaluate,
         "eval_per_resid": model_angelo.apps.eval_per_resid,
         "hmm_search": model_angelo.apps.hmm_search,
+        "refine": model_angelo.apps.refine,
     }
 
     subparsers = parser.add_subparsers(
