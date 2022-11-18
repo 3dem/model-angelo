@@ -68,11 +68,11 @@ def get_all_atom_fit_report(
     ) / len(target_correspondence)
     
     if output_structure is not None:
-        new_bfactors = np.zeros_like(input_protein.b_factors)
-        new_bfactors[input_correspondence][
-            input_protein.aatype[input_correspondence]
-            == target_protein.aatype[target_correspondence]
-        ] = 100
+        new_bfactors = np.zeros_like(input_protein.b_factors[:,0])
+        correct_idxs = (
+                input_protein.aatype[input_correspondence] == target_protein.aatype[target_correspondence]
+        ).astype(np.float32)
+        new_bfactors[input_correspondence] = 100 * correct_idxs
         chain_atom14_to_cif(
             [input_protein.aatype[c] for c in input_protein.chain_idx_to_residues],
             [input_protein.atom14_positions[c] for c in input_protein.chain_idx_to_residues],
