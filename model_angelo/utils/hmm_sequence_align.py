@@ -53,7 +53,7 @@ def get_hmm_alignment(
         has_dna_seq = len(digital_dna_sequences) > 0
         match_type = ""
         if has_rna_seq:
-            hmm_rna = aa_logits_to_hmm(aa_logits * 2, confidence=confidence, base_dir=base_dir, alphabet_type="RNA")
+            hmm_rna = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir, alphabet_type="RNA")
             rna_processed_msas = pyhmmer.hmmer.hmmalign(
                 hmm_rna, digital_rna_sequences, all_consensus_cols=True
             ).alignment
