@@ -1,7 +1,7 @@
 import dataclasses
 import pickle
 import warnings
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import torch
@@ -43,6 +43,7 @@ PROTEIN_KEYS = [
     "unified_seq_len",
     "residue_to_seq_id",
     "residue_to_lm_embedding",
+    "chain_idx_to_residues",
 ]
 
 
@@ -126,7 +127,8 @@ class Protein:
     # The mapping of residues to their language model static embeddings, can be empty at construction
     residue_to_lm_embedding: np.ndarray  # (unified_seq_len, embedding_dim)
 
-    #
+    # Chains to residues
+    chain_idx_to_residues: List[np.ndarray]
 
     keys = PROTEIN_KEYS
 
@@ -171,6 +173,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     atom14_mask = []
     residue_index = []
     chain_ids = []
+    chain_idx_to_residues = []
     b_factors = []
 
     # Sequence related
@@ -178,11 +181,13 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     residue_to_seq_id = []
     temp_sequences_seen = {}
     seq_len_so_far = 0
+    residue_count = 0
 
     for chain in model:
         if chain_id is not None and chain.id != chain_id:
             continue
         chain_seq = []
+        chain_res_ids = []
         for res in chain:
             if res.resname not in _rc.restype_3to1:
                 continue
@@ -219,7 +224,10 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             residue_index.append(res.id[1])
             chain_ids.append(chain.id)
             b_factors.append(res_b_factors)
+            chain_res_ids.append(residue_count)
+            residue_count += 1
 
+        chain_idx_to_residues.append(np.array(chain_res_ids, dtype=np.int32))
         chain_seq = "".join(chain_seq)
         if len(chain_seq) == 0:
             continue
@@ -271,6 +279,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
         unified_seq_len=unified_seq_len,
         residue_to_seq_id=residue_to_seq_id,
         residue_to_lm_embedding=None,
+        chain_idx_to_residues=chain_idx_to_residues,
         **frames,
         **torsion_angles,
     )
