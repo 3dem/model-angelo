@@ -14,7 +14,7 @@ from Bio.SVDSuperimposer import SVDSuperimposer
 
 from model_angelo.utils.cas_utils import get_correspondence
 from model_angelo.utils.protein import Protein, get_protein_from_file_path
-from model_angelo.utils.residue_constants import atom_order, atom37_backbone_mask
+from model_angelo.utils.residue_constants import atom_order, atomc_backbone_mask
 from scipy.stats.mstats import mquantiles
 
 
@@ -102,11 +102,11 @@ def get_residue_fit_report(
     )
 
     backbone_rms = np.sum(
-        input_mask * target_mask * atom37_backbone_mask * distance
+        input_mask * target_mask * atomc_backbone_mask * distance
         , 
         -1
     ) / (
-            np.sum(input_mask * atom37_backbone_mask * target_mask, -1) + eps
+            np.sum(input_mask * atomc_backbone_mask * target_mask, -1) + eps
     )
 
     

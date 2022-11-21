@@ -13,6 +13,7 @@ from model_angelo.utils.grid import (
     sample_centered_cube_rot_matrix,
     sample_centered_rectangle_along_vector,
 )
+from model_angelo.utils.residue_constants import canonical_num_residues
 from model_angelo.utils.torch_utils import get_batches_to_idx
 
 
@@ -137,13 +138,14 @@ class CryoAttention(nn.Module):
             ),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
-            nn.Linear(self.ifz, 20),
+            nn.Linear(self.ifz, canonical_num_residues),
         )
 
     def forward(
         self,
         x,
         affines,
+        prot_mask,
         cryo_grids=None,
         cryo_global_origins=None,
         cryo_voxel_sizes=None,
@@ -164,7 +166,7 @@ class CryoAttention(nn.Module):
         """
         assert cryo_grids is not None
 
-        bde_out = self.backbone_distance_emb(x, affines, edge_index, batch)
+        bde_out = self.backbone_distance_emb(x, affines, prot_mask, edge_index, batch)
 
         # Cryo-EM embedding and lookup
         batch_to_idx = (
@@ -204,9 +206,7 @@ class CryoAttention(nn.Module):
         cryo_vectors_key = self.cryo_vectors_k(
             cryo_vectors_rec.requires_grad_()
         )  # N kz ahz ifz
-        cryo_vectors_value = self.cryo_v(bde_out.x_ne)[
-            bde_out.edge_index
-        ]  # N kz ahz ifz
+        cryo_vectors_value = self.cryo_v(bde_out.x_ne)[bde_out.edge_index]  # N kz ahz ifz
 
         cryo_vectors_attention_scores = (
             torch.einsum("nai,nkai->nka", cryo_vectors_query, cryo_vectors_key)
@@ -257,14 +257,14 @@ class CryoAttention(nn.Module):
                 get_affine_rot(affines[b]).reshape(-1, 3, 3) for b in batch_to_idx
             ]
 
-            cryo_points_rec = sample_centered_cube_rot_matrix(
+            cryo_points_cube = sample_centered_cube_rot_matrix(
                 batch_cryo_grids,
                 cryo_points_rot_matrices,
                 cryo_points,
                 cube_side=self.p_context,
             )
 
-        new_features_cryo_points = self.cryo_point_v(cryo_points_rec.requires_grad_())
+        new_features_cryo_points = self.cryo_point_v(cryo_points_cube.requires_grad_())
         cryo_aa_logits = self.cryo_point_aa_head(new_features_cryo_points)
         new_features_attention = torch.cat(
             (

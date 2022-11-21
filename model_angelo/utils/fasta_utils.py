@@ -57,7 +57,7 @@ def filter_small_sequences(
     filtered_sequences, filtered_sequence_names = [], []
     for sequence, sequence_name in zip(fasta_sequences, sequence_names):
         filtered_seq = FASTASequence(
-            seq=remove_non_aa(sequence.seq), rep=sequence.seq, chains=sequence.chains
+            seq=remove_non_residue(sequence.seq), rep=sequence.seq, chains=sequence.chains
         )
         if len(filtered_seq.seq) > 2:
             filtered_sequences.append(filtered_seq)
@@ -167,14 +167,12 @@ def read_hhr(filename: str, nseq: int) -> List[Tuple[str, str]]:
     return parse_hhr(filename, nseq, align_sequence=True)
 
 
-def remove_non_aa(sequence: str) -> str:
-    return "".join([s for s in sequence if s in index_to_restype_1])
+def remove_non_residue(sequence: str) -> str:
+    return "".join([s for s in sequence if s in "ARNDCQEGHILKMFPSTWYVU"])
 
 
 def fasta_to_unified_seq(fasta_path, auth_chains=True) -> Tuple[str, int]:
     sequences, sequence_names = read_fasta(fasta_path, auth_chains=auth_chains)
-    sequences, sequence_names = filter_small_sequences(sequences, sequence_names)
-    sequences, sequence_names = filter_nucleotide_sequences(sequences, sequence_names)
     sequences = [s.seq for s in sequences]
     unified_seq_len = sum([len(s) for s in sequences])
     unified_seq = "|||".join(sequences)

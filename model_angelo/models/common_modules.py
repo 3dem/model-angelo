@@ -199,3 +199,13 @@ class SinusoidalPositionalEncoding(nn.Module):
         sin_inp_x = torch.einsum("...i,j->...ij", tensor, self.inv_freq)
         emb_x = torch.cat((sin_inp_x.sin(), sin_inp_x.cos()), dim=-1)
         return emb_x
+
+
+class LearnedGate(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.register_parameter("gate", nn.Parameter(torch.zeros(1)))
+
+    def forward(self, x, y):
+        s = torch.sigmoid(self.gate)
+        return s * x + (1 - s) * y

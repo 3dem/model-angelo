@@ -4,16 +4,16 @@ from typing import List, Tuple
 import numpy as np
 import pyhmmer
 
-from model_angelo.utils.aa_probs_to_hmm import aa_logits_to_hmm
+from model_angelo.utils.aa_probs_to_hmm import aa_logits_to_hmm, alphabet_to_index
 from model_angelo.utils.fasta_utils import (
     find_match_range,
     in_seq_dict,
     remove_dots,
-    remove_non_aa,
+    remove_non_residue,
     sequence_match,
 )
 from model_angelo.utils.match_to_sequence import MatchToSequence
-from model_angelo.utils.residue_constants import index_to_restype_1, restype_1_to_index
+from model_angelo.utils.residue_constants import num_prot
 
 HMMAlignment = namedtuple(
     "HMMAlignment",
@@ -32,38 +32,77 @@ HMMAlignment = namedtuple(
 
 def get_hmm_alignment(
     aa_logits: np.ndarray,
-    digital_sequences: List[pyhmmer.easel.DigitalSequence],
+    digital_prot_sequences: List[pyhmmer.easel.DigitalSequence] = [],
+    digital_rna_sequences: List[pyhmmer.easel.DigitalSequence] = [],
+    digital_dna_sequences: List[pyhmmer.easel.DigitalSequence] = [],
     confidence: np.ndarray = None,
-    fix_flanks: bool = False,
     base_dir: str = "/tmp",
+    is_nucleotide: bool = False,
 ) -> HMMAlignment:
-    if fix_flanks:
-        raise NotImplementedError(
-            "Sorry, fix_flanks has not been implemented yet because of the in_sequence_existence"
-        )
+    if not is_nucleotide:
+        hmm = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir, alphabet_type="amino")
+        msas = pyhmmer.hmmer.hmmalign(hmm, digital_prot_sequences, all_consensus_cols=True)
+        processed_msas = msas.alignment
+        seq_idx = np.argmax(np.array([len(remove_non_residue(x)) for x in processed_msas]))
+        msa_index_corr = get_msa_index_correspondence(processed_msas[seq_idx])
+        index_dict = alphabet_to_index["amino"]
+        match_sequence = msa_index_corr.sequence
+        original_pred_seq = np.argmax(aa_logits[..., :num_prot], axis=-1)
+    else:
+        has_rna_seq = len(digital_rna_sequences) > 0
+        has_dna_seq = len(digital_dna_sequences) > 0
+        match_type = ""
+        if has_rna_seq:
+            hmm_rna = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir, alphabet_type="RNA")
+            rna_processed_msas = pyhmmer.hmmer.hmmalign(
+                hmm_rna, digital_rna_sequences, all_consensus_cols=True
+            ).alignment
+            rna_seq_idx = np.argmax(np.array([len(remove_non_residue(x)) for x in rna_processed_msas]))
+            rna_seq_val = np.max(np.array([len(remove_non_residue(x)) for x in rna_processed_msas]))
+        if has_dna_seq:
+            hmm_dna = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir, alphabet_type="DNA")
+            dna_processed_msas = pyhmmer.hmmer.hmmalign(
+                hmm_dna, digital_rna_sequences, all_consensus_cols=True
+            ).alignment
+            dna_seq_idx = np.argmax(np.array([len(remove_non_residue(x)) for x in dna_processed_msas]))
+            dna_seq_val = np.max(np.array([len(remove_non_residue(x)) for x in dna_processed_msas]))
+        if has_rna_seq and has_dna_seq:
+            if rna_seq_val <= dna_seq_val:
+                match_type = "RNA"
+            else:
+                match_type = "DNA"
+        elif has_rna_seq:
+            match_type = "RNA"
+        elif has_dna_seq:
+            match_type = "DNA"
 
-    original_pred_seq = np.argmax(aa_logits, axis=-1)
-    hmm = aa_logits_to_hmm(aa_logits, confidence=confidence, base_dir=base_dir)
-    msas = pyhmmer.hmmer.hmmalign(hmm, digital_sequences, all_consensus_cols=True)
-    processed_msas = msas.alignment
-    seq_idx = np.argmax(np.array([len(remove_non_aa(x)) for x in processed_msas]))
-    msa_index_corr = get_msa_index_correspondence(processed_msas[seq_idx])
-
-    match_sequence = msa_index_corr.sequence
-    if fix_flanks:
-        match_sequence = fix_flanking_regions(
-            msa_index_corr.sequence, processed_msas[seq_idx], msa_index_corr.res_idx
-        )
+        if match_type == "":
+            made_up_match = "-" * len(aa_logits)
+            msa_index_corr = get_msa_index_correspondence(made_up_match)
+            index_dict = alphabet_to_index["RNA"]
+            seq_idx = len(digital_prot_sequences)
+            original_pred_seq = np.argmax(aa_logits[..., num_prot:], axis=-1) + num_prot
+        elif match_type == "RNA":
+            msa_index_corr = get_msa_index_correspondence(rna_processed_msas[rna_seq_idx])
+            index_dict = alphabet_to_index["RNA"]
+            seq_idx = rna_seq_idx + len(digital_prot_sequences)
+            original_pred_seq = np.argmax(aa_logits[..., num_prot + 4:], axis=-1) + num_prot + 4
+        else:
+            msa_index_corr = get_msa_index_correspondence(dna_processed_msas[dna_seq_idx])
+            index_dict = alphabet_to_index["DNA"]
+            seq_idx = dna_seq_idx + len(digital_prot_sequences) + len(digital_rna_sequences)
+            original_pred_seq = np.argmax(aa_logits[..., num_prot: num_prot + 4], axis=-1) + num_prot
+        match_sequence = msa_index_corr.sequence
 
     msa_sequence = np.array(
         [
-            restype_1_to_index[x] if x in restype_1_to_index else -1
+            index_dict[x] if x in index_dict else -1
             for x in match_sequence
         ]
     )
     new_sequence = np.where(msa_sequence != -1, msa_sequence, original_pred_seq)
 
-    match_score = len(remove_non_aa(match_sequence)) / len(match_sequence)
+    match_score = len(remove_non_residue(match_sequence)) / len(match_sequence)
     return HMMAlignment(
         sequence=new_sequence,
         seq_idx=seq_idx,
@@ -77,20 +116,32 @@ def get_hmm_alignment(
 
 
 def best_match_to_sequences(
-    sequences: List[str],
+    prot_sequences: List[str],
+    rna_sequences: List[str],
+    dna_sequences: List[str],
+    chain_prot_mask: List[np.ndarray],
     chain_aa_logits: List[np.ndarray],
     chain_confidences: List[np.ndarray] = None,
-    fix_flanks: bool = False,
     base_dir: str = "/tmp",
 ) -> MatchToSequence:
-    alphabet = pyhmmer.easel.Alphabet.amino()
-    digital_sequences = [
-        pyhmmer.easel.TextSequence(
-            name=bytes(f"seq_{i}", encoding="utf-8"), sequence=seq
-        )
-        for i, seq in enumerate(sequences)
+    alphabets = [
+        pyhmmer.easel.Alphabet.amino(),
+        pyhmmer.easel.Alphabet.rna(),
+        pyhmmer.easel.Alphabet.dna(),
     ]
-    digital_sequences = [x.digitize(alphabet) for x in digital_sequences]
+    digital_sequences = [
+        [
+            pyhmmer.easel.TextSequence(
+                name=bytes(f"seq_{i}", encoding="utf-8"), sequence=seq
+            )
+            for i, seq in enumerate(sequences)
+        ]
+        for sequences in [prot_sequences, rna_sequences, dna_sequences]
+    ]
+    digital_sequences = [
+        [x.digitize(alphabet) for x in sequences]
+        for sequences, alphabet in zip(digital_sequences, alphabets)
+    ]
 
     if chain_confidences is None:
         chain_confidences = [None] * len(chain_aa_logits)
@@ -106,7 +157,7 @@ def best_match_to_sequences(
         exists_in_sequence_mask,
     ) = ([], [], [], [], [], [], [], [])
     null_sequence_id = len(digital_sequences)
-    for aa_logits, confidence in zip(chain_aa_logits, chain_confidences):
+    for aa_logits, confidence, prot_mask in zip(chain_aa_logits, chain_confidences, chain_prot_mask):
         chain_len = len(aa_logits)
         if chain_len < 3:
             new_sequences.append(np.argmax(aa_logits, axis=-1))
@@ -121,10 +172,12 @@ def best_match_to_sequences(
         else:
             hmm_alignment = get_hmm_alignment(
                 aa_logits,
-                digital_sequences=digital_sequences,
+                digital_prot_sequences=digital_sequences[0],
+                digital_rna_sequences=digital_sequences[1],
+                digital_dna_sequences=digital_sequences[2],
                 confidence=confidence,
-                fix_flanks=fix_flanks,
                 base_dir=base_dir,
+                is_nucleotide=np.all(~prot_mask),
             )
             new_sequences.append(hmm_alignment.sequence)
             residue_idxs.append(hmm_alignment.res_idx)
@@ -399,10 +452,13 @@ FixChainsOutput = namedtuple(
 
 
 def fix_chains_pipeline(
-    sequences: List[str],
+    prot_sequences: List[str],
+    rna_sequences: List[str],
+    dna_sequences: List[str],
     chains: List[int],
     chain_aa_logits: List[np.ndarray],
     ca_pos: np.ndarray,
+    chain_prot_mask: List[np.ndarray],
     chain_confidences: List[np.ndarray] = None,
     base_dir: str = "/tmp",
 ) -> FixChainsOutput:
@@ -418,10 +474,12 @@ def fix_chains_pipeline(
 
     """
     best_match_output = best_match_to_sequences(
-        sequences,
-        chain_aa_logits,
+        prot_sequences=prot_sequences,
+        rna_sequences=rna_sequences,
+        dna_sequences=dna_sequences,
+        chain_aa_logits=chain_aa_logits,
+        chain_prot_mask=chain_prot_mask,
         chain_confidences=chain_confidences,
-        fix_flanks=False,
         base_dir=base_dir,
     )
     chains = best_match_output.remove_duplicates(chains, ca_pos)
@@ -430,14 +488,11 @@ def fix_chains_pipeline(
         chains,
         ca_pos,
     )
-    unmodelled_sequences = set(range(len(sequences))).difference(
-        set(np.unique(best_match_output.sequence_idxs))
-    )
     chains, best_match_output = sort_chains_by_match(chains, best_match_output)
     return FixChainsOutput(
         chains=chains,
         best_match_output=best_match_output,
-        unmodelled_sequences=unmodelled_sequences,
+        unmodelled_sequences=None,
     )
 
 

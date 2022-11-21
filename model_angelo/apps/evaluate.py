@@ -12,7 +12,7 @@ from model_angelo.utils.save_pdb_utils import chain_atom14_to_cif
 from model_angelo.utils.cas_utils import get_correspondence, get_lddt
 from model_angelo.utils.misc_utils import setup_logger
 from model_angelo.utils.protein import Protein, get_protein_from_file_path
-from model_angelo.utils.residue_constants import atom_order, atom37_backbone_mask
+from model_angelo.utils.residue_constants import atom_order, atomc_backbone_mask
 
 
 def get_all_atom_fit_report(
@@ -57,8 +57,8 @@ def get_all_atom_fit_report(
 
     distance = np.linalg.norm(target_atoms - input_atoms_superimposed, axis=-1)
     backbone_rms = np.sum(
-        input_mask * target_mask * atom37_backbone_mask * distance
-    ) / np.sum(input_mask * atom37_backbone_mask * target_mask)
+        input_mask * target_mask * atomc_backbone_mask * distance
+    ) / np.sum(input_mask * atomc_backbone_mask * target_mask)
     ca_rms = np.sum((input_mask * target_mask * distance)[..., 1]) / np.sum((input_mask * target_mask)[..., 1])
 
     lddt_score = get_lddt(torch.Tensor(input_cas_cor), torch.Tensor(target_cas_cor))

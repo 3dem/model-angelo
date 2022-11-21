@@ -18,14 +18,15 @@ from model_angelo.utils.affine_utils import (
 )
 from model_angelo.utils.fasta_utils import fasta_to_unified_seq, is_valid_fasta_ending
 from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
-from model_angelo.utils.misc_utils import get_esm_model, abort_if_relion_abort
-from model_angelo.utils.pdb_utils import load_cas_from_structure
+from model_angelo.utils.misc_utils import get_esm_model, abort_if_relion_abort, pickle_dump
+from model_angelo.utils.pdb_utils import load_cas_ps_from_structure
 from model_angelo.utils.protein import (
     Protein,
     get_protein_empty_except,
     get_protein_from_file_path,
-    load_protein_from_prot,
+    load_protein_from_prot, dump_protein_to_prot,
 )
+from model_angelo.utils.residue_constants import num_net_torsions, canonical_num_residues
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
@@ -33,19 +34,34 @@ from model_angelo.utils.torch_utils import (
 )
 
 
-def init_protein_from_see_alpha(see_alpha_file: str, fasta_file: str) -> Protein:
-    ca_locations = torch.from_numpy(load_cas_from_structure(see_alpha_file)).float()
+def init_protein_from_see_alpha(
+        see_alpha_file: str,
+        prot_fasta_file: str,
+) -> Protein:
+    ca_ps_dict = load_cas_ps_from_structure(see_alpha_file)
+    ca_locations = torch.cat(
+        (
+            torch.from_numpy(ca_ps_dict["CA"]),
+            torch.from_numpy(ca_ps_dict["P"]),
+        ),
+        dim=0,
+    ).float()
     rigidgroups_gt_frames = np.zeros((len(ca_locations), 1, 3, 4), dtype=np.float32)
     rigidgroups_gt_frames[:, 0] = init_random_affine_from_translation(
         ca_locations
     ).numpy()
     rigidgroups_gt_exists = np.ones((len(ca_locations), 1), dtype=np.float32)
-    unified_seq, unified_seq_len = fasta_to_unified_seq(fasta_file)
+    prot_mask = np.array(
+        [True] * len(ca_ps_dict["CA"]) + [False] * len(ca_ps_dict["P"]),
+        dtype=bool,
+    )
+    unified_seq, unified_seq_len = fasta_to_unified_seq(prot_fasta_file)
     return get_protein_empty_except(
         rigidgroups_gt_frames=rigidgroups_gt_frames,
         rigidgroups_gt_exists=rigidgroups_gt_exists,
         unified_seq=unified_seq,
         unified_seq_len=unified_seq_len,
+        prot_mask=prot_mask,
     )
 
 
@@ -86,6 +102,7 @@ def get_inference_data(protein, grid_data, idx, crop_length=200):
         ),
         "cryo_voxel_sizes": torch.Tensor([grid_data.voxel_size]),
         "indices": torch.from_numpy(picked_indices),
+        "prot_mask": torch.from_numpy(protein.prot_mask[picked_indices]),
         "num_nodes": len(picked_indices),
     }
 
@@ -108,6 +125,7 @@ def run_inference_on_data(
         cryo_grids=[data["cryo_grids"].to(device)],
         cryo_global_origins=[data["cryo_global_origins"].to(device)],
         cryo_voxel_sizes=[data["cryo_voxel_sizes"].to(device)],
+        prot_mask=data["prot_mask"].to(device),
         init_affine=affines,
         record_training=False,
         run_iters=run_iters,
@@ -117,23 +135,23 @@ def run_inference_on_data(
     return result
 
 
-def init_empty_collate_results(num_residues, unified_seq_len, device="cpu"):
+def init_empty_collate_results(num_predicted_residues, unified_seq_len, device="cpu"):
     result = {}
-    result["counts"] = torch.zeros(num_residues, device=device)
-    result["pred_positions"] = torch.zeros(num_residues, 3, device=device)
-    result["pred_affines"] = torch.zeros(num_residues, 3, 4, device=device)
-    result["pred_torsions"] = torch.zeros(num_residues, 83, 2, device=device)
-    result["aa_logits"] = torch.zeros(num_residues, 20, device=device)
-    result["local_confidence"] = torch.zeros(num_residues, device=device)
-    result["existence_mask"] = torch.zeros(num_residues, device=device)
+    result["counts"] = torch.zeros(num_predicted_residues, device=device)
+    result["pred_positions"] = torch.zeros(num_predicted_residues, 3, device=device)
+    result["pred_affines"] = torch.zeros(num_predicted_residues, 3, 4, device=device)
+    result["pred_torsions"] = torch.zeros(num_predicted_residues, num_net_torsions, 2, device=device)
+    result["aa_logits"] = torch.zeros(num_predicted_residues, canonical_num_residues, device=device)
+    result["local_confidence"] = torch.zeros(num_predicted_residues, device=device)
+    result["existence_mask"] = torch.zeros(num_predicted_residues, device=device)
     result["seq_attention_scores"] = torch.zeros(
-        num_residues, unified_seq_len, device=device
+        num_predicted_residues, unified_seq_len, device=device
     )
     return result
 
 
 def collate_nn_results(
-    collated_results, results, indices, protein, crop_length=200, num_pred_residues=50
+    collated_results, results, indices, protein, num_pred_residues=50
 ):
     collated_results["counts"][indices[:num_pred_residues]] += 1
     collated_results["pred_positions"][indices[:num_pred_residues]] += results[
@@ -235,9 +253,12 @@ def infer(args):
             )
     elif args.struct.endswith("cif") or args.struct.endswith("pdb"):
         if "output" in args.struct:
-            if not is_valid_fasta_ending(args.fasta):
-                raise RuntimeError(f"File {args.fasta} is not a supported file format.")
-            protein = init_protein_from_see_alpha(args.struct, args.fasta)
+            for seq_file in [args.protein_fasta, args.rna_fasta, args.dna_fasta]:
+                if seq_file is None:
+                    continue
+                if not is_valid_fasta_ending(seq_file):
+                    raise RuntimeError(f"File {seq_file} is not a supported file format.")
+            protein = init_protein_from_see_alpha(args.struct, args.protein_fasta)
         else:
             protein = get_protein_from_file_path(args.struct)
         protein = get_lm_embeddings_for_protein(lang_model, batch_converter, protein)
@@ -287,7 +308,6 @@ def infer(args):
             results,
             data["indices"],
             protein,
-            crop_length=args.crop_length,
         )
         residues_left = (
             num_res
@@ -308,10 +328,24 @@ def infer(args):
 
     final_results = get_final_nn_results(collated_results)
     output_path = os.path.join(args.output_dir, "output.cif")
+
+    rna_sequences, dna_sequences = [], []
+    if args.rna_fasta is not None:
+        rna_unified_seq, rna_seq_len = fasta_to_unified_seq(args.rna_fasta)
+        if rna_seq_len > 0:
+            rna_sequences = rna_unified_seq.split("|||")
+    if args.dna_fasta is not None:
+        dna_unified_seq, dna_seq_len = fasta_to_unified_seq(args.dna_fasta)
+        if dna_seq_len > 0:
+            dna_sequences = dna_unified_seq.split("|||")
+
     final_results_to_cif(
         final_results,
-        output_path,
-        protein.unified_seq.split("|||"),
+        prot_mask=protein.prot_mask,
+        cif_path=output_path,
+        prot_sequences=protein.unified_seq.split("|||"),
+        rna_sequences=rna_sequences,
+        dna_sequences=dna_sequences,
         verbose=True,
         print_fn=logger.info,
         aggressive_pruning=args.aggressive_pruning,
@@ -330,7 +364,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--map", "--i", required=True, help="The path to the input map")
     parser.add_argument(
-        "--fasta", "--f", required=True, help="The path to the sequence file"
+        "--protein-fasta", "--pf", required=False, help="The path to the protein sequence file"
+    )
+    parser.add_argument(
+        "--rna-fasta", "--rf", required=False, help="The path to the protein sequence file"
+    )
+    parser.add_argument(
+        "--dna-fasta", "--df", required=False, help="The path to the protein sequence file"
     )
     parser.add_argument(
         "--struct", "--s", required=True, help="The path to the structure file"

@@ -12,6 +12,7 @@ from model_angelo.gnn.sequence_attention import SequenceAttention
 from model_angelo.gnn.spatial_ipa import SpatialIPA
 from model_angelo.models.common_modules import FcResBlock
 from model_angelo.utils.misc_utils import assertion_check
+from model_angelo.utils.residue_constants import canonical_num_residues
 
 
 class MultiLayerSeparableIPA(nn.Module):
@@ -90,10 +91,10 @@ class MultiLayerSeparableIPA(nn.Module):
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
-            nn.Linear(self.hfz, (20 * 4 + 3) * 2, bias=True),
+            nn.Linear(self.hfz, (canonical_num_residues * 5 + 3) * 2, bias=True),
             Rearrange(
                 "n (f d) -> n f d",
-                f=83,
+                f=canonical_num_residues * 5 + 3,
                 d=2,
             ),
         )
@@ -118,6 +119,7 @@ class MultiLayerSeparableIPA(nn.Module):
         self,
         sequence=None,
         sequence_mask=None,
+        prot_mask=None,
         positions=None,
         init_affine=None,
         record_training: bool = False,
@@ -126,11 +128,14 @@ class MultiLayerSeparableIPA(nn.Module):
         **kwargs,
     ) -> GNNOutput:
         assertion_check(
-            sequence is not None and sequence_mask is not None and positions is not None
+            sequence is not None and sequence_mask is not None and positions is not None and prot_mask is not None
         )
 
         result = GNNOutput(
-            positions=positions, init_affine=init_affine, hidden_features=self.hfz
+            positions=positions,
+            prot_mask=prot_mask,
+            init_affine=init_affine,
+            hidden_features=self.hfz,
         )
         self.init_training_record()
 
@@ -138,10 +143,6 @@ class MultiLayerSeparableIPA(nn.Module):
             not_last_iter = run_iter != (run_iters - 1)
             with torch.no_grad() if not_last_iter else contextlib.nullcontext():
                 for idx in range(self.num_layers):
-
-                    # cryo_edge_probs is with respect to the current position's top neighbours
-                    # Should calculate loss here
-                    # You need cryo_edges so that you can index into the edge_exists matrix
                     (
                         result["x"],
                         cryo_edges,
@@ -150,6 +151,7 @@ class MultiLayerSeparableIPA(nn.Module):
                     ) = self.cryo_attentions[idx](
                         x=result["x"],
                         affines=result["pred_affines"][-1],
+                        prot_mask=prot_mask,
                         **kwargs,
                     )
                     self.append_to_training_record(
@@ -166,6 +168,7 @@ class MultiLayerSeparableIPA(nn.Module):
                         packed_sequence_emb=sequence,
                         packed_sequence_mask=sequence_mask,
                         attention_batch_size=seq_attention_batch_size,
+                        prot_mask=prot_mask,
                         **kwargs,
                     )
                     self.append_to_training_record(
@@ -176,6 +179,7 @@ class MultiLayerSeparableIPA(nn.Module):
                     result["x"], _ = self.spatial_ipas[idx](
                         x=result["x"],
                         affines=result["pred_affines"][-1],
+                        prot_mask=prot_mask,
                         **kwargs,
                     )
                     self.append_to_training_record(
@@ -191,7 +195,10 @@ class MultiLayerSeparableIPA(nn.Module):
                         record_training=record_training,
                     )
                     # Predict aa here
-                    cryo_aa_logits = (cryo_aa_logits + seq_aa_logits) / 2
+                    aa_contrib = torch.ones(
+                        *cryo_aa_logits.shape[:-1], 1, device=cryo_aa_logits.device
+                    ) + prot_mask.float()[..., None]
+                    cryo_aa_logits = (cryo_aa_logits + seq_aa_logits) / aa_contrib
                     # Predict backbone and N,CA,C atoms
                     ncac, new_affine = self.backbone_update_fc(
                         result["x"], result["pred_affines"][-1]
@@ -223,6 +230,7 @@ class MultiLayerSeparableIPA(nn.Module):
             if not_last_iter:
                 result = GNNOutput(
                     positions=positions,
+                    prot_mask=prot_mask,
                     init_affine=result["pred_affines"][-1],
                     hidden_features=self.hfz,
                 )

@@ -7,6 +7,7 @@ class GNNOutput:
     def __init__(
         self,
         positions: torch.Tensor = None,
+        prot_mask: torch.Tensor = None,
         hidden_features: int = 256,
         init_affine: torch.Tensor = None,
     ):
@@ -27,6 +28,7 @@ class GNNOutput:
 
         self.refresh(
             positions=positions,
+            prot_mask=prot_mask,
             hidden_features=hidden_features,
             init_affine=init_affine,
         )
@@ -48,6 +50,7 @@ class GNNOutput:
     def refresh(
         self,
         positions: torch.Tensor = None,
+        prot_mask: torch.Tensor = None,
         hidden_features: int = 256,
         init_affine: torch.Tensor = None,
     ):
@@ -59,6 +62,7 @@ class GNNOutput:
             self.result_dict["x"] = torch.zeros(
                 positions.shape[0], hidden_features, device=positions.device
             )
+            self.result_dict["x"][..., -1] += prot_mask.float()
             self.result_dict["x"].requires_grad_()
 
             self.result_dict["pred_affines"] = [

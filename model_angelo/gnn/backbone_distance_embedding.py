@@ -8,6 +8,7 @@ from model_angelo.utils.knn_graph import knn_graph
 from model_angelo.models.common_modules import SinusoidalPositionalEncoding
 from model_angelo.utils.affine_utils import get_affine_translation, vecs_to_local_affine
 from model_angelo.utils.protein import frames_and_literature_positions_to_atom3_pos
+from model_angelo.utils.residue_constants import num_prot
 
 BackboneDistanceEmbeddingOutput = namedtuple(
     "BackboneDistanceEmbeddingOutput",
@@ -42,7 +43,7 @@ class BackboneDistanceEmbedding(nn.Module):
         self.ne = nn.Linear(5 * self.kz * self.pd, self.nvz, bias=False)
 
     def forward(
-        self, x, affines, edge_index=None, batch=None
+        self, x, affines, prot_mask, edge_index=None, batch=None
     ) -> BackboneDistanceEmbeddingOutput:
         positions = get_affine_translation(affines)
         if edge_index is None:
@@ -54,11 +55,11 @@ class BackboneDistanceEmbedding(nn.Module):
         neighbour_positions = vecs_to_local_affine(
             affines, positions[edge_index]
         )  # N kz 3
-        neighbour_distances = self.distance_encoding(
-            neighbour_positions.norm(dim=-1)
-        )  # N kz pd
+        neighbour_distances = self.distance_encoding(neighbour_positions.norm(dim=-1))  # N kz pd
+        pseudo_aatypes = np.zeros(len(affines), dtype=np.int32)
+        pseudo_aatypes[(~prot_mask).cpu().numpy()] = num_prot
         ncac = frames_and_literature_positions_to_atom3_pos(
-            np.zeros(len(affines), dtype=int), affines
+            pseudo_aatypes, affines
         )  # N 3 3
 
         ca_pos = ncac[:, 1][:, None][:, None]  # N 1 1 3
@@ -88,6 +89,7 @@ class BackboneDistanceEmbedding(nn.Module):
         ).flatten(
             1
         )  # N (kz 5 pd)
+
         neighbour_embedding = self.ne(encoding_distances)  # N nvz
         x_ne = torch.cat((x, neighbour_embedding), dim=-1)  # N (ifz + nvz)
         return BackboneDistanceEmbeddingOutput(
