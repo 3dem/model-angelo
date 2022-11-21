@@ -1370,6 +1370,7 @@ def select_torsion_angles(input, aatype):
         input[..., 3:, :], "... (f a) d -> ... f d a", f=5, a=canonical_num_residues, d=2
     )[torch.arange(len(aatype)), ..., aatype]
     input_torsion_angles = torch.cat((input[..., :3, :], chi_angles), dim=-2)
+    input_torsion_angles = torch.nn.functional.normalize(input_torsion_angles, dim=-1)
     return input_torsion_angles
 
 

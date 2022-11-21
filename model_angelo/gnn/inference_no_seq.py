@@ -16,7 +16,7 @@ from model_angelo.utils.affine_utils import (
     init_random_affine_from_translation,
 )
 from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
-from model_angelo.utils.misc_utils import abort_if_relion_abort
+from model_angelo.utils.misc_utils import abort_if_relion_abort, pickle_dump
 from model_angelo.utils.pdb_utils import load_cas_ps_from_structure 
 from model_angelo.utils.protein import (
     Protein,
@@ -24,7 +24,7 @@ from model_angelo.utils.protein import (
     get_protein_from_file_path,
     load_protein_from_prot,
 )
-from model_angelo.utils.residue_constants import num_net_torsions
+from model_angelo.utils.residue_constants import num_net_torsions, canonical_num_residues
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
@@ -48,7 +48,7 @@ def init_protein_from_see_alpha(see_alpha_file: str) -> Protein:
     rigidgroups_gt_exists = np.ones((len(ca_locations), 1), dtype=np.float32)
     prot_mask = np.array(
         [True] * len(ca_ps_dict["CA"]) + [False] * len(ca_ps_dict["P"]),
-        dtype=np.bool,
+        dtype=bool,
     )
     return get_protein_empty_except(
         rigidgroups_gt_frames=rigidgroups_gt_frames,
@@ -128,14 +128,14 @@ def init_empty_collate_results(num_residues, device="cpu"):
     result["pred_positions"] = torch.zeros(num_residues, 3, device=device)
     result["pred_affines"] = torch.zeros(num_residues, 3, 4, device=device)
     result["pred_torsions"] = torch.zeros(num_residues, num_net_torsions, 2, device=device)
-    result["aa_logits"] = torch.zeros(num_residues, 20, device=device)
+    result["aa_logits"] = torch.zeros(num_residues, canonical_num_residues, device=device)
     result["local_confidence"] = torch.zeros(num_residues, device=device)
     result["existence_mask"] = torch.zeros(num_residues, device=device)
     return result
 
 
 def collate_nn_results(
-    collated_results, results, indices, protein, crop_length=200, num_pred_residues=50
+    collated_results, results, indices, protein, num_pred_residues=50
 ):
     collated_results["counts"][indices[:num_pred_residues]] += 1
     collated_results["pred_positions"][indices[:num_pred_residues]] += results[
@@ -269,7 +269,6 @@ def infer(args):
             results,
             data["indices"],
             protein,
-            crop_length=args.crop_length,
         )
         residues_left = (
             num_res
@@ -293,9 +292,9 @@ def infer(args):
 
     # Aggressive pruning does not make sense here
     final_results_to_cif(
-        final_results,
-        output_path,
-        sequences=None,
+        final_results=final_results,
+        prot_mask=protein.prot_mask,
+        cif_path=output_path,
         verbose=True,
         print_fn=logger.info,
         aggressive_pruning=False,

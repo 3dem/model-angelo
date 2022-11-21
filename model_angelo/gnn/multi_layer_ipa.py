@@ -143,10 +143,6 @@ class MultiLayerSeparableIPA(nn.Module):
             not_last_iter = run_iter != (run_iters - 1)
             with torch.no_grad() if not_last_iter else contextlib.nullcontext():
                 for idx in range(self.num_layers):
-
-                    # cryo_edge_probs is with respect to the current position's top neighbours
-                    # Should calculate loss here
-                    # You need cryo_edges so that you can index into the edge_exists matrix
                     (
                         result["x"],
                         cryo_edges,

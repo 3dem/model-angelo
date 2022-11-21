@@ -151,7 +151,7 @@ def init_empty_collate_results(num_predicted_residues, unified_seq_len, device="
 
 
 def collate_nn_results(
-    collated_results, results, indices, protein, crop_length=200, num_pred_residues=50
+    collated_results, results, indices, protein, num_pred_residues=50
 ):
     collated_results["counts"][indices[:num_pred_residues]] += 1
     collated_results["pred_positions"][indices[:num_pred_residues]] += results[
@@ -308,7 +308,6 @@ def infer(args):
             results,
             data["indices"],
             protein,
-            crop_length=args.crop_length,
         )
         residues_left = (
             num_res
@@ -329,7 +328,6 @@ def infer(args):
 
     final_results = get_final_nn_results(collated_results)
     output_path = os.path.join(args.output_dir, "output.cif")
-    # pickle_dump(final_results, "test.pkl")
 
     rna_sequences, dna_sequences = [], []
     if args.rna_fasta is not None:
@@ -340,10 +338,6 @@ def infer(args):
         dna_unified_seq, dna_seq_len = fasta_to_unified_seq(args.dna_fasta)
         if dna_seq_len > 0:
             dna_sequences = dna_unified_seq.split("|||")
-
-    # dump_protein_to_prot(protein, "test.prot")
-    # pickle_dump(rna_sequences, "rna_seq.pkl")
-    # pickle_dump(dna_sequences, "dna_seq.pkl")
 
     final_results_to_cif(
         final_results,

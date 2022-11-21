@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
 
-from model_angelo.models.common_modules import FcResBlock
+from model_angelo.models.common_modules import FcResBlock, LearnedGate
 from model_angelo.gnn.backbone_frame_net import BackboneFrameNet
 from model_angelo.gnn.cryo_attention import CryoAttention
 from model_angelo.gnn.spatial_ipa import SpatialIPA
@@ -86,6 +86,15 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
             ),
         )
 
+        self.main_aa_predictor = nn.Sequential(
+            FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
+            FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
+            FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
+            nn.Linear(self.hfz, canonical_num_residues, bias=True)
+        )
+
+        self.aa_gate = LearnedGate()
+
         self.local_confidence_predictor = nn.Sequential(
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
@@ -104,22 +113,25 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
 
     def forward(
             self,
+            prot_mask=None,
             positions=None,
             init_affine=None,
             record_training=False,
             run_iters=1,
             **kwargs,
     ) -> GNNOutput:
-        result = GNNOutput(positions=positions, init_affine=init_affine, hidden_features=self.hfz)
+        result = GNNOutput(
+            positions=positions,
+            prot_mask=prot_mask,
+            init_affine=init_affine,
+            hidden_features=self.hfz
+        )
         self.init_training_record()
 
         for run_iter in range(run_iters):
             not_last_iter = run_iter != (run_iters - 1)
             with torch.no_grad() if not_last_iter else contextlib.nullcontext():
                 for idx in range(self.num_layers):
-                    # cryo_edge_probs is with respect to the current position's top neighbours
-                    # Should calculate loss here
-                    # You need cryo_edges so that you can index into the edge_exists matrix
                     (
                         result["x"],
                         cryo_edges,
@@ -128,6 +140,7 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
                     ) = self.cryo_attentions[idx](
                         x=result["x"],
                         affines=result["pred_affines"][-1],
+                        prot_mask=prot_mask,
                         **kwargs,
                     )
                     self.append_to_training_record(
@@ -138,6 +151,7 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
                     result["x"], _ = self.spatial_ipas[idx](
                         x=result["x"],
                         affines=result["pred_affines"][-1],
+                        prot_mask=prot_mask,
                         **kwargs,
                     )
                     self.append_to_training_record(
@@ -147,6 +161,7 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
                     )
                     # Transition
                     result["x"] = self.transition_layer(result["x"])
+
                     self.append_to_training_record(
                         result["x"],
                         f"transition_layer_x_{idx}",
@@ -165,6 +180,9 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
                         result["x"]
                     )
 
+                    trunk_aa_logits = self.main_aa_predictor(result["x"])
+                    aa_logits = self.aa_gate(cryo_aa_logits, trunk_aa_logits)
+
                     # Add data
                     result.update(
                         pred_ncac=ncac,
@@ -172,7 +190,7 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
                         pred_positions=ncac[..., 1, :],
                         cryo_edges=cryo_edges,
                         cryo_edge_logits=cryo_edge_logits,
-                        cryo_aa_logits=cryo_aa_logits,
+                        cryo_aa_logits=aa_logits,
                         local_confidence_score=local_confidence_score,
                         pred_existence_mask=pred_existence_mask,
                     )
@@ -183,6 +201,7 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
             if not_last_iter:
                 result = GNNOutput(
                     positions=positions,
+                    prot_mask=prot_mask,
                     init_affine=result["pred_affines"][-1],
                     hidden_features=self.hfz,
                 )
