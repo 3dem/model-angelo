@@ -7,6 +7,7 @@ Compare a predicted model with a ground truth model. You need:
 import numpy as np
 import torch
 from Bio.SVDSuperimposer import SVDSuperimposer
+from model_angelo.utils.save_pdb_utils import chain_atom14_to_cif
 
 from model_angelo.utils.cas_utils import get_correspondence, get_lddt
 from model_angelo.utils.misc_utils import setup_logger
@@ -20,6 +21,7 @@ def get_all_atom_fit_report(
     max_dist=5,
     verbose=False,
     two_rounds=False,
+    output_structure=None,
 ):
     input_cas = input_protein.atom_positions[:, atom_order["CA"]]
     target_cas = target_protein.atom_positions[:, atom_order["CA"]]
@@ -64,6 +66,21 @@ def get_all_atom_fit_report(
         input_protein.aatype[input_correspondence]
         == target_protein.aatype[target_correspondence]
     ) / len(target_correspondence)
+    
+    if output_structure is not None:
+        new_bfactors = np.zeros_like(input_protein.b_factors[:,0])
+        correct_idxs = (
+                input_protein.aatype[input_correspondence] == target_protein.aatype[target_correspondence]
+        ).astype(np.float32)
+        new_bfactors[input_correspondence] = 100 * correct_idxs
+        chain_atom14_to_cif(
+            [input_protein.aatype[c] for c in input_protein.chain_idx_to_residues],
+            [input_protein.atom14_positions[c] for c in input_protein.chain_idx_to_residues],
+            [input_protein.atom14_mask[c] for c in input_protein.chain_idx_to_residues],
+            path_to_save=output_structure,
+            bfactors=[new_bfactors[c] for c in input_protein.chain_idx_to_residues],
+        )
+    
     return (
         backbone_rms,
         ca_rms,
@@ -97,6 +114,12 @@ def add_args(parser):
     )
     parser.add_argument("--output-file", help="If set, saves the results to a file")
     parser.add_argument(
+        "--output-structure", 
+        help="If set, saves the sequence recall results to an mmCIF file, "
+             "B-factors of 100 correspond to correct classifications and "
+             "B-factors of 0 correspond to wrong classifications"
+    )
+    parser.add_argument(
         "--csv-format", action="store_true", help="If set, writes results in comma separated format."
     )
     parser.add_argument(
@@ -125,6 +148,7 @@ def main(parsed_args):
         max_dist=parsed_args.max_dist,
         verbose=False,
         two_rounds=True,
+        output_structure=parsed_args.output_structure,
     )
 
     if parsed_args.output_file is not None:

@@ -120,6 +120,7 @@ def final_results_to_cif(
     verbose=False,
     print_fn=print,
     aggressive_pruning=False,
+    save_hmms=False,
 ):
     existence_mask = (
         torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3
@@ -185,6 +186,7 @@ def final_results_to_cif(
             final_results["local_confidence"][existence_mask][c]
         ) for c in chains
     ]
+
 
     if prot_sequences is None and rna_sequences is None and dna_sequences is None:
         # Can make HMM profiles with the aa_probs

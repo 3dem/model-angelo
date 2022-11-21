@@ -349,6 +349,8 @@ def infer(args):
         verbose=True,
         print_fn=logger.info,
         aggressive_pruning=args.aggressive_pruning,
+        aatype=protein.aatype,
+        save_hmms=args.write_hmm_profiles,
     )
 
     return output_path
@@ -407,6 +409,11 @@ if __name__ == "__main__":
         type=int,
         default=200,
         help="Lower memory usage by processing the sequence in batches.",
+    )
+    parser.add_argument(
+        "--write-hmm-profiles",
+        action="store_true",
+        help="Write HMM profiles, even though it is built with sequence."
     )
     args = parser.parse_args()
     infer(args)
