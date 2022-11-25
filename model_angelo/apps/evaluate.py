@@ -23,14 +23,20 @@ def get_all_atom_fit_report(
     two_rounds=False,
     output_structure=None,
 ):
-    input_cas = input_protein.atom_positions[:, atom_order["CA"]]
-    target_cas = target_protein.atom_positions[:, atom_order["CA"]]
+    input_cas = np.zeros_like(input_protein.atom_positions[:, 0])
+    target_cas = np.zeros_like(target_protein.atom_positions[:, 0])
+    # Protein parts
+    input_cas[input_protein.prot_mask] = input_protein.atom_positions[input_protein.prot_mask, atom_order["CA"]]
+    input_cas[~input_protein.prot_mask] = input_protein.atom_positions[~input_protein.prot_mask, atom_order["P"]]
+    target_cas[target_protein.prot_mask] = target_protein.atom_positions[target_protein.prot_mask, atom_order["CA"]]
+    target_cas[~target_protein.prot_mask] = target_protein.atom_positions[~target_protein.prot_mask, atom_order["P"]]
+
     target_correspondence, input_correspondence = get_correspondence(
         input_cas, target_cas, max_dist, verbose, two_rounds=two_rounds
     )
 
     if len(target_correspondence) == 0:
-        return (0, 0, 0)
+        return 0, 0, 0, 0, 0
 
     false_positive_count = len(
         set(range(len(input_cas))).difference(input_correspondence)
@@ -43,10 +49,10 @@ def get_all_atom_fit_report(
     input_cas_cor = input_cas[input_correspondence]
     target_cas_cor = target_cas[target_correspondence]
 
-    input_atoms = input_protein.atom_positions[input_correspondence]
-    target_atoms = target_protein.atom_positions[target_correspondence]
-    input_mask = input_protein.atom_mask[input_correspondence]
-    target_mask = target_protein.atom_mask[target_correspondence]
+    input_atoms = input_protein.atomc_positions[input_correspondence]
+    target_atoms = target_protein.atomc_positions[target_correspondence]
+    input_mask = input_protein.atomc_mask[input_correspondence]
+    target_mask = target_protein.atomc_mask[target_correspondence]
 
     sup = SVDSuperimposer()
     sup.set(target_cas_cor, input_cas_cor)
@@ -66,7 +72,7 @@ def get_all_atom_fit_report(
         input_protein.aatype[input_correspondence]
         == target_protein.aatype[target_correspondence]
     ) / len(target_correspondence)
-    
+
     if output_structure is not None:
         new_bfactors = np.zeros_like(input_protein.b_factors[:,0])
         correct_idxs = (
@@ -75,12 +81,12 @@ def get_all_atom_fit_report(
         new_bfactors[input_correspondence] = 100 * correct_idxs
         chain_atom14_to_cif(
             [input_protein.aatype[c] for c in input_protein.chain_idx_to_residues],
-            [input_protein.atom14_positions[c] for c in input_protein.chain_idx_to_residues],
-            [input_protein.atom14_mask[c] for c in input_protein.chain_idx_to_residues],
+            [input_protein.atomc_positions[c] for c in input_protein.chain_idx_to_residues],
+            [input_protein.atomc_mask[c] for c in input_protein.chain_idx_to_residues],
             path_to_save=output_structure,
             bfactors=[new_bfactors[c] for c in input_protein.chain_idx_to_residues],
         )
-    
+
     return (
         backbone_rms,
         ca_rms,
@@ -114,7 +120,7 @@ def add_args(parser):
     )
     parser.add_argument("--output-file", help="If set, saves the results to a file")
     parser.add_argument(
-        "--output-structure", 
+        "--output-structure",
         help="If set, saves the sequence recall results to an mmCIF file, "
              "B-factors of 100 correspond to correct classifications and "
              "B-factors of 0 correspond to wrong classifications"

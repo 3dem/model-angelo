@@ -42,12 +42,30 @@ def add_args(parser):
         required=True
     )
     main_args.add_argument(
+        "--protein-fasta",
+        "--pf",
         "--fasta-path",
         "-f",
         "--f",
-        help="input sequence FASTA file",
+        help="Protein input sequence FASTA file",
         type=str,
         required=True,
+    )
+    parser.add_argument(
+        "--rna-fasta",
+        "--rf",
+        "-rf",
+        type=str,
+        required=False,
+        help="The path to the protein sequence file"
+    )
+    parser.add_argument(
+        "--dna-fasta",
+        "--df",
+        "-df",
+        required=False,
+        type=str,
+        help="The path to the protein sequence file"
     )
     main_args.add_argument(
         "--output-dir",
@@ -208,7 +226,9 @@ def main(parsed_args):
 
             gnn_infer_args = Args(config["gnn_infer_args"])
             gnn_infer_args.map = standarized_mrc_path
-            gnn_infer_args.fasta = parsed_args.fasta_path
+            gnn_infer_args.protein_fasta = parsed_args.protein_fasta
+            gnn_infer_args.rna_fasta = parsed_args.rna_fasta
+            gnn_infer_args.dna_fasta = parsed_args.dna_fasta
             gnn_infer_args.struct = current_ca_cif_path
             gnn_infer_args.output_dir = current_output_dir
             gnn_infer_args.model_dir = gnn_model_logdir

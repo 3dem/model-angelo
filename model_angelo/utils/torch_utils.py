@@ -443,7 +443,7 @@ def download_and_install_model(bundle_name: str) -> str:
     dest = os.path.join(
         torch.hub.get_dir(),
         "checkpoints",
-        "model_angelo",
+        "model_angelo_v1.0",
         bundle_name
     )
     if os.path.isfile(os.path.join(dest, "success.txt")):
