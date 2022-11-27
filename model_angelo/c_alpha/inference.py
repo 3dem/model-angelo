@@ -324,8 +324,9 @@ def infer(args):
             os.path.join(args.output_path, "see_alpha_output_p.cif"),
             voxel_size * output_p_points,
         )
+        output_file_path = os.path.join(args.output_path, "see_alpha_merged_output.cif")
         ca_ps_to_pdb(
-            os.path.join(args.output_path, "see_alpha_merged_output.cif"),
+            output_file_path,
             voxel_size * output_ca_points,
             voxel_size * output_p_points,
         )
