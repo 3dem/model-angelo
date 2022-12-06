@@ -135,3 +135,4 @@ dmypy.json
 *.cif
 *.pkl
 *.hmm
+*.prot
