@@ -6,7 +6,7 @@ import torch
 
 from model_angelo.utils.misc_utils import assertion_check
 from model_angelo.utils.residue_constants import restype_1_order_to_hmm, index_to_hmm_restype_1, \
-    num_prot, restype_1_to_index
+    num_prot, restype_1_to_index, restype_3_to_index
 
 from pyhmmer.plan7 import HMM, HMMFile
 import os
@@ -58,6 +58,7 @@ alphabet_to_slice = {
     "amino": np.s_[..., :num_prot], 
     "DNA": np.s_[..., num_prot:num_prot+4],
     "RNA": np.s_[..., num_prot+4:],
+    "PP": np.s_[..., num_prot:],
 }
 alphabet_to_index = {
     "amino": restype_1_to_index,
@@ -147,13 +148,35 @@ def aa_logits_to_hmm(
     base_dir: str = "/tmp",
     alphabet_type: str = "amino",
 ) -> HMM:
-    processed_aa_logits = np.ones_like(aa_logits) * -10
+    processed_aa_logits = np.ones_like(aa_logits) * -100
     processed_aa_logits[alphabet_to_slice[alphabet_type]] = aa_logits[alphabet_to_slice[alphabet_type]]
-    aa_probs = torch.from_numpy(processed_aa_logits).log_softmax(dim=-1).numpy()
+    if alphabet_type != "PP":
+        aa_log_probs = torch.from_numpy(processed_aa_logits).log_softmax(dim=-1).numpy()
+    else:
+        alphabet_type = "RNA"  # Treat all purine-pyrimidine matches as RNA
+        # What follows is a custom implementation of log_softmax
+        c = aa_logits[..., 20:].max(axis=-1, keepdims=True)
+        m = aa_logits[..., 20:].min(axis=-1, keepdims=True)
+        exp_logits = np.exp(aa_logits - c)
+        exp_logits_gather = np.zeros_like(exp_logits) + np.exp(m - c)
+        exp_logits_gather[..., restype_3_to_index["G"]] = exp_logits[
+            ..., 
+            [restype_3_to_index["DA"], restype_3_to_index["DG"], restype_3_to_index["A"], restype_3_to_index["G"]]
+        ].sum(axis=-1)
+        exp_logits_gather[..., 25] = exp_logits[
+            ..., 
+            [restype_3_to_index["DC"], restype_3_to_index["DT"], restype_3_to_index["C"], restype_3_to_index["U"]]
+        ].sum(axis=-1)
+        aa_logits_gather = np.log(exp_logits_gather)
+        logsumexp = np.log(
+            exp_logits_gather.sum(axis=-1, keepdims=True)
+        )
+        aa_log_probs = aa_logits_gather - logsumexp
+
     tmp_path = os.path.join(base_dir, f"model_angelo_temp.hmm")
     aa_log_probs_to_hmm_file(
         name="model_angelo_search",
-        aa_log_probs=aa_probs,
+        aa_log_probs=aa_log_probs,
         confidence=confidence,
         output_path=tmp_path,
         alphabet_type=alphabet_type,

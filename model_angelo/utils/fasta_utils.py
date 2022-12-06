@@ -185,6 +185,10 @@ def unified_seq_to_fasta(unified_seq) -> List[FASTASequence]:
     return fasta_list
 
 
+def nuc_sequence_to_purpyr(sequence: str) -> str:
+    return sequence.replace("A", "G").replace("U", "C").replace("T", "C")
+
+
 def trim_dots(msa: str) -> str:
     N = len(msa) - 1
     # For the leading dots
