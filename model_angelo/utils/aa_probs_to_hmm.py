@@ -66,9 +66,9 @@ alphabet_to_index = {
 }
 
 
-def aa_probs_to_hmm_file(
+def aa_log_probs_to_hmm_file(
     name: str,
-    aa_probs: np.ndarray,
+    aa_log_probs: np.ndarray,
     confidence: np.ndarray = None,
     output_path: str = None,
     delta=0.05,
@@ -79,19 +79,19 @@ def aa_probs_to_hmm_file(
     This outputs an HMMER3 file.
     """
     assertion_check(
-        len(str(len(aa_probs))) <= 7,
+        len(str(len(aa_log_probs))) <= 7,
         f"Cannot convert chain to HMM profile as it is too long"
     )
     if output_path is None:
         output_path = name + ".hmm"
     if confidence is None:
-        confidence = np.ones(len(aa_probs))
+        confidence = np.ones(len(aa_log_probs))
 
     with open(output_path, "w") as file_handle:
         file_handle.write(
             f"""HMMER3/f [3.2 | April 2018]
                 NAME  {name}
-                LENG  {len(aa_probs)}
+                LENG  {len(aa_log_probs)}
                 ALPH  {alphabet_type}
                 RF    no
                 MM    no
@@ -102,7 +102,7 @@ def aa_probs_to_hmm_file(
             """
         )
 
-        negative_log_prob = - np.log(aa_probs)
+        negative_log_prob = - aa_log_probs
         negative_log_prob = negative_log_prob[alphabet_to_slice[alphabet_type]]
         if alphabet_type == "amino":
             negative_log_prob = negative_log_prob[:, restype_1_order_to_hmm]  # Reorder to HMM order
@@ -112,7 +112,7 @@ def aa_probs_to_hmm_file(
         elif alphabet_type == "DNA":
             index_to_str = ["A", "C", "G", "T"]
 
-        for res_index in range(len(aa_probs)):
+        for res_index in range(len(aa_log_probs)):
             aa_prob_str = f"      {res_index + 1: >7}   "
             aa_prob_str += negative_log_prob_to_hmm_line(negative_log_prob[res_index])
             # For now, might need to replace based on RF,MM,CONS,CS,MAP
@@ -149,11 +149,11 @@ def aa_logits_to_hmm(
 ) -> HMM:
     processed_aa_logits = np.ones_like(aa_logits) * -10
     processed_aa_logits[alphabet_to_slice[alphabet_type]] = aa_logits[alphabet_to_slice[alphabet_type]]
-    aa_probs = torch.from_numpy(processed_aa_logits).softmax(dim=-1).numpy()
+    aa_probs = torch.from_numpy(processed_aa_logits).log_softmax(dim=-1).numpy()
     tmp_path = os.path.join(base_dir, f"model_angelo_temp.hmm")
-    aa_probs_to_hmm_file(
+    aa_log_probs_to_hmm_file(
         name="model_angelo_search",
-        aa_probs=aa_probs,
+        aa_log_probs=aa_probs,
         confidence=confidence,
         output_path=tmp_path,
         alphabet_type=alphabet_type,
@@ -173,8 +173,8 @@ def dump_aa_logits_to_hmm_file(
     name: str = "model_angelo_search",
     alphabet_type: str = "amino",
 ):
-    aa_probs = torch.from_numpy(aa_logits).softmax(dim=-1).numpy()
-    aa_probs_to_hmm_file(
+    aa_probs = torch.from_numpy(aa_logits).log_softmax(dim=-1).numpy()
+    aa_log_probs_to_hmm_file(
         name,
         aa_probs,
         confidence=confidence,
