@@ -54,6 +54,8 @@ def get_hmm_alignment(
     else:
         if do_pp:
             assert raw_rna_sequences is not None or raw_dna_sequences is not None
+        if len(aa_logits) > 10:
+            print("foundydoodly")
         has_rna_seq = len(digital_rna_sequences) > 0
         has_dna_seq = len(digital_dna_sequences) > 0
         match_type = ""

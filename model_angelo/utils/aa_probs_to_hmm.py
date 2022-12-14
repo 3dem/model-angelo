@@ -72,7 +72,7 @@ def aa_log_probs_to_hmm_file(
     aa_log_probs: np.ndarray,
     confidence: np.ndarray = None,
     output_path: str = None,
-    delta=0.05,
+    delta=0.01,
     gamma=0.5,
     alphabet_type="amino",
 ):
@@ -163,7 +163,7 @@ def aa_logits_to_hmm(
             ..., 
             [restype_3_to_index["DA"], restype_3_to_index["DG"], restype_3_to_index["A"], restype_3_to_index["G"]]
         ].sum(axis=-1)
-        exp_logits_gather[..., 25] = exp_logits[
+        exp_logits_gather[..., restype_3_to_index["C"]] = exp_logits[
             ..., 
             [restype_3_to_index["DC"], restype_3_to_index["DT"], restype_3_to_index["C"], restype_3_to_index["U"]]
         ].sum(axis=-1)
