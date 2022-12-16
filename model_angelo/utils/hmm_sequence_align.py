@@ -172,7 +172,8 @@ def best_match_to_sequences(
         match_scores,
         hmm_output_match_sequences,
         exists_in_sequence_mask,
-    ) = ([], [], [], [], [], [], [], [])
+        is_nucleotide_list
+    ) = ([], [], [], [], [], [], [], [], [])
     null_sequence_id = len(digital_sequences)
     for aa_logits, confidence, prot_mask in zip(chain_aa_logits, chain_confidences, chain_prot_mask):
         chain_len = len(aa_logits)
@@ -209,6 +210,7 @@ def best_match_to_sequences(
             match_scores.append(hmm_alignment.match_score)
             hmm_output_match_sequences.append(hmm_alignment.hmm_output_match_sequence)
             exists_in_sequence_mask.append(hmm_alignment.exists_in_sequence_mask)
+            is_nucleotide_list.append(is_nucleotide)
 
     return MatchToSequence(
         new_sequences=new_sequences,
