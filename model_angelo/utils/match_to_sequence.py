@@ -42,7 +42,7 @@ class MatchToSequence:
             self.hmm_output_match_sequences[i] for i in idxs
         ]
         self.exists_in_sequence_mask = [self.exists_in_sequence_mask[i] for i in idxs]
-        self.is_nucleotide = [self.is_nucleotide[i] for i in ids]
+        self.is_nucleotide = [self.is_nucleotide[i] for i in idxs]
 
     def set_vals(
         self,
