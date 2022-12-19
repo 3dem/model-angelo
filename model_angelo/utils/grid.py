@@ -252,7 +252,7 @@ def make_cubic(box):
     s = np.max(box.shape)
     s += s % 2
     if np.all(box.shape == s):
-        return box, np.zeros(3, dtype=np.int), bz
+        return box, np.zeros(3, dtype=np.int32), bz
     nbox = np.zeros((s, s, s))
     c = np.array(nbox.shape) // 2 - bz // 2
     nbox[c[0] : c[0] + bz[0], c[1] : c[1] + bz[1], c[2] : c[2] + bz[2]] = box
@@ -266,7 +266,7 @@ def make_cubic_multiple_boxsize(box, boxsize):
     if s % boxsize != 0:
         s += boxsize - (s % boxsize)
     if np.all(box.shape == s):
-        return box, np.zeros(3, dtype=np.int), bz
+        return box, np.zeros(3, dtype=np.int32), bz
     nbox = np.zeros((s, s, s))
     c = np.array(nbox.shape) // 2 - bz // 2
     nbox[c[0] : c[0] + bz[0], c[1] : c[1] + bz[1], c[2] : c[2] + bz[2]] = box
