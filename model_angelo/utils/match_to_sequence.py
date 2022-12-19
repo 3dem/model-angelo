@@ -232,6 +232,7 @@ class MatchToSequence:
         match_scores = []  # Not sequence len
         hmm_output_match_sequences = []  # Sequence len
         exists_in_sequence_mask = []  # Sequence len
+        is_nucleotide = []  # Not sequence len
         new_chains = []
 
         idx_info = {}
@@ -274,6 +275,7 @@ class MatchToSequence:
             key_end_matches.append(np.max(residue_idxs[-1]))
             match_scores.append(self.match_scores[chain_id])
             hmm_output_match_sequences.append(self.hmm_output_match_sequences[chain_id])
+            is_nucleotide.append(self.is_nucleotide[chain_id])
 
         self.set_vals(
             new_sequences,
@@ -284,6 +286,7 @@ class MatchToSequence:
             match_scores,
             hmm_output_match_sequences,
             exists_in_sequence_mask,
+            is_nucleotide,
         )
 
         return new_chains
