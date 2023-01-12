@@ -183,6 +183,7 @@ def main(parsed_args):
         gnn_infer_args.model_dir = gnn_model_logdir
         gnn_infer_args.device = parsed_args.device
         gnn_infer_args.write_hmm_profiles = parsed_args.write_hmm_profiles
+        gnn_infer_args.refine = True
 
         gnn_infer_args.aggressive_pruning = True
 
@@ -205,7 +206,7 @@ def main(parsed_args):
         os.remove(standarized_mrc_path)
 
         print("-" * 70)
-        print("ModelAngelo build has been completed successfully!")
+        print("ModelAngelo refine has been completed successfully!")
         print("-" * 70)
         print(f"You can find your output mmCIF file here: {file_dst}")
         print("-" * 70)
