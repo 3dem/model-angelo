@@ -9,6 +9,7 @@ from Bio.PDB.mmcifio import MMCIFIO
 from Bio.PDB.StructureBuilder import StructureBuilder
 
 from model_angelo.utils.misc_utils import assertion_check
+from model_angelo.utils.protein import Protein
 from model_angelo.utils.residue_constants import (
     index_to_restype_3,
     restype_name_to_atomc_names, index_to_restype_1,
@@ -189,6 +190,58 @@ def atom14_to_cif(
 
         struct.init_residue(res_name_3, " ", i, " ")
         for atom_name, pos, mask in zip(atom_names, atom14[i], atom_mask[i]):
+            if mask < 0.5:
+                continue
+            struct.set_line_counter(i + res_counter)
+            struct.init_atom(
+                name=atom_name,
+                coord=pos,
+                b_factor=bfactor,
+                occupancy=1,
+                altloc=" ",
+                fullname=atom_name,
+                element=atom_name[0],
+            )
+            res_counter += 1
+    struct = struct.get_structure()
+    io = MMCIFIO()
+    io.set_structure(struct)
+    io.save(path_to_save)
+
+
+def protein_to_cif(
+    protein: Protein,
+    path_to_save: str,
+):
+    if protein.b_factors is None:
+        bfactors = np.zeros(len(protein.aatype))
+    else:
+        bfactors = protein.b_factors
+    if len(bfactors.shape) > 1:
+        bfactors = bfactors[:, 0]
+    struct = StructureBuilder()
+    curr_chain = 0
+
+    struct.init_structure("1")
+    struct.init_seg("1")
+    struct.init_model("1")
+    struct.init_chain(protein.chain_id[0])
+
+    prev_chain = protein.chain_index[0]
+    for i in range(protein.aatype.shape[0]):
+        res_name_3 = index_to_restype_3[protein.aatype[i]]
+        bfactor = bfactors[i]
+        atom_names = restype_name_to_atomc_names[res_name_3]
+        res_counter = 0
+        if prev_chain != protein.chain_index[i]:
+            curr_chain += 1
+            struct.init_chain(protein.chain_id[protein.chain_index[i]])
+        prev_chain = protein.atomc_positions[i][0]
+
+        struct.init_residue(res_name_3, " ", i, " ")
+        for atom_name, pos, mask in zip(
+                atom_names, protein.atomc_positions[i], protein.atomc_mask[i]
+        ):
             if mask < 0.5:
                 continue
             struct.set_line_counter(i + res_counter)

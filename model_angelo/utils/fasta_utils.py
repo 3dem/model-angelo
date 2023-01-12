@@ -7,9 +7,13 @@ from typing import List, Tuple
 import numpy as np
 from Bio import SeqIO
 
-from model_angelo.utils.residue_constants import index_to_restype_1
 
 FASTASequence = namedtuple("FASTASequence", field_names=["seq", "rep", "chains"])
+
+
+class FASTAEmptyError(RuntimeError):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 
 def download_pdb_entry_fasta_file(pdb_entry_name, output_dir):
@@ -47,6 +51,14 @@ def read_fasta(fasta_path, auth_chains=True):
         else:
             chains = ["A"]
         sequences.append(FASTASequence(str(record.seq), len(chains), chains))
+
+    if len(sequences) == 0:
+        raise FASTAEmptyError(
+            f"File {fasta_path} has no parsable sequences. Please check your FASTA file."
+            f"For example, this can happen if your sequences are in lower case, while"
+            f"this program expects them to be uppercase."
+        )
+
     return sequences, sequence_names
 
 

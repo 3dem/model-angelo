@@ -293,11 +293,12 @@ def infer(args):
     # Aggressive pruning does not make sense here
     final_results_to_cif(
         final_results=final_results,
-        prot_mask=protein.prot_mask,
+        protein=protein,
         cif_path=output_path,
         verbose=True,
         print_fn=logger.info,
         aggressive_pruning=False,
+        refine=args.refine,
     )
 
     return output_path
@@ -329,6 +330,11 @@ if __name__ == "__main__":
         default=1,
         type=int,
         help="How many times to repeat per residue",
+    )
+    parser.add_argument(
+        "--refine",
+        action="store_true",
+        help="Run refinement program"
     )
     args = parser.parse_args()
     infer(args)

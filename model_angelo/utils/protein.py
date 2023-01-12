@@ -78,6 +78,9 @@ class Protein:
     # belongs to.
     chain_index: np.ndarray  # [num_res]
 
+    # The original Chain ID string list that the chain_indices correspond to.
+    chain_id: np.ndarray  # [num_chains]
+
     # B-factors, or temperature factors, of each residue (in sq. angstroms units),
     # representing the displacement of the residue from its ground truth mean
     # value.
@@ -281,6 +284,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
         aatype=aatype,
         residue_index=residue_index,
         chain_index=chain_index,
+        chain_id=unique_chain_ids,
         b_factors=b_factors,
         unified_seq=unified_seq,
         unified_seq_len=unified_seq_len,

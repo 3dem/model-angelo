@@ -252,7 +252,7 @@ def infer(args):
                 lang_model, batch_converter, protein
             )
     elif args.struct.endswith("cif") or args.struct.endswith("pdb"):
-        if "output" in args.struct:
+        if "output" in args.struct and not args.refine:
             for seq_file in [args.protein_fasta, args.rna_fasta, args.dna_fasta]:
                 if seq_file is None:
                     continue
@@ -264,6 +264,16 @@ def infer(args):
         protein = get_lm_embeddings_for_protein(lang_model, batch_converter, protein)
     if protein is None:
         raise RuntimeError(f"File {args.struct} is not a supported file format.")
+
+    rna_sequences, dna_sequences = [], []
+    if args.rna_fasta is not None:
+        rna_unified_seq, rna_seq_len = fasta_to_unified_seq(args.rna_fasta)
+        if rna_seq_len > 0:
+            rna_sequences = rna_unified_seq.split("|||")
+    if args.dna_fasta is not None:
+        dna_unified_seq, dna_seq_len = fasta_to_unified_seq(args.dna_fasta)
+        if dna_seq_len > 0:
+            dna_sequences = dna_unified_seq.split("|||")
 
     grid_data = None
     if args.map.endswith("mrc"):
@@ -329,16 +339,6 @@ def infer(args):
     final_results = get_final_nn_results(collated_results)
     output_path = os.path.join(args.output_dir, "output.cif")
 
-    rna_sequences, dna_sequences = [], []
-    if args.rna_fasta is not None:
-        rna_unified_seq, rna_seq_len = fasta_to_unified_seq(args.rna_fasta)
-        if rna_seq_len > 0:
-            rna_sequences = rna_unified_seq.split("|||")
-    if args.dna_fasta is not None:
-        dna_unified_seq, dna_seq_len = fasta_to_unified_seq(args.dna_fasta)
-        if dna_seq_len > 0:
-            dna_sequences = dna_unified_seq.split("|||")
-
     # For debugging eyes only
     pickle_dump(final_results, os.path.join(args.output_dir, "final_results.pkl"))
     dump_protein_to_prot(protein, os.path.join(args.output_dir, "protein.prot"))
@@ -347,18 +347,16 @@ def infer(args):
 
     final_results_to_cif(
         final_results,
-        prot_mask=protein.prot_mask,
+        protein=protein,
         cif_path=output_path,
-        prot_sequences=protein.unified_seq.split("|||"),
         rna_sequences=rna_sequences,
         dna_sequences=dna_sequences,
         verbose=True,
         print_fn=logger.info,
         aggressive_pruning=args.aggressive_pruning,
-        aatype=protein.aatype,
         save_hmms=args.write_hmm_profiles,
+        refine=args.refine,
     )
-
     return output_path
 
 
@@ -420,6 +418,11 @@ if __name__ == "__main__":
         "--write-hmm-profiles",
         action="store_true",
         help="Write HMM profiles, even though it is built with sequence."
+    )
+    parser.add_argument(
+        "--refine",
+        action="store_true",
+        help="Run refinement program"
     )
     args = parser.parse_args()
     infer(args)

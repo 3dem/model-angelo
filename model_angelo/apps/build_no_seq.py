@@ -197,6 +197,7 @@ def main(parsed_args):
             gnn_infer_args.output_dir = current_output_dir
             gnn_infer_args.model_dir = gnn_model_logdir
             gnn_infer_args.device = parsed_args.device
+            gnn_infer_args.refine = False
 
             if i == total_gnn_rounds - 1:
                 gnn_infer_args.aggressive_pruning = True

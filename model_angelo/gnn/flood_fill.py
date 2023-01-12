@@ -1,13 +1,13 @@
 import os
 from collections import namedtuple
-from typing import Dict
+from typing import Dict, Callable, List
 
 import numpy as np
 import torch
 from scipy.spatial import cKDTree
 
 from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hmm_file
-from model_angelo.utils.save_pdb_utils import number_to_chain_str
+from model_angelo.utils.save_pdb_utils import number_to_chain_str, protein_to_cif
 
 from model_angelo.utils.hmm_sequence_align import (
     FixChainsOutput,
@@ -16,7 +16,7 @@ from model_angelo.utils.hmm_sequence_align import (
 )
 from model_angelo.utils.protein import (
     frames_and_literature_positions_to_atomc_pos,
-    torsion_angles_to_frames,
+    torsion_angles_to_frames, Protein,
 )
 from model_angelo.utils.residue_constants import restype_atomc_mask, select_torsion_angles, restype3_to_atoms, num_prot
 from model_angelo.utils.save_pdb_utils import (
@@ -110,29 +110,34 @@ def chains_to_atoms(
 
 
 def final_results_to_cif(
-    final_results,
-    prot_mask,
-    cif_path,
-    prot_sequences=None,
-    rna_sequences=None,
-    dna_sequences=None,
-    aatype=None,
-    verbose=False,
-    print_fn=print,
-    aggressive_pruning=False,
-    save_hmms=False,
+    final_results: dict,
+    protein: Protein,
+    cif_path: str,
+    rna_sequences: List = None,
+    dna_sequences: List = None,
+    verbose: bool = False,
+    print_fn: Callable = print,
+    aggressive_pruning: bool = False,
+    save_hmms: bool = False,
+    refine: bool = False,
 ):
+    prot_mask = protein.prot_mask
+    prot_sequences = protein.unified_seq.split("|||")
+    aatype = protein.aatype
     existence_mask = (
-        torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3
-    ).numpy()
+        (
+            torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3
+        ).numpy()
+        if not refine
+        else torch.ones_like(final_results["existence_mask"]).numpy()
+    )
     if aatype is None:
         aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int32)
         aatype[prot_mask] = np.argmax(final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1)
         aatype[~prot_mask] = np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1) + num_prot
         aatype = aatype[existence_mask]
-
-        final_results["aa_logits"][prot_mask][..., num_prot:] = -100
-        final_results["aa_logits"][~prot_mask][..., :num_prot] = -100
+    final_results["aa_logits"][prot_mask][..., num_prot:] = -100
+    final_results["aa_logits"][~prot_mask][..., :num_prot] = -100
 
     backbone_affine = torch.from_numpy(final_results["pred_affines"])[existence_mask]
     torsion_angles = select_torsion_angles(
@@ -151,27 +156,37 @@ def final_results_to_cif(
 
     all_atoms_np = all_atoms.numpy()
     chains = []
-    if np.any(prot_mask):
-        idxs = np.arange(len(all_atoms_np))[prot_mask]
-        prot_chains = flood_fill(all_atoms_np[prot_mask], bfactors[prot_mask], is_nucleotide=False)
-        chains += [idxs[c] for c in prot_chains]
-    if np.any(~prot_mask):
-        idxs = np.arange(len(all_atoms_np))[~prot_mask]
-        nuc_chains = flood_fill(
-            all_atoms_np[~prot_mask], bfactors[~prot_mask], is_nucleotide=True, n_c_distance_threshold=4
-        )
-        chains += [idxs[c] for c in nuc_chains]
+    all_atom_idxs = np.arange(len(all_atoms_np))
+    if refine:
+        chains = [
+            all_atom_idxs[protein.chain_index == i] for (i, _) in enumerate(protein.chain_id)
+        ]
+    else:
+        if np.any(prot_mask):
+            idxs = all_atom_idxs[prot_mask]
+            prot_chains = flood_fill(all_atoms_np[prot_mask], bfactors[prot_mask], is_nucleotide=False)
+            chains += [idxs[c] for c in prot_chains]
+        if np.any(~prot_mask):
+            idxs = all_atom_idxs[~prot_mask]
+            nuc_chains = flood_fill(
+                all_atoms_np[~prot_mask], bfactors[~prot_mask], is_nucleotide=True, n_c_distance_threshold=4
+            )
+            chains += [idxs[c] for c in nuc_chains]
 
     # Prune chains based on length
+    # TODO: This does nothing, get rid of it
     pruned_chains = [c for c in chains if len(c) > 0]
 
-    chain_atom14_to_cif(
-        [aatype[c] for c in pruned_chains],
-        [all_atoms[c] for c in pruned_chains],
-        [atom_mask[c] for c in pruned_chains],
-        cif_path,
-        bfactors=[bfactors[c] for c in pruned_chains],
-    )
+    if refine:
+        protein_to_cif(protein, cif_path)
+    else:
+        chain_atom14_to_cif(
+            [aatype[c] for c in pruned_chains],
+            [all_atoms[c] for c in pruned_chains],
+            [atom_mask[c] for c in pruned_chains],
+            cif_path,
+            bfactors=[bfactors[c] for c in pruned_chains],
+        )
 
     chain_aa_logits = [
         final_results["aa_logits"][existence_mask][c] for c in chains
@@ -187,14 +202,16 @@ def final_results_to_cif(
         ) for c in chains
     ]
 
-
-    if prot_sequences is None and rna_sequences is None and dna_sequences is None:
+    if (
+            save_hmms or
+            prot_sequences is None and rna_sequences is None and dna_sequences is None
+    ):
         # Can make HMM profiles with the aa_probs
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
 
         for i, chain_aa_logits in enumerate(pruned_chain_aa_logits):
-            chain_name = number_to_chain_str(i)
+            chain_name = number_to_chain_str(i) if protein.chain_id is None else protein.chain_id[i]
             if np.any(pruned_chain_prot_mask[i]):
                 dump_aa_logits_to_hmm_file(
                     chain_aa_logits,
@@ -216,7 +233,7 @@ def final_results_to_cif(
                     alphabet_type="DNA"
                 )
 
-    else:
+    elif not refine:
         ca_pos = all_atoms_np[:, 1]
 
         fix_chains_output = fix_chains_pipeline(
@@ -292,7 +309,8 @@ def final_results_to_cif(
             and len(fix_chains_output.unmodelled_sequences) > 0
         ):
             print_fn(
-                f"These sequence ids have been left unmodelled: {fix_chains_output.unmodelled_sequences}"
+                f"These sequence ids have been left unmodelled: "
+                f"{fix_chains_output.unmodelled_sequences}"
             )
 
     return final_results
@@ -432,10 +450,9 @@ if __name__ == "__main__":
     dna_sequences = pickle_load("/home/kjamali/Downloads/model_angelo_nuc/dna_sequences.pkl")
 
     final_results_to_cif(
-        final_results,
-        prot_mask=protein.prot_mask,
+        final_results=final_results,
+        protein=protein,
         cif_path="test.cif",
-        prot_sequences=protein.unified_seq.split("|||"),
         rna_sequences=rna_sequences,
         dna_sequences=dna_sequences,
     )
