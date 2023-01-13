@@ -129,7 +129,7 @@ def final_results_to_cif(
             torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3
         ).numpy()
         if not refine
-        else torch.ones_like(final_results["existence_mask"]).numpy()
+        else np.ones_like(final_results["existence_mask"]).astype(bool)
     )
     if aatype is None:
         aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int32)
@@ -152,6 +152,11 @@ def final_results_to_cif(
         )
         * 100
     )
+
+    if refine:
+        protein.atomc_positions = all_atoms
+        protein.b_factors = bfactors
+
     prot_mask = prot_mask[existence_mask]
 
     all_atoms_np = all_atoms.numpy()

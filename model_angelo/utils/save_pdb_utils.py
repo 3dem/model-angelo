@@ -236,7 +236,7 @@ def protein_to_cif(
         if prev_chain != protein.chain_index[i]:
             curr_chain += 1
             struct.init_chain(protein.chain_id[protein.chain_index[i]])
-        prev_chain = protein.atomc_positions[i][0]
+        prev_chain = protein.chain_index[i]
 
         struct.init_residue(res_name_3, " ", i, " ")
         for atom_name, pos, mask in zip(

@@ -170,14 +170,16 @@ def main(parsed_args):
 
         # Run GNN inference --------------------------------------------------------------------------------------------
 
-        print(f"----------------------- GNN model refinement ------------------------")
+        print(f"------------------------ GNN model refinement ------------------------")
 
         current_output_dir = os.path.join(parsed_args.output_dir, "gnn_output_round_1")
         os.makedirs(current_output_dir, exist_ok=True)
 
         gnn_infer_args = Args(config["gnn_infer_args"])
         gnn_infer_args.map = standarized_mrc_path
-        gnn_infer_args.fasta = parsed_args.fasta_path
+        gnn_infer_args.fasta = None
+        gnn_infer_args.rna_fasta = None
+        gnn_infer_args.dna_fasta = None
         gnn_infer_args.struct = parsed_args.input_structure
         gnn_infer_args.output_dir = current_output_dir
         gnn_infer_args.model_dir = gnn_model_logdir
@@ -200,8 +202,9 @@ def main(parsed_args):
 
         os.replace(gnn_output, file_dst)
 
-        shutil.rmtree(hmm_profiles_dst, ignore_errors=True)
-        os.replace(hmm_profiles_src, hmm_profiles_dst)
+        if parsed_args.write_hmm_profiles:
+            shutil.rmtree(hmm_profiles_dst, ignore_errors=True)
+            os.replace(hmm_profiles_src, hmm_profiles_dst)
 
         os.remove(standarized_mrc_path)
 

@@ -48,7 +48,7 @@ PROTEIN_KEYS = [
 ]
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=False)
 class Protein:
     """Protein structure representation."""
 
@@ -234,7 +234,8 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             b_factors.append(res_b_factors)
             chain_res_ids.append(residue_count)
             residue_count += 1
-
+        if len(chain_seq) == 0:
+            continue
         chain_idx_to_residues.append(np.array(chain_res_ids, dtype=np.int32))
         chain_seq = "".join(chain_seq)
         aatype.extend(chain_aatype)
@@ -253,8 +254,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             chain_residue_to_seq_id[chain_aatype < _rc.num_prot] = res_to_seq_id_array
             chain_residue_to_seq_id[chain_aatype >= _rc.num_prot] = -1
         residue_to_seq_id.extend(chain_residue_to_seq_id)
-
-    unified_seq = "|||".join(unified_seq)
+    unified_seq = "|||".join(unified_seq) if len(unified_seq) > 1 else unified_seq[0]
     unified_seq_len = seq_len_so_far
     residue_to_seq_id = np.array(residue_to_seq_id, dtype=int)
     # Chain IDs are usually characters so map these to ints.
