@@ -7,6 +7,7 @@ import torch
 from scipy.spatial import cKDTree
 
 from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hmm_file
+from model_angelo.utils.affine_utils import get_affine_translation
 from model_angelo.utils.save_pdb_utils import number_to_chain_str, protein_to_cif
 
 from model_angelo.utils.hmm_sequence_align import (
@@ -108,6 +109,25 @@ def chains_to_atoms(
         chain_aa_probs,
     )
 
+def remove_overlapping_ca(
+    ca_positions: np.ndarray,
+    radius_threshold: float = 0.5,
+) -> np.ndarray:
+    kdtree = cKDTree(ca_positions)
+    existence_mask = np.ones(len(ca_positions), dtype=bool)
+    
+    for i in range(len(ca_positions)):
+        if existence_mask[i]:
+            too_close = np.array(
+                kdtree.query_ball_point(
+                    ca_positions[i],
+                    r=radius_threshold,
+                )
+            )
+            too_close = too_close[too_close != i]
+            existence_mask[too_close] = False
+    return existence_mask
+
 
 def final_results_to_cif(
     final_results: dict,
@@ -131,15 +151,24 @@ def final_results_to_cif(
         if not refine
         else np.ones_like(final_results["existence_mask"]).astype(bool)
     )
+    backbone_affine = torch.from_numpy(final_results["pred_affines"])
     if aatype is None:
+        # Remove overlapping residues
+        existence_mask[prot_mask] *= remove_overlapping_ca(
+            get_affine_translation(backbone_affine[prot_mask])
+        )
+        existence_mask[~prot_mask] *= remove_overlapping_ca(
+            get_affine_translation(backbone_affine[~prot_mask])
+        )
+        # Rest of code
         aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int32)
         aatype[prot_mask] = np.argmax(final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1)
         aatype[~prot_mask] = np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1) + num_prot
         aatype = aatype[existence_mask]
+    backbone_affine = backbone_affine[existence_mask]
     final_results["aa_logits"][prot_mask][..., num_prot:] = -100
     final_results["aa_logits"][~prot_mask][..., :num_prot] = -100
 
-    backbone_affine = torch.from_numpy(final_results["pred_affines"])[existence_mask]
     torsion_angles = select_torsion_angles(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype
     )
