@@ -30,6 +30,7 @@ PROTEIN_KEYS = [
     "atomc_mask",
     "residue_index",
     "chain_index",
+    "chain_id",
     "b_factors",
     "rigidgroups_gt_frames",
     "rigidgroups_gt_exists",
