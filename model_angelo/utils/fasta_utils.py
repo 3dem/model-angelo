@@ -198,7 +198,14 @@ def unified_seq_to_fasta(unified_seq) -> List[FASTASequence]:
 
 
 def nuc_sequence_to_purpyr(sequence: str) -> str:
-    return sequence.replace("A", "G").replace("U", "C").replace("T", "C")
+    return sequence\
+        .replace("A", "G")\
+        .replace("U", "C")\
+        .replace("T", "C")\
+        .replace("DA", "G")\
+        .replace("DG", "G")\
+        .replace("DC", "C")\
+        .replace("DT", "C")
 
 
 def trim_dots(msa: str) -> str:
