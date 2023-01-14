@@ -159,7 +159,7 @@ class MatchToSequence:
             ):
                 # In this case, we keep the chain but mutate the residues to A
                 new_sequences.append(
-                    np.array([restype_3_to_index["A"]] * len(self.new_sequences[chain_id]), dtype=int)
+                    np.array([restype_3_to_index["U"]] * len(self.new_sequences[chain_id]), dtype=int)
                 )
                 residue_idxs.append(
                     np.arange(len(self.new_sequences[chain_id]))
