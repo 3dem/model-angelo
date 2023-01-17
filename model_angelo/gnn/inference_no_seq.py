@@ -218,6 +218,11 @@ def infer(args):
 
     module = module.eval().to(args.device)
 
+    if hasattr(module, "voxel_size"):
+        voxel_size = module.voxel_size
+    else:
+        voxel_size = 1.5
+
     protein = None
     if args.struct.endswith("prot"):
         protein = load_protein_from_prot(args.struct)
@@ -236,7 +241,7 @@ def infer(args):
             grid_data.grid,
             grid_data.voxel_size,
             grid_data.global_origin,
-            target_voxel_size=1.5,
+            target_voxel_size=voxel_size,
         )
         grid_data = MRCObject(
             grid=grid_data.grid,

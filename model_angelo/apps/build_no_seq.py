@@ -142,32 +142,13 @@ def main(parsed_args):
 
         logger.info(f"ModelAngelo with args: {vars(parsed_args)}")
 
-        # Standarize input volume --------------------------------------------------------------------------------------
-
-        standardize_mrc_args = Args(config["standardize_mrc_args"])
-        standardize_mrc_args.input_path = (
-            parsed_args.volume_path
-        )  # The input file(s) to be standardized
-        standardize_mrc_args.output_path = (
-            parsed_args.output_dir
-        )  # The output file(s) to be standardized
-
-        logger.info(f"Input volume preprocessing with args: {standardize_mrc_args}")
-        standarized_mrc_path = standardize_mrc(standardize_mrc_args)
-
-        # Returns a list
-        assert (
-            len(standarized_mrc_path) > 0
-        ), f"standardize_mrc did not get any inputs: {standardize_mrc_args.input_path}"
-        standarized_mrc_path = standarized_mrc_path[0]
-
         # Run C-alpha inference ----------------------------------------------------------------------------------------
         print("--------------------- Initial C-alpha prediction ---------------------")
 
         ca_infer_args = Args(config["ca_infer_args"])
         ca_infer_args.log_dir = c_alpha_model_logdir
         ca_infer_args.model_checkpoint = "chkpt.torch"
-        ca_infer_args.map_path = standarized_mrc_path
+        ca_infer_args.map_path = parsed_args.volume_path
         ca_infer_args.output_path = os.path.join(parsed_args.output_dir, "see_alpha_output")
         ca_infer_args.mask_path = parsed_args.mask_path
         ca_infer_args.device = parsed_args.device
@@ -192,7 +173,7 @@ def main(parsed_args):
             os.makedirs(current_output_dir, exist_ok=True)
 
             gnn_infer_args = Args(config["gnn_infer_args"])
-            gnn_infer_args.map = standarized_mrc_path
+            gnn_infer_args.map = parsed_args.volume_path
             gnn_infer_args.struct = current_ca_cif_path
             gnn_infer_args.output_dir = current_output_dir
             gnn_infer_args.model_dir = gnn_model_logdir
@@ -220,8 +201,6 @@ def main(parsed_args):
 
         shutil.rmtree(hmm_profiles_dst, ignore_errors=True)
         os.replace(hmm_profiles_src, hmm_profiles_dst)
-
-        os.remove(standarized_mrc_path)
 
         print("-" * 70)
         print("ModelAngelo build_no_seq has been completed successfully!")
