@@ -985,9 +985,9 @@ def sample_rectangle(
     assert grid.shape[2] == grid.shape[3] == grid.shape[4]
     bz, cz, sz = grid.shape[0], grid.shape[1], grid.shape[2]
     scale_mult = (
-        (torch.Tensor([rectangle_shape[2], rectangle_shape[1], rectangle_shape[0]]) - 1)
+        (torch.tensor([rectangle_shape[2], rectangle_shape[1], rectangle_shape[0]], device=grid.device, dtype=grid.dtype) - 1)
         / (sz - 1)
-    ).to(grid.device)
+    )
     rotation_matrices = rotation_matrices * scale_mult[None, ..., None]
     shifts = (
         grid_sampler_normalize(shifts, sz, align_corners=align_corners)
@@ -1033,23 +1033,19 @@ def sample_centered_rectangle(
     assert len(grid.shape) == 5
     assert grid.shape[2] == grid.shape[3] == grid.shape[4]
     bz, cz, sz = grid.shape[0], grid.shape[1], grid.shape[2]
-    scale_mult = (
-        (
-            torch.Tensor(
-                [
-                    rectangle_width,
-                    rectangle_width,
-                    rectangle_length,
-                ]
-            )
-            - 1
-        )
-        / (sz - 1)
-    ).to(grid.device)
+    scale_mult = (torch.tensor(
+        [
+            rectangle_width,
+            rectangle_width,
+            rectangle_length,
+        ],
+        device=grid.device,
+        dtype=grid.dtype,
+    ) - 1) / (sz - 1)
     rotation_matrices = rotation_matrices * scale_mult[None, ..., None]
-    center_shift_vector = torch.Tensor(
-        [[0, rectangle_width // 2, rectangle_width // 2]]
-    ).to(shifts.device)
+    center_shift_vector = torch.tensor(
+        [[0, rectangle_width // 2, rectangle_width // 2]], device=shifts.device, dtype=shifts.dtype
+    )
     shifts = (
         grid_sampler_normalize(
             shifts - center_shift_vector, sz, align_corners=align_corners
@@ -1081,21 +1077,23 @@ def sample_centered_cube(
     bz, cz, sz = grid.shape[0], grid.shape[1], grid.shape[2]
     scale_mult = (
         (
-            torch.Tensor(
+            torch.tensor(
                 [
                     cube_side,
                     cube_side,
                     cube_side,
-                ]
+                ],
+                device=grid.device,
+                dtype=grid.dtype,
             )
             - 1
         )
         / (sz - 1)
-    ).to(grid.device)
+    )
     rotation_matrices = rotation_matrices * scale_mult[None, ..., None]
-    center_shift_vector = torch.Tensor(
-        [[cube_side // 2, cube_side // 2, cube_side // 2]]
-    ).to(shifts.device)
+    center_shift_vector = torch.tensor(
+        [[cube_side // 2, cube_side // 2, cube_side // 2]], device=shifts.device, dtype=shifts.dtype
+    )
     shifts = (
         grid_sampler_normalize(
             shifts - center_shift_vector, sz, align_corners=align_corners

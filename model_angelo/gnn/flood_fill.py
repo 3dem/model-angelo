@@ -152,7 +152,7 @@ def final_results_to_cif(
         else np.ones_like(final_results["existence_mask"]).astype(bool)
     )
     backbone_affine = torch.from_numpy(final_results["pred_affines"])
-    if aatype is None:
+    if not refine:
         # Remove overlapping residues
         existence_mask[prot_mask] *= remove_overlapping_ca(
             get_affine_translation(backbone_affine[prot_mask])
@@ -237,8 +237,8 @@ def final_results_to_cif(
     ]
 
     if (
-            save_hmms or
-            prot_sequences is None and rna_sequences is None and dna_sequences is None
+        save_hmms or
+        prot_sequences is None and rna_sequences is None and dna_sequences is None
     ):
         # Can make HMM profiles with the aa_probs
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
@@ -478,10 +478,10 @@ if __name__ == "__main__":
     from model_angelo.utils.protein import load_protein_from_prot
     from model_angelo.utils.misc_utils import pickle_load
 
-    protein = load_protein_from_prot("/home/kjamali/Downloads/model_angelo_nuc/protein.prot")
-    final_results = pickle_load("/home/kjamali/Downloads/model_angelo_nuc/final_results.pkl")
-    rna_sequences = pickle_load("/home/kjamali/Downloads/model_angelo_nuc/rna_sequences.pkl")
-    dna_sequences = pickle_load("/home/kjamali/Downloads/model_angelo_nuc/dna_sequences.pkl")
+    protein = load_protein_from_prot("/home/kjamali/Downloads/katarina/purpyr_1A_test/protein.prot")
+    final_results = pickle_load("/home/kjamali/Downloads/katarina/purpyr_1A_test/final_results.pkl")
+    rna_sequences = pickle_load("/home/kjamali/Downloads/katarina/purpyr_1A_test/rna_sequences.pkl")
+    dna_sequences = pickle_load("/home/kjamali/Downloads/katarina/purpyr_1A_test/dna_sequences.pkl")
 
     final_results_to_cif(
         final_results=final_results,

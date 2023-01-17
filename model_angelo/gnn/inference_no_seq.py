@@ -321,11 +321,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--model-dir", required=True, help="Where the model at")
     parser.add_argument("--output-dir", default=".", help="Where to save the results")
-    parser.add_argument(
-        "--dont-add-noise",
-        action="store_true",
-        help="Don't add noise to input protein backbone",
-    )
     parser.add_argument("--device", default="cpu", help="Which device to run on")
     parser.add_argument(
         "--crop-length", type=int, default=200, help="How many points per batch"

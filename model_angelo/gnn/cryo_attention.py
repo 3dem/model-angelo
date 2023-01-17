@@ -165,6 +165,7 @@ class CryoAttention(nn.Module):
             batch: If using Pytorch Geometric graph batching, this is crucial
         """
         assert cryo_grids is not None
+        dtype = x.dtype
 
         bde_out = self.backbone_distance_emb(x, affines, prot_mask, edge_index, batch)
 
@@ -174,7 +175,6 @@ class CryoAttention(nn.Module):
             if batch is not None
             else [torch.arange(0, len(x), dtype=int, device=x.device)]
         )
-
         with torch.no_grad():
             batch_cryo_grids = [
                 cg.expand(len(b) * self.kz, -1, -1, -1, -1)
@@ -201,23 +201,19 @@ class CryoAttention(nn.Module):
                 cryo_vectors_center_positions,
                 rectangle_length=self.q_length,
             )  # (N kz) self.q_length 3 3
-
         cryo_vectors_query = self.cryo_q(bde_out.x_ne)  # N ahz ifz
         cryo_vectors_key = self.cryo_vectors_k(
             cryo_vectors_rec.requires_grad_()
         )  # N kz ahz ifz
         cryo_vectors_value = self.cryo_v(bde_out.x_ne)[bde_out.edge_index]  # N kz ahz ifz
-
         cryo_vectors_attention_scores = (
             torch.einsum("nai,nkai->nka", cryo_vectors_query, cryo_vectors_key)
             / self.attention_scale
         )
-
         attention_weights = torch.softmax(
             cryo_vectors_attention_scores,
             dim=1,  # N kz ahz
-        )
-
+        ).to(dtype)
         new_features_cryo_vectors = torch.einsum(
             "nkai,nka->nai", cryo_vectors_value, attention_weights
         )
@@ -263,7 +259,6 @@ class CryoAttention(nn.Module):
                 cryo_points,
                 cube_side=self.p_context,
             )
-
         new_features_cryo_points = self.cryo_point_v(cryo_points_cube.requires_grad_())
         cryo_aa_logits = self.cryo_point_aa_head(new_features_cryo_points)
         new_features_attention = torch.cat(
@@ -274,7 +269,7 @@ class CryoAttention(nn.Module):
             dim=-1,
         )  # N (ahz * ifz) * 2
         new_features = self.ag(new_features_attention)  # Back to (N, ifz)
-        new_features = self.en(x + new_features / math.sqrt(2))
+        new_features = self.en(x + new_features / math.sqrt(2)).to(dtype)
         return (
             new_features,
             bde_out.full_edge_index,

@@ -1,4 +1,10 @@
 """
+You are standing in an open field west of a glass building, with a sliding electric front door.
+There is a small mailbox here.
+> Open mailbox.
+There is a letter.
+> Read letter.
+-------------------------------------------------------------------------
 Welcome to ModelAngelo! Have a look around...
 This is the build command, so you need:
 1) A cryo-EM map .mrc file, passed to --volume-path/--v/-v
@@ -16,7 +22,6 @@ import sys
 import torch
 
 from model_angelo.c_alpha.inference import infer as c_alpha_infer
-from model_angelo.data.standardize_mrc import standardize_mrc
 from model_angelo.gnn.inference import infer as gnn_infer
 from model_angelo.utils.fasta_utils import is_valid_fasta_ending
 from model_angelo.utils.misc_utils import filter_useless_warnings, setup_logger, Args, is_relion_abort, \

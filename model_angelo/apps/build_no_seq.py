@@ -1,4 +1,10 @@
 """
+You are standing in an open field west of a glass building, with a sliding electric front door.
+There is a small mailbox here.
+> Open mailbox.
+There is a letter.
+> Read letter.
+-------------------------------------------------------------------------
 Welcome to ModelAngelo! Have a look around...
 This is the build_no_seq command, so you need:
 1) A cryo-EM map .mrc file, passed to --volume-path/--v/-v

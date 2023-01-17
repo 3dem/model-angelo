@@ -130,7 +130,7 @@ class MultiLayerSeparableIPA(nn.Module):
         assertion_check(
             sequence is not None and sequence_mask is not None and positions is not None and prot_mask is not None
         )
-
+        dtype = positions.dtype
         result = GNNOutput(
             positions=positions,
             prot_mask=prot_mask,
@@ -188,7 +188,7 @@ class MultiLayerSeparableIPA(nn.Module):
                         record_training=record_training,
                     )
                     # Transition
-                    result["x"] = self.transition_layer(result["x"])
+                    result["x"] = self.transition_layer(result["x"]).to(dtype)
                     self.append_to_training_record(
                         result["x"],
                         f"transition_layer_x_{idx}",
@@ -196,8 +196,8 @@ class MultiLayerSeparableIPA(nn.Module):
                     )
                     # Predict aa here
                     aa_contrib = torch.ones(
-                        *cryo_aa_logits.shape[:-1], 1, device=cryo_aa_logits.device
-                    ) + prot_mask.float()[..., None]
+                        *cryo_aa_logits.shape[:-1], 1, device=cryo_aa_logits.device, dtype=dtype,
+                    ) + prot_mask.to(dtype)[..., None]
                     cryo_aa_logits = (cryo_aa_logits + seq_aa_logits) / aa_contrib
                     # Predict backbone and N,CA,C atoms
                     ncac, new_affine = self.backbone_update_fc(

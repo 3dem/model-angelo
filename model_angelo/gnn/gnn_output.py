@@ -55,14 +55,15 @@ class GNNOutput:
         init_affine: torch.Tensor = None,
     ):
         self.result_dict = {}
+        dtype = positions.dtype
         for key in self.keys:
             self.result_dict[key] = []
 
         if positions is not None:
             self.result_dict["x"] = torch.zeros(
-                positions.shape[0], hidden_features, device=positions.device
+                positions.shape[0], hidden_features, device=positions.device, dtype=dtype,
             )
-            self.result_dict["x"][..., -1] += prot_mask.float()
+            self.result_dict["x"][..., -1] += prot_mask.to(dtype)
             self.result_dict["x"].requires_grad_()
 
             self.result_dict["pred_affines"] = [
@@ -79,3 +80,4 @@ class GNNOutput:
                 self.result_dict[key] = self.result_dict[key].to(device)
             else:
                 self.result_dict[key] = [x.to(device) for x in self.result_dict[key]]
+        return self

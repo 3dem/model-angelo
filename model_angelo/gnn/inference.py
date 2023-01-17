@@ -65,10 +65,10 @@ def init_protein_from_see_alpha(
     )
 
 
-def argmin_random(count_tensor: torch.Tensor):
+def argmin_random(count_tensor: torch.Tensor, batch_size: int = 1):
     rand_idxs = torch.randperm(len(count_tensor))
     corr_idxs = torch.arange(len(count_tensor))[rand_idxs]
-    random_argmin = count_tensor[rand_idxs].argmin()
+    random_argmin = count_tensor[rand_idxs].argsort()[:batch_size]
     original_argmin = corr_idxs[random_argmin]
     return original_argmin
 
@@ -80,7 +80,12 @@ def update_protein_gt_frames(
     return protein
 
 
-def get_inference_data(protein, grid_data, idx, crop_length=200):
+def get_inference_data(
+    protein,
+    grid_data,
+    idxs,
+    crop_length=200,
+):
     grid = ((grid_data.grid - np.mean(grid_data.grid)) / np.std(grid_data.grid)).astype(
         np.float32
     )
@@ -88,10 +93,23 @@ def get_inference_data(protein, grid_data, idx, crop_length=200):
     backbone_frames = protein.rigidgroups_gt_frames[:, 0]  # (num_res, 3, 4)
     ca_positions = get_affine_translation(backbone_frames)
     picked_indices = np.arange(len(ca_positions), dtype=int)
+
+    batch = None
+    batch_num = 1
     if len(ca_positions) > crop_length:
-        random_res_index = idx
-        kd = cKDTree(ca_positions)
-        _, picked_indices = kd.query(ca_positions[random_res_index], k=crop_length)
+        batched_picked_indices = []
+        for idx in idxs:
+            if len(ca_positions) > crop_length:
+                random_res_index = idx
+                kd = cKDTree(ca_positions)
+                _, picked_indices = kd.query(ca_positions[random_res_index], k=crop_length)
+                batched_picked_indices.append(picked_indices)
+        picked_indices = np.concatenate(batched_picked_indices, axis=0)
+        batch_num = len(idxs)
+        batch = torch.concat(
+            [torch.ones(crop_length, dtype=torch.long) * i for i in range(batch_num)],
+            dim=0
+        )
 
     return {
         "affines": torch.from_numpy(backbone_frames[picked_indices]),
@@ -104,6 +122,8 @@ def get_inference_data(protein, grid_data, idx, crop_length=200):
         "indices": torch.from_numpy(picked_indices),
         "prot_mask": torch.from_numpy(protein.prot_mask[picked_indices]),
         "num_nodes": len(picked_indices),
+        "batch_num": batch_num,
+        "batch": batch,
     }
 
 
@@ -113,25 +133,48 @@ def run_inference_on_data(
     data,
     run_iters: int = 2,
     seq_attention_batch_size: int = 200,
+    fp16: bool = False,
 ):
     device = get_module_device(module)
+    device_type = "cuda" if "cpu" not in str(device) else "cpu"
+    data_type = torch.float32 if not fp16 else torch.float16
 
-    affines = data["affines"].to(device)
-    result = module(
-        sequence=data["sequence"][None].to(device),
-        sequence_mask=torch.ones(1, data["sequence"].shape[0], device=device),
-        positions=get_affine_translation(affines),
-        batch=None,
-        cryo_grids=[data["cryo_grids"].to(device)],
-        cryo_global_origins=[data["cryo_global_origins"].to(device)],
-        cryo_voxel_sizes=[data["cryo_voxel_sizes"].to(device)],
-        prot_mask=data["prot_mask"].to(device),
-        init_affine=affines,
-        record_training=False,
-        run_iters=run_iters,
-        seq_attention_batch_size=seq_attention_batch_size,
-    )
-    result.to("cpu")
+    affines = data["affines"].to(device).to(data_type)
+
+    with torch.autocast(device_type=device_type, dtype=data_type):
+        if data["batch_num"] == 1:
+            result = module(
+                sequence=data["sequence"][None].to(device),
+                sequence_mask=torch.ones(1, data["sequence"].shape[0], device=device),
+                positions=get_affine_translation(affines),
+                batch=None,
+                cryo_grids=[data["cryo_grids"].to(device).to(data_type)],
+                cryo_global_origins=[data["cryo_global_origins"].to(device).to(data_type)],
+                cryo_voxel_sizes=[data["cryo_voxel_sizes"].to(device).to(data_type)],
+                prot_mask=data["prot_mask"].to(device),
+                init_affine=affines,
+                record_training=False,
+                run_iters=run_iters,
+                seq_attention_batch_size=seq_attention_batch_size,
+            )
+        else:
+            result = module(
+                sequence=data["sequence"][None].expand(
+                    data["batch_num"], -1, -1,
+                ).to(device),
+                sequence_mask=torch.ones(data["batch_num"], data["sequence"].shape[0], device=device),
+                positions=get_affine_translation(affines),
+                batch=data["batch"].to(device),
+                cryo_grids=[data["cryo_grids"].to(device).to(data_type) for _ in range(data["batch_num"])],
+                cryo_global_origins=[data["cryo_global_origins"].to(device).to(data_type) for _ in range(data["batch_num"])],
+                cryo_voxel_sizes=[data["cryo_voxel_sizes"].to(device).to(data_type) for _ in range(data["batch_num"])],
+                prot_mask=data["prot_mask"].to(device),
+                init_affine=affines,
+                record_training=False,
+                run_iters=run_iters,
+                seq_attention_batch_size=seq_attention_batch_size,
+            )
+    result.to("cpu").to(torch.float32)
     return result
 
 
@@ -151,41 +194,47 @@ def init_empty_collate_results(num_predicted_residues, unified_seq_len, device="
 
 
 def collate_nn_results(
-    collated_results, results, indices, protein, num_pred_residues=50
+    collated_results, 
+    results, 
+    indices, 
+    protein, 
+    num_pred_residues=50,
+    offset=0,
 ):
-    collated_results["counts"][indices[:num_pred_residues]] += 1
-    collated_results["pred_positions"][indices[:num_pred_residues]] += results[
+    update_slice = np.s_[offset:num_pred_residues+offset]
+    collated_results["counts"][indices[update_slice]] += 1
+    collated_results["pred_positions"][indices[update_slice]] += results[
         "pred_positions"
-    ][-1][:num_pred_residues]
-    collated_results["pred_torsions"][indices[:num_pred_residues]] += F.normalize(
-        results["pred_torsions"][:num_pred_residues], p=2, dim=-1
+    ][-1][update_slice]
+    collated_results["pred_torsions"][indices[update_slice]] += F.normalize(
+        results["pred_torsions"][update_slice], p=2, dim=-1
     )
 
     curr_pos_avg = (
-        collated_results["pred_positions"][indices[:num_pred_residues]]
-        / collated_results["counts"][indices[:num_pred_residues]][..., None]
+        collated_results["pred_positions"][indices[update_slice]]
+        / collated_results["counts"][indices[update_slice]][..., None]
     )
-    collated_results["pred_affines"][indices[:num_pred_residues]] = get_affine(
-        get_affine_rot(results["pred_affines"][-1][:num_pred_residues]).cpu(),
+    collated_results["pred_affines"][indices[update_slice]] = get_affine(
+        get_affine_rot(results["pred_affines"][-1][update_slice]).cpu(),
         curr_pos_avg
     )
-    collated_results["aa_logits"][indices[:num_pred_residues]] += results[
+    collated_results["aa_logits"][indices[update_slice]] += results[
         "cryo_aa_logits"
-    ][-1][:num_pred_residues]
-    collated_results["local_confidence"][indices[:num_pred_residues]] = results[
+    ][-1][update_slice]
+    collated_results["local_confidence"][indices[update_slice]] = results[
         "local_confidence_score"
-    ][-1][:num_pred_residues][..., 0]
-    collated_results["existence_mask"][indices[:num_pred_residues]] = results[
+    ][-1][update_slice][..., 0]
+    collated_results["existence_mask"][indices[update_slice]] = results[
         "pred_existence_mask"
     ][-1][:num_pred_residues][..., 0]
-    collated_results["seq_attention_scores"][indices[:num_pred_residues]] += results[
+    collated_results["seq_attention_scores"][indices[update_slice]] += results[
         "seq_attention_scores"
-    ][:num_pred_residues][..., 0]
+    ][update_slice][..., 0]
 
     protein = update_protein_gt_frames(
         protein,
-        indices[:num_pred_residues].numpy(),
-        collated_results["pred_affines"][indices[:num_pred_residues]].numpy(),
+        indices[update_slice].numpy(),
+        collated_results["pred_affines"][indices[update_slice]].numpy(),
     )
     return collated_results, protein
 
@@ -313,17 +362,19 @@ def infer(args):
 
     pbar = tqdm.tqdm(total=total_steps, file=sys.stdout, position=0, leave=True)
     while residues_left > 0:
-        idx = argmin_random(collated_results["counts"])
-        data = get_inference_data(protein, grid_data, idx, crop_length=args.crop_length)
+        idxs = argmin_random(collated_results["counts"], args.batch_size)
+        data = get_inference_data(protein, grid_data, idxs, crop_length=args.crop_length)
         results = run_inference_on_data(
-            module, data, seq_attention_batch_size=args.seq_attention_batch_size
+            module, data, seq_attention_batch_size=args.seq_attention_batch_size, fp16=args.fp16,
         )
-        collated_results, protein = collate_nn_results(
-            collated_results,
-            results,
-            data["indices"],
-            protein,
-        )
+        for i in range(args.batch_size):
+            collated_results, protein = collate_nn_results(
+                collated_results,
+                results,
+                data["indices"],
+                protein,
+                offset=i * args.crop_length,
+            )
         residues_left = (
             num_res
             - torch.sum(collated_results["counts"] > args.repeat_per_residue - 1).item()
@@ -386,11 +437,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--model-dir", required=True, help="Where the model at")
     parser.add_argument("--output-dir", default=".", help="Where to save the results")
-    parser.add_argument(
-        "--dont-add-noise",
-        action="store_true",
-        help="Don't add noise to input protein backbone",
-    )
     parser.add_argument("--device", default="cpu", help="Which device to run on")
     parser.add_argument(
         "--crop-length", type=int, default=200, help="How many points per batch"
@@ -428,6 +474,17 @@ if __name__ == "__main__":
         "--refine",
         action="store_true",
         help="Run refinement program"
+    )
+    parser.add_argument(
+        "--batch-size",
+        default=1,
+        type=int,
+        help="How many batches to run in parallel"
+    )
+    parser.add_argument(
+        "--fp16",
+        action="store_true",
+        help="Use fp16 in inference"
     )
     args = parser.parse_args()
     infer(args)

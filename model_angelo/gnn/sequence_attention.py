@@ -174,6 +174,7 @@ class SequenceAttention(nn.Module):
             attention_batch_size: int,
     ) -> SequenceAttentionOutput:
         device = x.device
+        dtype = x.dtype
         if batch is None:
             batch = torch.zeros(x.shape[0], dtype=torch.long, device=x.device)
         batch = batch[prot_mask]
@@ -189,7 +190,7 @@ class SequenceAttention(nn.Module):
             self.attention_scale,
             batch_size=attention_batch_size,
             device=device,
-        )
+        ).to(dtype)
         batched_mask = packed_sequence_mask[batch].unsqueeze(-1)  # (n, seq_len, 1)
         # Since sequence emb was padded, do not consider the padded parts for attention
         sequence_attention_weights = padded_sequence_softmax(
@@ -198,10 +199,10 @@ class SequenceAttention(nn.Module):
 
         new_features = torch.zeros_like(x)
         unpacked_sequence_attention_scores = torch.zeros(
-            x.shape[0], *sequence_attention_scores.shape[1:], device=sequence_attention_scores.device
+            x.shape[0], *sequence_attention_scores.shape[1:], device=device, dtype=dtype,
         )
         seq_aa_logits = torch.zeros(
-            x.shape[0], canonical_num_residues, device=sequence_attention_scores.device
+            x.shape[0], canonical_num_residues, device=device, dtype=dtype,
         )
         unpacked_sequence_attention_scores[prot_mask] = sequence_attention_scores
 
@@ -212,9 +213,9 @@ class SequenceAttention(nn.Module):
             batch_size=attention_batch_size,
             device=device,
         )
-        new_features[prot_mask] = self.ag(new_features_attention)
+        new_features[prot_mask] = self.ag(new_features_attention).to(dtype)
         seq_aa_logits[prot_mask] = self.seq_aa_head(new_features[prot_mask])
-        new_features = self.en(x + new_features / self.resid_scale)
+        new_features = self.en(x + new_features / self.resid_scale).to(dtype)
         return SequenceAttentionOutput(
             x=new_features,
             seq_aa_logits=seq_aa_logits,
