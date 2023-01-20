@@ -145,7 +145,6 @@ def main(parsed_args):
     pruned_hmms = [k for k in hmms if k[1].alphabet == alphabet]
     with pyhmmer.easel.SequenceFile(parsed_args.fasta_path, alphabet=alphabet, digital=True) as sf:
         digital_sequences = list(sf)
-    print(digital_sequences[0])
 
     pipeline = pyhmmer.plan7.Pipeline(
         alphabet,
