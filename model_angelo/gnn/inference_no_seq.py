@@ -7,14 +7,11 @@ import tqdm
 from loguru import logger
 
 from model_angelo.gnn.flood_fill import final_results_to_cif
-from model_angelo.utils.affine_utils import (
-    get_affine,
-    get_affine_rot,
-)
 from model_angelo.utils.gnn_inference_utils import init_empty_collate_results, get_inference_data, collate_nn_results, \
-    argmin_random, run_inference_on_data, init_protein_from_see_alpha, get_neighbour_idxs
+    argmin_random, run_inference_on_data, init_protein_from_see_alpha, get_neighbour_idxs, get_final_nn_results, \
+    get_base_parser
 from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
-from model_angelo.utils.misc_utils import abort_if_relion_abort, pickle_dump
+from model_angelo.utils.misc_utils import abort_if_relion_abort
 from model_angelo.utils.protein import (
     get_protein_from_file_path,
     load_protein_from_prot,
@@ -23,38 +20,6 @@ from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
 )
-
-
-def get_final_nn_results(collated_results):
-    final_results = {}
-
-    final_results["pred_positions"] = (
-        collated_results["pred_positions"] / collated_results["counts"][..., None]
-    )
-    final_results["pred_torsions"] = (
-        collated_results["pred_torsions"] / collated_results["counts"][..., None, None]
-    )
-    final_results["pred_affines"] = get_affine(
-        get_affine_rot(collated_results["pred_affines"]),
-        final_results["pred_positions"],
-    )
-    final_results["aa_logits"] = (
-        collated_results["aa_logits"] / collated_results["counts"][..., None]
-    )
-    final_results["local_confidence"] = collated_results["local_confidence"]
-    final_results["existence_mask"] = collated_results["existence_mask"]
-
-    final_results["raw_aa_entropy"] = (
-        final_results["aa_logits"].softmax(dim=-1).log().sum(dim=-1)
-    )
-    final_results["normalized_aa_entropy"] = final_results["raw_aa_entropy"].add(
-        -final_results["raw_aa_entropy"].min()
-    )
-    final_results["normalized_aa_entropy"] = final_results["normalized_aa_entropy"].div(
-        final_results["normalized_aa_entropy"].max()
-    )
-
-    return dict([(k, v.numpy()) for (k, v) in final_results.items()])
 
 
 def infer(args):
@@ -170,42 +135,6 @@ def infer(args):
 
 
 if __name__ == "__main__":
-    import argparse
-
-    from model_angelo.utils.grid import load_mrc
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--map", "--i", required=True, help="The path to the input map")
-    parser.add_argument(
-        "--struct", "--s", required=True, help="The path to the structure file"
-    )
-    parser.add_argument("--model-dir", required=True, help="Where the model at")
-    parser.add_argument("--output-dir", default=".", help="Where to save the results")
-    parser.add_argument("--device", default="cpu", help="Which device to run on")
-    parser.add_argument(
-        "--crop-length", type=int, default=200, help="How many points per batch"
-    )
-    parser.add_argument(
-        "--repeat-per-residue",
-        default=1,
-        type=int,
-        help="How many times to repeat per residue",
-    )
-    parser.add_argument(
-        "--refine",
-        action="store_true",
-        help="Run refinement program"
-    )
-    parser.add_argument(
-        "--batch-size",
-        default=1,
-        type=int,
-        help="How many batches to run in parallel"
-    )
-    parser.add_argument(
-        "--fp16",
-        action="store_true",
-        help="Use fp16 in inference"
-    )
+    parser = get_base_parser()
     args = parser.parse_args()
     infer(args)
