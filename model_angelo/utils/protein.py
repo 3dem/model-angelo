@@ -937,7 +937,6 @@ def make_up_fr_from_prot(prot: Protein):
     final_results["pred_affines"] = prot.rigidgroups_gt_frames[:, 0]
 
 
-
 if __name__ == "__main__":
     import argparse
 
