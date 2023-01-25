@@ -26,10 +26,18 @@ def get_all_atom_fit_report(
     input_cas = np.zeros_like(input_protein.atom_positions[:, 0])
     target_cas = np.zeros_like(target_protein.atom_positions[:, 0])
     # Protein parts
-    input_cas[input_protein.prot_mask] = input_protein.atom_positions[input_protein.prot_mask, atom_order["CA"]]
-    input_cas[~input_protein.prot_mask] = input_protein.atom_positions[~input_protein.prot_mask, atom_order["P"]]
-    target_cas[target_protein.prot_mask] = target_protein.atom_positions[target_protein.prot_mask, atom_order["CA"]]
-    target_cas[~target_protein.prot_mask] = target_protein.atom_positions[~target_protein.prot_mask, atom_order["P"]]
+    input_cas[input_protein.prot_mask] = input_protein.atom_positions[
+        input_protein.prot_mask, atom_order["CA"]
+    ]
+    input_cas[~input_protein.prot_mask] = input_protein.atom_positions[
+        ~input_protein.prot_mask, atom_order["P"]
+    ]
+    target_cas[target_protein.prot_mask] = target_protein.atom_positions[
+        target_protein.prot_mask, atom_order["CA"]
+    ]
+    target_cas[~target_protein.prot_mask] = target_protein.atom_positions[
+        ~target_protein.prot_mask, atom_order["P"]
+    ]
 
     target_correspondence, input_correspondence = get_correspondence(
         input_cas, target_cas, max_dist, verbose, two_rounds=two_rounds
@@ -65,7 +73,9 @@ def get_all_atom_fit_report(
     backbone_rms = np.sum(
         input_mask * target_mask * atomc_backbone_mask * distance
     ) / np.sum(input_mask * atomc_backbone_mask * target_mask)
-    ca_rms = np.sum((input_mask * target_mask * distance)[..., 1]) / np.sum((input_mask * target_mask)[..., 1])
+    ca_rms = np.sum((input_mask * target_mask * distance)[..., 1]) / np.sum(
+        (input_mask * target_mask)[..., 1]
+    )
 
     lddt_score = get_lddt(torch.Tensor(input_cas_cor), torch.Tensor(target_cas_cor))
     sequence_match = np.sum(
@@ -74,14 +84,18 @@ def get_all_atom_fit_report(
     ) / len(target_correspondence)
 
     if output_structure is not None:
-        new_bfactors = np.zeros_like(input_protein.b_factors[:,0])
+        new_bfactors = np.zeros_like(input_protein.b_factors[:, 0])
         correct_idxs = (
-                input_protein.aatype[input_correspondence] == target_protein.aatype[target_correspondence]
+            input_protein.aatype[input_correspondence]
+            == target_protein.aatype[target_correspondence]
         ).astype(np.float32)
         new_bfactors[input_correspondence] = 100 * correct_idxs
         chain_atom14_to_cif(
             [input_protein.aatype[c] for c in input_protein.chain_idx_to_residues],
-            [input_protein.atomc_positions[c] for c in input_protein.chain_idx_to_residues],
+            [
+                input_protein.atomc_positions[c]
+                for c in input_protein.chain_idx_to_residues
+            ],
             [input_protein.atomc_mask[c] for c in input_protein.chain_idx_to_residues],
             path_to_save=output_structure,
             bfactors=[new_bfactors[c] for c in input_protein.chain_idx_to_residues],
@@ -122,17 +136,16 @@ def add_args(parser):
     parser.add_argument(
         "--output-structure",
         help="If set, saves the sequence recall results to an mmCIF file, "
-             "B-factors of 100 correspond to correct classifications and "
-             "B-factors of 0 correspond to wrong classifications"
+        "B-factors of 100 correspond to correct classifications and "
+        "B-factors of 0 correspond to wrong classifications",
     )
     parser.add_argument(
-        "--csv-format", action="store_true", help="If set, writes results in comma separated format."
+        "--csv-format",
+        action="store_true",
+        help="If set, writes results in comma separated format.",
     )
     parser.add_argument(
-        "--name",
-        type=str,
-        default="",
-        help="Name of structure, to add to the csv"
+        "--name", type=str, default="", help="Name of structure, to add to the csv"
     )
     return parser
 
@@ -148,7 +161,14 @@ def main(parsed_args):
 
     predicted_protein = get_protein_from_file_path(parsed_args.predicted_structure)
     target_protein = get_protein_from_file_path(parsed_args.target_structure)
-    rmsd, ca_rms, lddt_score, recall, precision, sequence_match = get_all_atom_fit_report(
+    (
+        rmsd,
+        ca_rms,
+        lddt_score,
+        recall,
+        precision,
+        sequence_match,
+    ) = get_all_atom_fit_report(
         predicted_protein,
         target_protein,
         max_dist=parsed_args.max_dist,

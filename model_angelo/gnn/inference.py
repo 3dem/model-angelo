@@ -13,14 +13,27 @@ from model_angelo.utils.affine_utils import (
     get_affine_rot,
 )
 from model_angelo.utils.fasta_utils import fasta_to_unified_seq, is_valid_fasta_ending
-from model_angelo.utils.gnn_inference_utils import get_neighbour_idxs, init_empty_collate_results, get_inference_data, \
-    argmin_random, collate_nn_results, run_inference_on_data, init_protein_from_see_alpha, get_final_nn_results, \
-    get_base_parser
+from model_angelo.utils.gnn_inference_utils import (
+    get_neighbour_idxs,
+    init_empty_collate_results,
+    get_inference_data,
+    argmin_random,
+    collate_nn_results,
+    run_inference_on_data,
+    init_protein_from_see_alpha,
+    get_final_nn_results,
+    get_base_parser,
+)
 from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
-from model_angelo.utils.misc_utils import get_esm_model, abort_if_relion_abort, pickle_dump
+from model_angelo.utils.misc_utils import (
+    get_esm_model,
+    abort_if_relion_abort,
+    pickle_dump,
+)
 from model_angelo.utils.protein import (
     get_protein_from_file_path,
-    load_protein_from_prot, dump_protein_to_prot,
+    load_protein_from_prot,
+    dump_protein_to_prot,
 )
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
@@ -34,10 +47,7 @@ def infer(args):
 
     module = get_model_from_file(os.path.join(args.model_dir, "model.py"))
     step = checkpoint_load_latest(
-        args.model_dir,
-        torch.device("cpu"),
-        match_model=False,
-        model=module,
+        args.model_dir, torch.device("cpu"), match_model=False, model=module,
     )
     logger.info(f"Loaded module from step: {step}")
 
@@ -65,7 +75,9 @@ def infer(args):
                 if seq_file is None:
                     continue
                 if not is_valid_fasta_ending(seq_file):
-                    raise RuntimeError(f"File {seq_file} is not a supported file format.")
+                    raise RuntimeError(
+                        f"File {seq_file} is not a supported file format."
+                    )
             protein = init_protein_from_see_alpha(args.struct, args.protein_fasta)
         else:
             protein = get_protein_from_file_path(args.struct)
@@ -105,9 +117,7 @@ def infer(args):
     num_res = len(protein.rigidgroups_gt_frames)
 
     collated_results = init_empty_collate_results(
-        num_res,
-        protein.unified_seq_len,
-        device="cpu",
+        num_res, protein.unified_seq_len, device="cpu",
     )
 
     residues_left = num_res
@@ -120,10 +130,17 @@ def infer(args):
     init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
 
     while residues_left > 0:
-        idxs = argmin_random(collated_results["counts"], init_neighbours, args.batch_size)
-        data = get_inference_data(protein, grid_data, idxs, crop_length=args.crop_length)
+        idxs = argmin_random(
+            collated_results["counts"], init_neighbours, args.batch_size
+        )
+        data = get_inference_data(
+            protein, grid_data, idxs, crop_length=args.crop_length
+        )
         results = run_inference_on_data(
-            module, data, seq_attention_batch_size=args.seq_attention_batch_size, fp16=args.fp16,
+            module,
+            data,
+            seq_attention_batch_size=args.seq_attention_batch_size,
+            fp16=args.fp16,
         )
         for i in range(args.batch_size):
             collated_results, protein = collate_nn_results(
@@ -181,13 +198,22 @@ if __name__ == "__main__":
 
     parser = get_base_parser()
     parser.add_argument(
-        "--protein-fasta", "--pf", required=False, help="The path to the protein sequence file"
+        "--protein-fasta",
+        "--pf",
+        required=False,
+        help="The path to the protein sequence file",
     )
     parser.add_argument(
-        "--rna-fasta", "--rf", required=False, help="The path to the protein sequence file"
+        "--rna-fasta",
+        "--rf",
+        required=False,
+        help="The path to the protein sequence file",
     )
     parser.add_argument(
-        "--dna-fasta", "--df", required=False, help="The path to the protein sequence file"
+        "--dna-fasta",
+        "--df",
+        required=False,
+        help="The path to the protein sequence file",
     )
     parser.add_argument(
         "--esm-model",
@@ -210,7 +236,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--write-hmm-profiles",
         action="store_true",
-        help="Write HMM profiles, even though it is built with sequence."
+        help="Write HMM profiles, even though it is built with sequence.",
     )
     args = parser.parse_args()
     infer(args)

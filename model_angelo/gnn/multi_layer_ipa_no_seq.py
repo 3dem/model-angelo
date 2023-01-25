@@ -15,15 +15,15 @@ from model_angelo.utils.residue_constants import canonical_num_residues
 
 class MultiLayerSeparableIPANoSeq(nn.Module):
     def __init__(
-            self,
-            in_features: int,
-            hidden_features: int,
-            attention_heads: int = 8,
-            query_points: int = 8,
-            num_neighbours: int = 20,
-            num_layers: int = 8,
-            activation_class: nn.Module = nn.ReLU,
-            **cryo_attention_kwargs,
+        self,
+        in_features: int,
+        hidden_features: int,
+        attention_heads: int = 8,
+        query_points: int = 8,
+        num_neighbours: int = 20,
+        num_layers: int = 8,
+        activation_class: nn.Module = nn.ReLU,
+        **cryo_attention_kwargs,
     ) -> None:
         super().__init__()
         self.ifz = in_features
@@ -79,18 +79,14 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             nn.Linear(self.hfz, (canonical_num_residues * 5 + 3) * 2, bias=True),
-            Rearrange(
-                "n (f d) -> n f d",
-                f=canonical_num_residues * 5 + 3,
-                d=2,
-            ),
+            Rearrange("n (f d) -> n f d", f=canonical_num_residues * 5 + 3, d=2,),
         )
 
         self.main_aa_predictor = nn.Sequential(
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
-            nn.Linear(self.hfz, canonical_num_residues, bias=True)
+            nn.Linear(self.hfz, canonical_num_residues, bias=True),
         )
 
         self.aa_gate = LearnedGate()
@@ -112,19 +108,19 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
         self.init_training_record()
 
     def forward(
-            self,
-            prot_mask=None,
-            positions=None,
-            init_affine=None,
-            record_training=False,
-            run_iters=1,
-            **kwargs,
+        self,
+        prot_mask=None,
+        positions=None,
+        init_affine=None,
+        record_training=False,
+        run_iters=1,
+        **kwargs,
     ) -> GNNOutput:
         result = GNNOutput(
             positions=positions,
             prot_mask=prot_mask,
             init_affine=init_affine,
-            hidden_features=self.hfz
+            hidden_features=self.hfz,
         )
         self.init_training_record()
 
@@ -176,9 +172,7 @@ class MultiLayerSeparableIPANoSeq(nn.Module):
                         result["x"]
                     )
                     # Predict existence mask
-                    pred_existence_mask = self.existence_mask_predictor(
-                        result["x"]
-                    )
+                    pred_existence_mask = self.existence_mask_predictor(result["x"])
 
                     trunk_aa_logits = self.main_aa_predictor(result["x"])
                     aa_logits = self.aa_gate(cryo_aa_logits, trunk_aa_logits)

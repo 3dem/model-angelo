@@ -118,12 +118,7 @@ class MatchToSequence:
             is_nucleotide,
         )
 
-    def prune_chains(
-            self,
-            chains,
-            chain_prune_length=4,
-            aggressive_pruning=False
-    ):
+    def prune_chains(self, chains, chain_prune_length=4, aggressive_pruning=False):
         assertion_check(
             len(chains) == len(self.new_sequences),
             f"Chains: {len(chains)} not same size as sequences: {len(self.new_sequences)}",
@@ -143,30 +138,26 @@ class MatchToSequence:
         chains = [np.array(c) for c in chains]
         for chain_id in range(len(self.new_sequences)):
             if (
-                aggressive_pruning and
-                np.sum(self.exists_in_sequence_mask[chain_id] > 0.5)
-                < chain_prune_length and not self.is_nucleotide[chain_id]
+                aggressive_pruning
+                and np.sum(self.exists_in_sequence_mask[chain_id] > 0.5)
+                < chain_prune_length
+                and not self.is_nucleotide[chain_id]
             ) or (
-                not aggressive_pruning and
-                len(chains[chain_id]) < chain_prune_length
+                not aggressive_pruning and len(chains[chain_id]) < chain_prune_length
             ):
                 continue
-            if (
-                aggressive_pruning and
-                np.sum(self.exists_in_sequence_mask[chain_id] > 0.5)
-                < chain_prune_length
-                <= len(chains[chain_id])
-            ):
+            if aggressive_pruning and np.sum(
+                self.exists_in_sequence_mask[chain_id] > 0.5
+            ) < chain_prune_length <= len(chains[chain_id]):
                 # In this case, we keep the chain but mutate the residues to A
                 new_sequences.append(
-                    np.array([restype_3_to_index["U"]] * len(self.new_sequences[chain_id]), dtype=int)
+                    np.array(
+                        [restype_3_to_index["U"]] * len(self.new_sequences[chain_id]),
+                        dtype=int,
+                    )
                 )
-                residue_idxs.append(
-                    np.arange(len(self.new_sequences[chain_id]))
-                )
-                exists_in_sequence_mask.append(
-                    self.exists_in_sequence_mask[chain_id]
-                )
+                residue_idxs.append(np.arange(len(self.new_sequences[chain_id])))
+                exists_in_sequence_mask.append(self.exists_in_sequence_mask[chain_id])
                 new_chains.append(chains[chain_id])
 
             elif aggressive_pruning:
@@ -218,9 +209,7 @@ class MatchToSequence:
         return new_chains
 
     def remove_duplicates(
-        self,
-        chains,
-        ca_pos,
+        self, chains, ca_pos,
     ):
         kdtree = KDTree(ca_pos)
 

@@ -7,9 +7,17 @@ import tqdm
 from loguru import logger
 
 from model_angelo.gnn.flood_fill import final_results_to_cif
-from model_angelo.utils.gnn_inference_utils import init_empty_collate_results, get_inference_data, collate_nn_results, \
-    argmin_random, run_inference_on_data, init_protein_from_see_alpha, get_neighbour_idxs, get_final_nn_results, \
-    get_base_parser
+from model_angelo.utils.gnn_inference_utils import (
+    init_empty_collate_results,
+    get_inference_data,
+    collate_nn_results,
+    argmin_random,
+    run_inference_on_data,
+    init_protein_from_see_alpha,
+    get_neighbour_idxs,
+    get_final_nn_results,
+    get_base_parser,
+)
 from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
 from model_angelo.utils.misc_utils import abort_if_relion_abort
 from model_angelo.utils.protein import (
@@ -28,10 +36,7 @@ def infer(args):
 
     module = get_model_from_file(os.path.join(args.model_dir, "model.py"))
     step = checkpoint_load_latest(
-        args.model_dir,
-        torch.device("cpu"),
-        match_model=False,
-        model=module,
+        args.model_dir, torch.device("cpu"), match_model=False, model=module,
     )
     logger.info(f"Loaded module from step: {step}")
 
@@ -74,10 +79,7 @@ def infer(args):
 
     num_res = len(protein.rigidgroups_gt_frames)
 
-    collated_results = init_empty_collate_results(
-        num_res,
-        device="cpu",
-    )
+    collated_results = init_empty_collate_results(num_res, device="cpu",)
 
     residues_left = num_res
     total_steps = num_res * args.repeat_per_residue
@@ -87,10 +89,14 @@ def infer(args):
 
     # Get an initial set of pointers to neighbours for more efficient inference
     init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
-    
+
     while residues_left > 0:
-        idxs = argmin_random(collated_results["counts"], init_neighbours, args.batch_size)
-        data = get_inference_data(protein, grid_data, idxs, crop_length=args.crop_length)
+        idxs = argmin_random(
+            collated_results["counts"], init_neighbours, args.batch_size
+        )
+        data = get_inference_data(
+            protein, grid_data, idxs, crop_length=args.crop_length
+        )
         results = run_inference_on_data(module, data, fp16=args.fp16)
         for i in range(args.batch_size):
             collated_results, protein = collate_nn_results(

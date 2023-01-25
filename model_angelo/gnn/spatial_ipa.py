@@ -12,14 +12,14 @@ from model_angelo.utils.affine_utils import affine_mul_vecs
 
 class SpatialIPA(nn.Module):
     def __init__(
-            self,
-            in_features: int,
-            neighbour_vector_embedding_dim: int = 64,
-            attention_heads: int = 8,
-            query_points: int = 4,
-            num_neighbours: int = 20,
-            checkpoint: bool = False,  # Note, checkpointing is buggy currently for this class
-            **kwargs,
+        self,
+        in_features: int,
+        neighbour_vector_embedding_dim: int = 64,
+        attention_heads: int = 8,
+        query_points: int = 4,
+        num_neighbours: int = 20,
+        checkpoint: bool = False,  # Note, checkpointing is buggy currently for this class
+        **kwargs,
     ):
         super().__init__()
         self.ifz = in_features
@@ -80,7 +80,9 @@ class SpatialIPA(nn.Module):
 
         self.forward = self.forward_checkpoint if checkpoint else self.forward_normal
 
-    def forward_normal(self, x, affines, prot_mask, edge_index=None, batch=None, **kwargs):
+    def forward_normal(
+        self, x, affines, prot_mask, edge_index=None, batch=None, **kwargs
+    ):
         """Calculates point wise attention to each query point and updates features
 
         Args:
@@ -115,17 +117,18 @@ class SpatialIPA(nn.Module):
             dim=-1
         )  # N kz ahz
 
-        attention_weights = torch.softmax(
-            loc_attention_scores,
-            dim=1,  # N kz ahz
-        ).to(dtype)
+        attention_weights = torch.softmax(loc_attention_scores, dim=1,).to(  # N kz ahz
+            dtype
+        )
         new_features_loc = torch.einsum("nkaqi,nka->naqi", loc_value, attention_weights)
 
         new_features = self.ag(new_features_loc).to(dtype)  # Back to (N, ifz)
         new_features = self.en(x + new_features / math.sqrt(2)).to(dtype)
         return new_features, bde_out.edge_index
 
-    def forward_checkpoint(self, x, affines, prot_mask, edge_index=None, batch=None, **kwargs):
+    def forward_checkpoint(
+        self, x, affines, prot_mask, edge_index=None, batch=None, **kwargs
+    ):
         return torch.utils.checkpoint.checkpoint(
             self.forward_normal,
             x,

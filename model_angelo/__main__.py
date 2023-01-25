@@ -11,8 +11,7 @@ def main():
     import model_angelo
 
     parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawTextHelpFormatter,
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "--version",
@@ -36,9 +35,7 @@ def main():
         "refine": model_angelo.apps.refine,
     }
 
-    subparsers = parser.add_subparsers(
-        title="Choose a module",
-    )
+    subparsers = parser.add_subparsers(title="Choose a module",)
     subparsers.required = "True"
 
     for key in modules:

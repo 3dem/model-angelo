@@ -92,11 +92,7 @@ class MultiLayerSeparableIPA(nn.Module):
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             FcResBlock(self.hfz, self.hfz, activation_class=activation_class),
             nn.Linear(self.hfz, (canonical_num_residues * 5 + 3) * 2, bias=True),
-            Rearrange(
-                "n (f d) -> n f d",
-                f=canonical_num_residues * 5 + 3,
-                d=2,
-            ),
+            Rearrange("n (f d) -> n f d", f=canonical_num_residues * 5 + 3, d=2,),
         )
 
         self.local_confidence_predictor = nn.Sequential(
@@ -128,7 +124,10 @@ class MultiLayerSeparableIPA(nn.Module):
         **kwargs,
     ) -> GNNOutput:
         assertion_check(
-            sequence is not None and sequence_mask is not None and positions is not None and prot_mask is not None
+            sequence is not None
+            and sequence_mask is not None
+            and positions is not None
+            and prot_mask is not None
         )
         dtype = positions.dtype
         result = GNNOutput(
@@ -195,9 +194,15 @@ class MultiLayerSeparableIPA(nn.Module):
                         record_training=record_training,
                     )
                     # Predict aa here
-                    aa_contrib = torch.ones(
-                        *cryo_aa_logits.shape[:-1], 1, device=cryo_aa_logits.device, dtype=dtype,
-                    ) + prot_mask.to(dtype)[..., None]
+                    aa_contrib = (
+                        torch.ones(
+                            *cryo_aa_logits.shape[:-1],
+                            1,
+                            device=cryo_aa_logits.device,
+                            dtype=dtype,
+                        )
+                        + prot_mask.to(dtype)[..., None]
+                    )
                     cryo_aa_logits = (cryo_aa_logits + seq_aa_logits) / aa_contrib
                     # Predict backbone and N,CA,C atoms
                     ncac, new_affine = self.backbone_update_fc(

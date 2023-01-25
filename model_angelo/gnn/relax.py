@@ -63,11 +63,7 @@ def relax(input_path, output_path, device="cpu", num_iterations: int = 500):
         )
         clash_loss = (
             kdtree_between_residue_clash_loss(
-                atom14_pos,
-                atom14_mask,
-                atom14_atom_radius,
-                residue_index,
-                batch,
+                atom14_pos, atom14_mask, atom14_atom_radius, residue_index, batch,
             )["per_atom_clash_loss"]
             .sum(dim=-1)
             .mul(bfactor)

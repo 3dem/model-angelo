@@ -5,8 +5,13 @@ import numpy as np
 import torch
 
 from model_angelo.utils.misc_utils import assertion_check
-from model_angelo.utils.residue_constants import restype_1_order_to_hmm, index_to_hmm_restype_1, \
-    num_prot, restype_1_to_index, restype_3_to_index
+from model_angelo.utils.residue_constants import (
+    restype_1_order_to_hmm,
+    index_to_hmm_restype_1,
+    num_prot,
+    restype_1_to_index,
+    restype_3_to_index,
+)
 
 from pyhmmer.plan7 import HMM, HMMFile
 import os
@@ -17,11 +22,26 @@ def negative_log_prob_to_hmm_line(nlp: Iterable) -> str:
 
 
 fixed_insertion_log_probs = {
-    "A": 2.54091, "C": 4.18910, "D": 2.92766, "E": 2.70561,
-    "F": 3.22625, "G": 2.66633, "H": 3.77575, "I": 2.83006,
-    "K": 2.82275, "L": 2.33953, "M": 3.73926, "N": 3.18354,
-    "P": 3.03052, "Q": 3.22984, "R": 2.91696, "S": 2.68331,
-    "T": 2.91750, "V": 2.69798, "W": 4.47296, "Y": 3.49288,
+    "A": 2.54091,
+    "C": 4.18910,
+    "D": 2.92766,
+    "E": 2.70561,
+    "F": 3.22625,
+    "G": 2.66633,
+    "H": 3.77575,
+    "I": 2.83006,
+    "K": 2.82275,
+    "L": 2.33953,
+    "M": 3.73926,
+    "N": 3.18354,
+    "P": 3.03052,
+    "Q": 3.22984,
+    "R": 2.91696,
+    "S": 2.68331,
+    "T": 2.91750,
+    "V": 2.69798,
+    "W": 4.47296,
+    "Y": 3.49288,
 }
 
 amino_preamble = """STATS LOCAL MSV       -9.9014  0.70957
@@ -53,11 +73,15 @@ dna_preamble = """STATS LOCAL MSV      -14.8205  0.69414
                           1.38629  1.38629  1.38629  1.38629
                           0.57544  1.78073  1.31293  1.75577  0.18968  0.00000        *
                """
-alphabet_to_preamble = {"amino": amino_preamble, "RNA": rna_preamble, "DNA": dna_preamble}
+alphabet_to_preamble = {
+    "amino": amino_preamble,
+    "RNA": rna_preamble,
+    "DNA": dna_preamble,
+}
 alphabet_to_slice = {
-    "amino": np.s_[..., :num_prot], 
-    "DNA": np.s_[..., num_prot:num_prot+4],
-    "RNA": np.s_[..., num_prot+4:],
+    "amino": np.s_[..., :num_prot],
+    "DNA": np.s_[..., num_prot : num_prot + 4],
+    "RNA": np.s_[..., num_prot + 4 :],
     "PP": np.s_[..., num_prot:],
 }
 alphabet_to_index = {
@@ -81,7 +105,7 @@ def aa_log_probs_to_hmm_file(
     """
     assertion_check(
         len(str(len(aa_log_probs))) <= 7,
-        f"Cannot convert chain to HMM profile as it is too long"
+        f"Cannot convert chain to HMM profile as it is too long",
     )
     if output_path is None:
         output_path = name + ".hmm"
@@ -103,10 +127,12 @@ def aa_log_probs_to_hmm_file(
             """
         )
 
-        negative_log_prob = - aa_log_probs
+        negative_log_prob = -aa_log_probs
         negative_log_prob = negative_log_prob[alphabet_to_slice[alphabet_type]]
         if alphabet_type == "amino":
-            negative_log_prob = negative_log_prob[:, restype_1_order_to_hmm]  # Reorder to HMM order
+            negative_log_prob = negative_log_prob[
+                :, restype_1_order_to_hmm
+            ]  # Reorder to HMM order
             index_to_str = index_to_hmm_restype_1
         elif alphabet_type == "RNA":
             index_to_str = ["A", "C", "G", "U"]
@@ -121,7 +147,9 @@ def aa_log_probs_to_hmm_file(
             file_handle.write(aa_prob_str)
             # Inserts
             file_handle.write("        ")
-            file_handle.write(negative_log_prob_to_hmm_line(negative_log_prob[res_index]) + "\n")
+            file_handle.write(
+                negative_log_prob_to_hmm_line(negative_log_prob[res_index]) + "\n"
+            )
             # Transitions
             mm = max(confidence[res_index] - delta, gamma)
             file_handle.write("        ")
@@ -149,7 +177,9 @@ def aa_logits_to_hmm(
     alphabet_type: str = "amino",
 ) -> HMM:
     processed_aa_logits = np.ones_like(aa_logits) * -100
-    processed_aa_logits[alphabet_to_slice[alphabet_type]] = aa_logits[alphabet_to_slice[alphabet_type]]
+    processed_aa_logits[alphabet_to_slice[alphabet_type]] = aa_logits[
+        alphabet_to_slice[alphabet_type]
+    ]
     if alphabet_type != "PP":
         aa_log_probs = torch.from_numpy(processed_aa_logits).log_softmax(dim=-1).numpy()
     else:
@@ -160,17 +190,25 @@ def aa_logits_to_hmm(
         exp_logits = np.exp(aa_logits - c)
         exp_logits_gather = np.zeros_like(exp_logits) + np.exp(m - c)
         exp_logits_gather[..., restype_3_to_index["G"]] = exp_logits[
-            ..., 
-            [restype_3_to_index["DA"], restype_3_to_index["DG"], restype_3_to_index["A"], restype_3_to_index["G"]]
+            ...,
+            [
+                restype_3_to_index["DA"],
+                restype_3_to_index["DG"],
+                restype_3_to_index["A"],
+                restype_3_to_index["G"],
+            ],
         ].sum(axis=-1)
         exp_logits_gather[..., restype_3_to_index["C"]] = exp_logits[
-            ..., 
-            [restype_3_to_index["DC"], restype_3_to_index["DT"], restype_3_to_index["C"], restype_3_to_index["U"]]
+            ...,
+            [
+                restype_3_to_index["DC"],
+                restype_3_to_index["DT"],
+                restype_3_to_index["C"],
+                restype_3_to_index["U"],
+            ],
         ].sum(axis=-1)
         aa_logits_gather = np.log(exp_logits_gather)
-        logsumexp = np.log(
-            exp_logits_gather.sum(axis=-1, keepdims=True)
-        )
+        logsumexp = np.log(exp_logits_gather.sum(axis=-1, keepdims=True))
         aa_log_probs = aa_logits_gather - logsumexp
 
     tmp_path = os.path.join(base_dir, f"model_angelo_temp.hmm")

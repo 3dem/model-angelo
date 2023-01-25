@@ -25,10 +25,10 @@ def download_pdb_entry_fasta_file(pdb_entry_name, output_dir):
 
 def is_valid_fasta_ending(fasta_path: str) -> bool:
     return (
-        fasta_path.endswith(".fasta") or
-        fasta_path.endswith(".fa") or
-        fasta_path.endswith(".faa") or
-        fasta_path.endswith(".mpfa")
+        fasta_path.endswith(".fasta")
+        or fasta_path.endswith(".fa")
+        or fasta_path.endswith(".faa")
+        or fasta_path.endswith(".mpfa")
     )
 
 
@@ -43,7 +43,9 @@ def read_fasta(fasta_path, auth_chains=True):
             sequence_names.append("unknown")
         if len(desc) > 1:
             chains = desc[1].split(",")
-            chains = [x.replace("Chains", "").replace("Chain", "").strip() for x in chains]
+            chains = [
+                x.replace("Chains", "").replace("Chain", "").strip() for x in chains
+            ]
             if auth_chains:
                 for i in range(len(chains)):
                     if "auth" in chains[i]:
@@ -69,7 +71,9 @@ def filter_small_sequences(
     filtered_sequences, filtered_sequence_names = [], []
     for sequence, sequence_name in zip(fasta_sequences, sequence_names):
         filtered_seq = FASTASequence(
-            seq=remove_non_residue(sequence.seq), rep=sequence.seq, chains=sequence.chains
+            seq=remove_non_residue(sequence.seq),
+            rep=sequence.seq,
+            chains=sequence.chains,
         )
         if len(filtered_seq.seq) > 2:
             filtered_sequences.append(filtered_seq)
@@ -78,15 +82,12 @@ def filter_small_sequences(
 
 
 def filter_nucleotide_sequences(
-    fasta_sequences: List[FASTASequence],
-    sequence_names: List[str],
+    fasta_sequences: List[FASTASequence], sequence_names: List[str],
 ):
     filtered_sequences, filtered_sequence_names = [], []
     for sequence, sequence_name in zip(fasta_sequences, sequence_names):
         filtered_seq = FASTASequence(
-            seq=sequence.seq,
-            rep=sequence_name,
-            chains=sequence.chains,
+            seq=sequence.seq, rep=sequence_name, chains=sequence.chains,
         )
         if len(remove_nucleotides(sequence.seq)) > 0:
             filtered_sequences.append(filtered_seq)
@@ -198,14 +199,15 @@ def unified_seq_to_fasta(unified_seq) -> List[FASTASequence]:
 
 
 def nuc_sequence_to_purpyr(sequence: str) -> str:
-    return sequence\
-        .replace("A", "G")\
-        .replace("U", "C")\
-        .replace("T", "C")\
-        .replace("DA", "G")\
-        .replace("DG", "G")\
-        .replace("DC", "C")\
+    return (
+        sequence.replace("A", "G")
+        .replace("U", "C")
+        .replace("T", "C")
+        .replace("DA", "G")
+        .replace("DG", "G")
+        .replace("DC", "C")
         .replace("DT", "C")
+    )
 
 
 def trim_dots(msa: str) -> str:

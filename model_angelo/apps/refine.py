@@ -20,15 +20,20 @@ import torch
 
 from model_angelo.data.standardize_mrc import standardize_mrc
 from model_angelo.gnn.inference import infer as gnn_infer
-from model_angelo.utils.misc_utils import setup_logger, write_relion_job_exit_status, filter_useless_warnings, Args, \
-    abort_if_relion_abort
+from model_angelo.utils.misc_utils import (
+    setup_logger,
+    write_relion_job_exit_status,
+    filter_useless_warnings,
+    Args,
+    abort_if_relion_abort,
+)
 from model_angelo.utils.torch_utils import download_and_install_model, get_device_name
 
 
 def add_args(parser):
     main_args = parser.add_argument_group(
         "Main arguments",
-        description="These are the only arguments a typical user will need."
+        description="These are the only arguments a typical user will need.",
     )
     main_args.add_argument(
         "--input-structure",
@@ -39,12 +44,7 @@ def add_args(parser):
         required=True,
     )
     main_args.add_argument(
-        "--volume-path",
-        "-v",
-        "--v",
-        help="input volume",
-        type=str,
-        required=True
+        "--volume-path", "-v", "--v", help="input volume", type=str, required=True
     )
     main_args.add_argument(
         "--output-dir",
@@ -56,29 +56,28 @@ def add_args(parser):
     )
 
     additional_args = parser.add_argument_group(
-        "Additional arguments",
-        description="These are sometimes useful."
+        "Additional arguments", description="These are sometimes useful."
     )
     additional_args.add_argument(
         "--write-hmm-profiles",
         "-w",
         "--w",
         action="store_true",
-        help="Write HMM profiles for the chains."
+        help="Write HMM profiles for the chains.",
     )
     additional_args.add_argument(
         "--device",
         "-d",
         "--d",
         help="compute device, pick one of {cpu, gpu_number}. "
-             "Default set to find an available GPU.",
+        "Default set to find an available GPU.",
         type=str,
         default=None,
     )
 
     advanced_args = parser.add_argument_group(
         "Advanced arguments",
-        description="These should *not* be changed unless the user is aware of what they do."
+        description="These should *not* be changed unless the user is aware of what they do.",
     )
     advanced_args.add_argument(
         "--config-path", "-c", "--c", help="config file", type=str, default=None
@@ -93,7 +92,7 @@ def add_args(parser):
         "--model-bundle-path",
         type=str,
         default=None,
-        help="Inference model bundle path. If this is set, --model-bundle-name is not used."
+        help="Inference model bundle path. If this is set, --model-bundle-name is not used.",
     )
 
     # Below are RELION arguments, make sure to always add help=argparse.SUPPRESS
@@ -108,25 +107,26 @@ def add_args(parser):
     return parser
 
 
-
 def main(parsed_args):
     logger = setup_logger(os.path.join(parsed_args.output_dir, "model_angelo.log"))
     with logger.catch(
-            message="Error in ModelAngelo",
-            onerror=lambda _: write_relion_job_exit_status(
-                parsed_args.output_dir,
-                "FAILURE",
-                pipeline_control=parsed_args.pipeline_control,
-            )
+        message="Error in ModelAngelo",
+        onerror=lambda _: write_relion_job_exit_status(
+            parsed_args.output_dir,
+            "FAILURE",
+            pipeline_control=parsed_args.pipeline_control,
+        ),
     ):
         filter_useless_warnings()
 
         parsed_args.device = get_device_name(parsed_args.device)
         if parsed_args.model_bundle_path is None:
-            model_bundle_path = download_and_install_model(parsed_args.model_bundle_name)
+            model_bundle_path = download_and_install_model(
+                parsed_args.model_bundle_name
+            )
         else:
             model_bundle_path = parsed_args.model_bundle_path
-        
+
         if parsed_args.config_path is None:
             config_path = os.path.join(model_bundle_path, "config.json")
         else:
@@ -164,7 +164,7 @@ def main(parsed_args):
 
         # Returns a list
         assert (
-                len(standarized_mrc_path) > 0
+            len(standarized_mrc_path) > 0
         ), f"standardize_mrc did not get any inputs: {standardize_mrc_args.input_path}"
         standarized_mrc_path = standarized_mrc_path[0]
 
@@ -239,8 +239,7 @@ def main(parsed_args):
 
     if __name__ == "__main__":
         parser = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description=__doc__,
+            formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__,
         )
         parsed_args = add_args(parser).parse_args()
         main(parsed_args)

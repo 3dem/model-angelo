@@ -50,8 +50,7 @@ class CryoAttention(nn.Module):
         )
 
         self.ag = nn.Sequential(
-            nn.Linear(self.ahz * self.ifz * 2, self.ifz, bias=False),
-            nn.Dropout(p=0.5),
+            nn.Linear(self.ahz * self.ifz * 2, self.ifz, bias=False), nn.Dropout(p=0.5),
         )
         self.en = nn.LayerNorm(self.ifz)
 
@@ -106,19 +105,11 @@ class CryoAttention(nn.Module):
         )
         self.cryo_q = nn.Sequential(
             nn.Linear(self.ifz + self.nvz, self.ahz * self.ifz, bias=False),
-            Rearrange(
-                "n (ahz ifz) -> n ahz ifz",
-                ahz=self.ahz,
-                ifz=self.ifz,
-            ),
+            Rearrange("n (ahz ifz) -> n ahz ifz", ahz=self.ahz, ifz=self.ifz,),
         )
         self.cryo_v = nn.Sequential(
             nn.Linear(self.ifz + self.nvz, self.ahz * self.ifz, bias=False),
-            Rearrange(
-                "n (ahz ifz) -> n ahz ifz",
-                ahz=self.ahz,
-                ifz=self.ifz,
-            ),
+            Rearrange("n (ahz ifz) -> n ahz ifz", ahz=self.ahz, ifz=self.ifz,),
         )
 
         self.cryo_edge_prediction_head = nn.Sequential(
@@ -205,14 +196,15 @@ class CryoAttention(nn.Module):
         cryo_vectors_key = self.cryo_vectors_k(
             cryo_vectors_rec.requires_grad_()
         )  # N kz ahz ifz
-        cryo_vectors_value = self.cryo_v(bde_out.x_ne)[bde_out.edge_index]  # N kz ahz ifz
+        cryo_vectors_value = self.cryo_v(bde_out.x_ne)[
+            bde_out.edge_index
+        ]  # N kz ahz ifz
         cryo_vectors_attention_scores = (
             torch.einsum("nai,nkai->nka", cryo_vectors_query, cryo_vectors_key)
             / self.attention_scale
         )
         attention_weights = torch.softmax(
-            cryo_vectors_attention_scores,
-            dim=1,  # N kz ahz
+            cryo_vectors_attention_scores, dim=1,  # N kz ahz
         ).to(dtype)
         new_features_cryo_vectors = torch.einsum(
             "nkai,nka->nai", cryo_vectors_value, attention_weights
@@ -262,11 +254,7 @@ class CryoAttention(nn.Module):
         new_features_cryo_points = self.cryo_point_v(cryo_points_cube.requires_grad_())
         cryo_aa_logits = self.cryo_point_aa_head(new_features_cryo_points)
         new_features_attention = torch.cat(
-            (
-                new_features_cryo_vectors,
-                new_features_cryo_points,
-            ),
-            dim=-1,
+            (new_features_cryo_vectors, new_features_cryo_points,), dim=-1,
         )  # N (ahz * ifz) * 2
         new_features = self.ag(new_features_attention)  # Back to (N, ifz)
         new_features = self.en(x + new_features / math.sqrt(2)).to(dtype)

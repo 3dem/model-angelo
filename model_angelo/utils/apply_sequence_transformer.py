@@ -71,10 +71,7 @@ def empty_transformer_results(
 
 
 def process_transformer_result(
-    result: Dict,
-    str_length: int,
-    batch_idx: int = 0,
-    seq_name: str = None,
+    result: Dict, str_length: int, batch_idx: int = 0, seq_name: str = None,
 ):
     processed_result = {}
     if seq_name is not None:
@@ -148,9 +145,7 @@ def run_transformer_on_fasta(
     # TODO make this more efficient with proper batching
     chains, sequence_names = filter_small_sequences(raw_chains, sequence_names)
     chains, updated_sequence_names, old_to_new_sequence = crop_long_chains(
-        chains,
-        sequence_names,
-        max_chain_length=max_chain_length,
+        chains, sequence_names, max_chain_length=max_chain_length,
     )
 
     batch_results = []

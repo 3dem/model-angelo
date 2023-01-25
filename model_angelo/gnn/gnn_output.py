@@ -34,8 +34,7 @@ class GNNOutput:
         )
 
     def update(
-        self,
-        **kwargs,
+        self, **kwargs,
     ):
         for key, value in kwargs.items():
             if key in self.result_dict:
@@ -61,7 +60,10 @@ class GNNOutput:
 
         if positions is not None:
             self.result_dict["x"] = torch.zeros(
-                positions.shape[0], hidden_features, device=positions.device, dtype=dtype,
+                positions.shape[0],
+                hidden_features,
+                device=positions.device,
+                dtype=dtype,
             )
             self.result_dict["x"][..., -1] += prot_mask.to(dtype)
             self.result_dict["x"].requires_grad_()

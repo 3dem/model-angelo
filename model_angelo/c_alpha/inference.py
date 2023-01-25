@@ -27,10 +27,7 @@ from model_angelo.utils.torch_utils import get_model_from_file
 
 
 def grid_to_points(
-    grid,
-    threshold,
-    neighbour_distance_threshold,
-    prune_distance=1.1,
+    grid, threshold, neighbour_distance_threshold, prune_distance=1.1,
 ):
     lattice = np.flip(get_lattice_meshgrid_np(grid.shape[-1], no_shift=True), -1)
 
@@ -221,10 +218,7 @@ def infer(args):
 
     prediction_start_time = time.time()
     pbar = tqdm.tqdm(
-        total=len(coordinates_to_infer),
-        file=sys.stdout,
-        position=0,
-        leave=True,
+        total=len(coordinates_to_infer), file=sys.stdout, position=0, leave=True,
     )
     with torch.no_grad():
         while i < len(coordinates_to_infer):
@@ -258,11 +252,7 @@ def infer(args):
                 ]
                 net_output_batch = torch.sigmoid(
                     net_output[
-                        j,
-                        ...,
-                        crop : bz - crop,
-                        crop : bz - crop,
-                        crop : bz - crop,
+                        j, ..., crop : bz - crop, crop : bz - crop, crop : bz - crop,
                     ]
                 )
                 output[batch_slice] += net_output_batch.cpu()
@@ -303,8 +293,7 @@ def infer(args):
     )
     output_file_path = os.path.join(args.output_path, "see_alpha_output_ca.cif")
     points_to_pdb(
-        output_file_path,
-        voxel_size * output_ca_points,
+        output_file_path, voxel_size * output_ca_points,
     )
 
     if args.do_nucleotides:
@@ -349,8 +338,7 @@ def infer(args):
         )
     if args.save_real_coordinates:
         points_to_pdb(
-            os.path.join(args.output_path, "real_points.cif"),
-            voxel_size * cas,
+            os.path.join(args.output_path, "real_points.cif"), voxel_size * cas,
         )
     if args.save_output_grid:
         for i, name in enumerate(["ca_output_grid", "p_output_grid"]):
@@ -387,15 +375,10 @@ if __name__ == "__main__":
         help="Where to save the output and log file",
     )
     parser.add_argument(
-        "--mask-path",
-        default=None,
-        help="Solvent mask to apply to output",
+        "--mask-path", default=None, help="Solvent mask to apply to output",
     )
     parser.add_argument(
-        "--bfactor",
-        type=float,
-        default=0,
-        help="Bfactor to apply to the map",
+        "--bfactor", type=float, default=0, help="Bfactor to apply to the map",
     )
     parser.add_argument(
         "--device",
@@ -449,6 +432,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    infer(
-        args,
-    )
+    infer(args,)

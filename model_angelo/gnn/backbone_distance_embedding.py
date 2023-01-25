@@ -55,7 +55,9 @@ class BackboneDistanceEmbedding(nn.Module):
         neighbour_positions = vecs_to_local_affine(
             affines, positions[edge_index]
         )  # N kz 3
-        neighbour_distances = self.distance_encoding(neighbour_positions.norm(dim=-1))  # N kz pd
+        neighbour_distances = self.distance_encoding(
+            neighbour_positions.norm(dim=-1)
+        )  # N kz pd
         pseudo_aatypes = np.zeros(len(affines), dtype=np.int32)
         pseudo_aatypes[(~prot_mask).cpu().numpy()] = num_prot
         ncac = frames_and_literature_positions_to_atom3_pos(
@@ -79,12 +81,7 @@ class BackboneDistanceEmbedding(nn.Module):
 
         encoding_distances = self.distance_encoding(
             torch.cat(
-                (
-                    ca_to_ncac_distances,
-                    n_to_c_distances,
-                    c_to_n_distances,
-                ),
-                dim=-1,
+                (ca_to_ncac_distances, n_to_c_distances, c_to_n_distances,), dim=-1,
             )
         ).flatten(
             1

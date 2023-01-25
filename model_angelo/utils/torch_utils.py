@@ -232,10 +232,7 @@ def no_weight_decay_groups(network: nn.Module) -> List[Dict]:
 
     return [
         {"params": weight_decay},
-        {
-            "params": no_weight_decay,
-            "weight_decay": 0,
-        },
+        {"params": no_weight_decay, "weight_decay": 0,},
     ]
 
 
@@ -271,8 +268,9 @@ def binary_accuracy(out, targets, threshold=0.5):
 
 @torch.no_grad()
 def binary_accuracy_report(out, targets, threshold=0.5):
-    pred, targets = torch.where(out.reshape(-1, 1) < threshold, 0, 1), torch.where(
-        targets.reshape(-1, 1) < threshold, 0, 1
+    pred, targets = (
+        torch.where(out.reshape(-1, 1) < threshold, 0, 1),
+        torch.where(targets.reshape(-1, 1) < threshold, 0, 1),
     )
     acc = torch.eq(pred, targets).float().mean().item()
     precision = torch.eq(pred[pred == 1], targets[pred == 1]).float().mean().item()
@@ -280,10 +278,7 @@ def binary_accuracy_report(out, targets, threshold=0.5):
     return acc, precision, recall
 
 
-def get_batch_slices(
-    num_total: int,
-    batch_size: int,
-) -> List[List[int]]:
+def get_batch_slices(num_total: int, batch_size: int,) -> List[List[int]]:
     if num_total <= batch_size:
         return [list(range(num_total))]
 
@@ -311,10 +306,7 @@ def get_batches_to_idx(idx_to_batches: torch.Tensor) -> List[torch.Tensor]:
 
 
 def linear_warmup_exponential_decay(
-    num_warmup_steps=2000,
-    decay_rate=0.9,
-    decay_ratio=30000,
-    min_lr=0.0,
+    num_warmup_steps=2000, decay_rate=0.9, decay_ratio=30000, min_lr=0.0,
 ):
     def learning_rate_fn(step):
         if step < num_warmup_steps:
@@ -441,21 +433,16 @@ def download_and_install_model(bundle_name: str) -> str:
         "small_gpu": "https://cloud.mrc-lmb.cam.ac.uk/s/MiTQZfm2o2QDGb5/download/small_gpu.zip",
     }
     dest = os.path.join(
-        torch.hub.get_dir(),
-        "checkpoints",
-        "model_angelo_v1.0",
-        bundle_name
+        torch.hub.get_dir(), "checkpoints", "model_angelo_v1.0", bundle_name
     )
     if os.path.isfile(os.path.join(dest, "success.txt")):
         return dest
 
     print(f"Setting up bundle with name: {bundle_name} for the first time.")
     import zipfile
+
     os.makedirs(os.path.split(dest)[0], exist_ok=True)
-    torch.hub.download_url_to_file(
-        bundle_name_to_link[bundle_name],
-        dest + ".zip"
-    )
+    torch.hub.download_url_to_file(bundle_name_to_link[bundle_name], dest + ".zip")
 
     with zipfile.ZipFile(dest + ".zip", "r") as zip_object:
         zip_object.extractall(path=os.path.split(dest)[0])
@@ -474,7 +461,10 @@ def check_permissions_exceed(file_name: str, permissions) -> bool:
     file_permissions = oct(os.stat(file_name).st_mode)
     permissions_str = oct(permissions)
 
-    if len(file_permissions) < len(permissions_str) or min(len(file_permissions), len(permissions_str)) < 3:
+    if (
+        len(file_permissions) < len(permissions_str)
+        or min(len(file_permissions), len(permissions_str)) < 3
+    ):
         return False
 
     file_permissions, permissions_str = file_permissions[-3:], permissions_str[-3:]
@@ -485,21 +475,26 @@ def check_permissions_exceed(file_name: str, permissions) -> bool:
 
 
 def download_and_install_esm_model(esm_model_name: str) -> str:
-    permissions = stat.S_IROTH | stat.S_IXOTH | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+    permissions = (
+        stat.S_IROTH
+        | stat.S_IXOTH
+        | stat.S_IRUSR
+        | stat.S_IXUSR
+        | stat.S_IRGRP
+        | stat.S_IXGRP
+    )
     dest_model = os.path.join(
-        torch.hub.get_dir(),
-        "checkpoints",
-        esm_model_name + ".pt"
+        torch.hub.get_dir(), "checkpoints", esm_model_name + ".pt"
     )
     dest_regr = os.path.join(
-        torch.hub.get_dir(),
-        "checkpoints",
-        esm_model_name + "-contact-regression.pt"
+        torch.hub.get_dir(), "checkpoints", esm_model_name + "-contact-regression.pt"
     )
     model_url = f"https://dl.fbaipublicfiles.com/fair-esm/models/{esm_model_name}.pt"
     regr_url = f"https://dl.fbaipublicfiles.com/fair-esm/regression/{esm_model_name}-contact-regression.pt"
     if not os.path.isfile(dest_model):
-        print(f"Setting up language model bundle with name: {esm_model_name} for the first time.")
+        print(
+            f"Setting up language model bundle with name: {esm_model_name} for the first time."
+        )
         torch.hub.download_url_to_file(model_url, dest_model)
     if not os.path.isfile(dest_regr):
         torch.hub.download_url_to_file(regr_url, dest_regr)

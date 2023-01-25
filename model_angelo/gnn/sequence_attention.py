@@ -76,27 +76,15 @@ class SequenceAttention(nn.Module):
 
         self.q = nn.Sequential(
             nn.Linear(self.ifz, self.ahz * self.afz, bias=False),
-            Rearrange(
-                "n (ahz afz) -> n ahz afz",
-                ahz=self.ahz,
-                afz=self.afz,
-            ),
+            Rearrange("n (ahz afz) -> n ahz afz", ahz=self.ahz, afz=self.afz,),
         )
         self.k = nn.Sequential(
             nn.Linear(self.sfz, self.ahz * self.afz, bias=False),
-            Rearrange(
-                "b s (ahz afz) -> b s ahz afz",
-                ahz=self.ahz,
-                afz=self.afz,
-            ),
+            Rearrange("b s (ahz afz) -> b s ahz afz", ahz=self.ahz, afz=self.afz,),
         )
         self.v = nn.Sequential(
             nn.Linear(self.sfz, self.ahz * self.afz, bias=False),
-            Rearrange(
-                "b s (ahz afz) -> b s ahz afz",
-                ahz=self.ahz,
-                afz=self.afz,
-            ),
+            Rearrange("b s (ahz afz) -> b s ahz afz", ahz=self.ahz, afz=self.afz,),
         )
 
         self.ag = nn.Sequential(
@@ -105,17 +93,12 @@ class SequenceAttention(nn.Module):
                     (
                         "rearrange",
                         Rearrange(
-                            "n ahz afz -> n (ahz afz)",
-                            ahz=self.ahz,
-                            afz=self.afz,
+                            "n ahz afz -> n (ahz afz)", ahz=self.ahz, afz=self.afz,
                         ),
                     ),
                     ("ln", nn.LayerNorm(self.ahz * self.afz)),
                     ("linear", nn.Linear(self.ahz * self.afz, self.ifz, bias=False)),
-                    (
-                        "dropout",
-                        nn.Dropout(p=0.5),
-                    ),
+                    ("dropout", nn.Dropout(p=0.5),),
                 ]
             )
         )
@@ -137,10 +120,15 @@ class SequenceAttention(nn.Module):
         prot_mask,
         batch=None,
         attention_batch_size=200,
-        **kwargs
+        **kwargs,
     ):
         return self._intern_forward(
-            x, packed_sequence_emb, packed_sequence_mask, prot_mask, batch, attention_batch_size
+            x,
+            packed_sequence_emb,
+            packed_sequence_mask,
+            prot_mask,
+            batch,
+            attention_batch_size,
         )
 
     def forward_checkpoint(
@@ -165,13 +153,13 @@ class SequenceAttention(nn.Module):
         )
 
     def _intern_forward(
-            self,
-            x: torch.Tensor,
-            packed_sequence_emb: torch.Tensor,
-            packed_sequence_mask: torch.Tensor,
-            prot_mask: torch.LongTensor,
-            batch,
-            attention_batch_size: int,
+        self,
+        x: torch.Tensor,
+        packed_sequence_emb: torch.Tensor,
+        packed_sequence_mask: torch.Tensor,
+        prot_mask: torch.LongTensor,
+        batch,
+        attention_batch_size: int,
     ) -> SequenceAttentionOutput:
         device = x.device
         dtype = x.dtype
@@ -199,7 +187,10 @@ class SequenceAttention(nn.Module):
 
         new_features = torch.zeros_like(x)
         unpacked_sequence_attention_scores = torch.zeros(
-            x.shape[0], *sequence_attention_scores.shape[1:], device=device, dtype=dtype,
+            x.shape[0],
+            *sequence_attention_scores.shape[1:],
+            device=device,
+            dtype=dtype,
         )
         seq_aa_logits = torch.zeros(
             x.shape[0], canonical_num_residues, device=device, dtype=dtype,

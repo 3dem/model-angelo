@@ -12,7 +12,8 @@ from model_angelo.utils.misc_utils import assertion_check
 from model_angelo.utils.protein import Protein
 from model_angelo.utils.residue_constants import (
     index_to_restype_3,
-    restype_name_to_atomc_names, index_to_restype_1,
+    restype_name_to_atomc_names,
+    index_to_restype_1,
 )
 
 PDB_CHAIN_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -98,7 +99,7 @@ def ca_ps_to_pdb(path_to_save, ca_points, p_points):
             occupancy=1,
             altloc=" ",
             fullname="CA",
-            element="C"
+            element="C",
         )
     struct.init_chain("2")
     for i, point in enumerate(p_points):
@@ -210,8 +211,7 @@ def atom14_to_cif(
 
 
 def protein_to_cif(
-    protein: Protein,
-    path_to_save: str,
+    protein: Protein, path_to_save: str,
 ):
     if protein.b_factors is None:
         bfactors = np.zeros(len(protein.aatype))
@@ -240,7 +240,7 @@ def protein_to_cif(
 
         struct.init_residue(res_name_3, " ", i, " ")
         for atom_name, pos, mask in zip(
-                atom_names, protein.atomc_positions[i], protein.atomc_mask[i]
+            atom_names, protein.atomc_positions[i], protein.atomc_mask[i]
         ):
             if mask < 0.5:
                 continue
@@ -399,24 +399,24 @@ def write_chain_probabilities(
         for chain_id in range(len(bfactors)):
             chain_len = len(bfactors[chain_id])
 
-            file_handle.write(f"="*50 + "\n")
-            file_handle.write(
-                f"Chain id: {chain_id}\n"
-            )
+            file_handle.write(f"=" * 50 + "\n")
+            file_handle.write(f"Chain id: {chain_id}\n")
             if chain_len >= chain_prune_length:
                 file_handle.write(f"Not pruned\n")
             else:
                 file_handle.write(f"Pruned\n")
             file_handle.write(f"Chain length: {chain_len}\n")
             file_handle.write(
-                "Confidence per residue:" + ",".join([str(x) for x in bfactors[chain_id]]) + "\n"
+                "Confidence per residue:"
+                + ",".join([str(x) for x in bfactors[chain_id]])
+                + "\n"
             )
-            file_handle.write(
-                "Amino acid probability per residue:" + "\n"
-            )
+            file_handle.write("Amino acid probability per residue:" + "\n")
             for i, aa in enumerate(index_to_restype_1):
                 file_handle.write(
-                    f"{aa}:" + ",".join([str(x) for x in aa_probs[chain_id][:, i]]) + "\n"
+                    f"{aa}:"
+                    + ",".join([str(x) for x in aa_probs[chain_id][:, i]])
+                    + "\n"
                 )
 
 

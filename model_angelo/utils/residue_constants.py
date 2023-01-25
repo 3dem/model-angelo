@@ -101,10 +101,10 @@ restype_3_to_index = {
     "DC": 21,
     "DG": 22,
     "DT": 23,
-    "A":  24,
-    "C":  25,
-    "G":  26,
-    "U":  27,
+    "A": 24,
+    "C": 25,
+    "G": 26,
+    "U": 27,
 }
 
 restype_1_to_index = {
@@ -207,6 +207,7 @@ prot_restype1 = set(index_to_restype_1[:num_prot])
 
 index_to_nuc = index_to_restype_3[num_prot:]
 
+
 def restype3_is_na(restype3: str) -> bool:
     return not (restype3 in prot_restype3)
 
@@ -224,7 +225,9 @@ def restype1_is_prot(restype1: str) -> bool:
 
 
 index_to_hmm_restype_1 = sorted(index_to_restype_1[:num_prot])
-hmm_restype_1_to_index = {hmm_restype: i for i, hmm_restype in enumerate(index_to_hmm_restype_1)}
+hmm_restype_1_to_index = {
+    hmm_restype: i for i, hmm_restype in enumerate(index_to_hmm_restype_1)
+}
 restype_1_order_to_hmm = [restype_1_to_index[aa] for aa in index_to_hmm_restype_1]
 
 restype_order = {restype: i for i, restype in enumerate(index_to_restype_1)}
@@ -238,10 +241,71 @@ restype_order_with_x = {restype: i for i, restype in enumerate(restypes_with_x)}
 # This mapping is used when we need to store atom data in a format that requires
 # fixed atom data size for every residue (e.g. a numpy array).
 atom_types = [
-    "N", "CA", "C", "O", "CB", "CG", "CD", "NE", "CZ", "NH1", "NH2", "OD1", "ND2", "OD2", "SG", "OE1", "NE2", "OE2",
-    "ND1", "CD2", "CE1", "CG1", "CG2", "CD1", "CE", "NZ", "SD", "CE2", "OG", "OG1", "NE1", "CE3", "CZ2", "CZ3", "CH2",
-    "OH", "OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N9", "C4", "N3", "C2", "N1", "C6",
-    "C5", "N7", "C8", "N6", "O2", "N4", "N2", "O6", "O4", "C7", "O2'", "OXT"
+    "N",
+    "CA",
+    "C",
+    "O",
+    "CB",
+    "CG",
+    "CD",
+    "NE",
+    "CZ",
+    "NH1",
+    "NH2",
+    "OD1",
+    "ND2",
+    "OD2",
+    "SG",
+    "OE1",
+    "NE2",
+    "OE2",
+    "ND1",
+    "CD2",
+    "CE1",
+    "CG1",
+    "CG2",
+    "CD1",
+    "CE",
+    "NZ",
+    "SD",
+    "CE2",
+    "OG",
+    "OG1",
+    "NE1",
+    "CE3",
+    "CZ2",
+    "CZ3",
+    "CH2",
+    "OH",
+    "OP1",
+    "P",
+    "OP2",
+    "O5'",
+    "C5'",
+    "C4'",
+    "O4'",
+    "C3'",
+    "O3'",
+    "C2'",
+    "C1'",
+    "N9",
+    "C4",
+    "N3",
+    "C2",
+    "N1",
+    "C6",
+    "C5",
+    "N7",
+    "C8",
+    "N6",
+    "O2",
+    "N4",
+    "N2",
+    "O6",
+    "O4",
+    "C7",
+    "O2'",
+    "OXT",
 ]
 
 atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
@@ -261,7 +325,7 @@ atomf_backbone_mask[
         atom_order["P"],
         atom_order["OP2"],
         atom_order["O5'"],
-    ]
+    ],
 ] = 1
 
 cif_secondary_structure_to_index = {
@@ -326,22 +390,189 @@ restype3_to_atoms = {
     ],
     "TYR": ["N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ", "OH"],
     "VAL": ["N", "CA", "C", "O", "CB", "CG1", "CG2"],
-    "DA": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N9", "C4", "N3", "C2", "N1",
-           "C6", "C5", "N7", "C8", "N6"],
-    "DC": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N1", "C2", "O2", "N3", "C4",
-           "N4", "C5", "C6"],
-    "DG": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N9", "C4", "N3", "C2", "N1",
-           "C6", "C5", "N7", "C8", "N2", "O6"],
-    "DT": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "C1'", "N1", "C2", "O2", "N3", "C4",
-           "O4", "C5", "C7", "C6"],
-    "A": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "N3", "C4",
-          "C5", "C6", "N6", "N7", "C8", "N9"],
-    "C": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "O2", "N3",
-          "C4", "N4", "C5", "C6"],
-    "G": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "N2", "N3",
-          "C4", "C5", "C6", "O6", "N7", "C8", "N9"],
-    "U": ["OP1", "P", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C1'", "C2'", "O2'", "N1", "C2", "O2", "N3",
-          "C4", "O4", "C5", "C6"],
+    "DA": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C2'",
+        "C1'",
+        "N9",
+        "C4",
+        "N3",
+        "C2",
+        "N1",
+        "C6",
+        "C5",
+        "N7",
+        "C8",
+        "N6",
+    ],
+    "DC": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C2'",
+        "C1'",
+        "N1",
+        "C2",
+        "O2",
+        "N3",
+        "C4",
+        "N4",
+        "C5",
+        "C6",
+    ],
+    "DG": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C2'",
+        "C1'",
+        "N9",
+        "C4",
+        "N3",
+        "C2",
+        "N1",
+        "C6",
+        "C5",
+        "N7",
+        "C8",
+        "N2",
+        "O6",
+    ],
+    "DT": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C2'",
+        "C1'",
+        "N1",
+        "C2",
+        "O2",
+        "N3",
+        "C4",
+        "O4",
+        "C5",
+        "C7",
+        "C6",
+    ],
+    "A": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C1'",
+        "C2'",
+        "O2'",
+        "N1",
+        "C2",
+        "N3",
+        "C4",
+        "C5",
+        "C6",
+        "N6",
+        "N7",
+        "C8",
+        "N9",
+    ],
+    "C": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C1'",
+        "C2'",
+        "O2'",
+        "N1",
+        "C2",
+        "O2",
+        "N3",
+        "C4",
+        "N4",
+        "C5",
+        "C6",
+    ],
+    "G": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C1'",
+        "C2'",
+        "O2'",
+        "N1",
+        "C2",
+        "N2",
+        "N3",
+        "C4",
+        "C5",
+        "C6",
+        "O6",
+        "N7",
+        "C8",
+        "N9",
+    ],
+    "U": [
+        "OP1",
+        "P",
+        "OP2",
+        "O5'",
+        "C5'",
+        "C4'",
+        "O4'",
+        "C3'",
+        "O3'",
+        "C1'",
+        "C2'",
+        "O2'",
+        "N1",
+        "C2",
+        "O2",
+        "N3",
+        "C4",
+        "O4",
+        "C5",
+        "C6",
+    ],
 }
 
 restype3_to_atoms_index = dict(
@@ -748,15 +979,15 @@ rigid_group_atom_positions = {
         ["N9", 6, (1.4762, 1.8450, 0.7133)],
         ["C2'", 5, (0.4167, 1.4603, 0.0000)],
         ["O3'", 4, (0.4966, 1.3432, 0.0000)],
-        ["C4", 8, (1.0591,  0.8359, 0.0000)],
+        ["C4", 8, (1.0591, 0.8359, 0.0000)],
         ["N3", 8, (1.1876, 1.9681, 0.6563)],
         ["C2", 8, (2.3468, 2.5190, 0.4196)],
-        ["N1", 8, (3.3164,  2.0956, -0.3417)],
-        ["C6", 8, (3.1559,  0.9546, -0.9869)],
-        ["C5", 8, (1.9678,  0.2745, -0.8177)],
+        ["N1", 8, (3.3164, 2.0956, -0.3417)],
+        ["C6", 8, (3.1559, 0.9546, -0.9869)],
+        ["C5", 8, (1.9678, 0.2745, -0.8177)],
         ["N7", 8, (1.4954, -0.8947, -1.3248)],
         ["C8", 8, (0.3278, -1.0116, -0.8099)],
-        ["N6", 8, (4.0967,  0.5227, -1.7225)],
+        ["N6", 8, (4.0967, 0.5227, -1.7225)],
     ],
     "DC": [
         ["OP1", 0, (-0.7319, 1.2920, 0.000)],
@@ -773,7 +1004,7 @@ rigid_group_atom_positions = {
         ["O3'", 4, (0.4966, 1.3432, 0.0000)],
         ["C2", 8, (0.8923, 1.0332, 0.0000)],
         ["O2", 8, (0.6383, 2.0410, 0.6020)],
-        ["N3", 8, (2.0166,  0.9037, -0.6631)],
+        ["N3", 8, (2.0166, 0.9037, -0.6631)],
         ["C4", 8, (2.2618, -0.1975, -1.3017)],
         ["N4", 8, (3.3803, -0.2807, -1.9426)],
         ["C5", 8, (1.3687, -1.2651, -1.3114)],
@@ -792,16 +1023,16 @@ rigid_group_atom_positions = {
         ["N9", 6, (1.4900, 1.8499, 0.6687)],
         ["C2'", 5, (0.4167, 1.4603, 0.0000)],
         ["O3'", 4, (0.4966, 1.3432, 0.0000)],
-        ["C4", 8, (1.0086,  0.8849, 0.0000)],
+        ["C4", 8, (1.0086, 0.8849, 0.0000)],
         ["N3", 8, (1.0496, 2.0150, 0.6679)],
         ["C2", 8, (2.1496, 2.6645, 0.4679)],
-        ["N1", 8, (3.1297,  2.2367, -0.3228)],
-        ["C6", 8, (3.1039,  1.0771, -1.0158)],
-        ["C5", 8, (1.9331,  0.3751, -0.8115)],
+        ["N1", 8, (3.1297, 2.2367, -0.3228)],
+        ["C6", 8, (3.1039, 1.0771, -1.0158)],
+        ["C5", 8, (1.9331, 0.3751, -0.8115)],
         ["N7", 8, (1.5201, -0.8107, -1.3144)],
         ["C8", 8, (0.3729, -0.9915, -0.8060)],
         ["N2", 8, (2.3472, 3.8096, 1.0562)],
-        ["O6", 8, (4.0380,  0.7786, -1.7024)],
+        ["O6", 8, (4.0380, 0.7786, -1.7024)],
     ],
     "DT": [
         ["OP1", 0, (-0.7319, 1.2920, 0.000)],
@@ -816,9 +1047,9 @@ rigid_group_atom_positions = {
         ["N1", 6, (1.5172, 1.8567, 0.7052)],
         ["C2'", 5, (0.3435, 1.4761, 0.0000)],
         ["O3'", 4, (0.4966, 1.3432, 0.0000)],
-        ["C2", 8, (0.9090,  0.9994, 0.0000)],
+        ["C2", 8, (0.9090, 0.9994, 0.0000)],
         ["O2", 8, (0.7438, 2.0419, 0.5454)],
-        ["N3", 8, (2.0295,  0.7382, -0.6675)],
+        ["N3", 8, (2.0295, 0.7382, -0.6675)],
         ["C4", 8, (2.3265, -0.3977, -1.3208)],
         ["O4", 8, (3.3706, -0.5161, -1.8822)],
         ["C5", 8, (1.3322, -1.4021, -1.2827)],
@@ -837,15 +1068,15 @@ rigid_group_atom_positions = {
         ["C1'", 6, (0.2998, 1.4906, 0.0000)],
         ["N9", 6, (0.6843, 1.9988, 1.2090)],
         ["C2'", 5, (0.4641, 1.4573, 0.0000)],
-        ["O2'", 7, (-1.9775,  1.3447, 0.0000)],
+        ["O2'", 7, (-1.9775, 1.3447, 0.0000)],
         ["O3'", 4, (0.5548, 1.3039, 0.000)],
-        ["N1", 8, (2.1780,  3.2213, -0.2989)],
+        ["N1", 8, (2.1780, 3.2213, -0.2989)],
         ["C2", 8, (1.0879, 3.2302, 0.3745)],
         ["N3", 8, (0.2479, 2.2707, 0.5815)],
         ["C4", 8, (0.6207, 1.1816, 0.0000)],
-        ["C5", 8, (1.7137,  1.0229, -0.7241)],
-        ["C6", 8, (2.5253,  2.1104, -0.8708)],
-        ["N6", 8, (3.6125,  2.1016, -1.5409)],
+        ["C5", 8, (1.7137, 1.0229, -0.7241)],
+        ["C6", 8, (2.5253, 2.1104, -0.8708)],
+        ["N6", 8, (3.6125, 2.1016, -1.5409)],
         ["N7", 8, (1.7832, -0.2340, -1.1740)],
         ["C8", 8, (0.7473, -0.7995, -0.7191)],
     ],
@@ -858,16 +1089,16 @@ rigid_group_atom_positions = {
         ["C4'", 2, (0.5541, 1.4027, 0.000)],
         ["C3'", 3, (0.6673, 1.3669, 0.000)],
         ["O4'", 3, (0.4914, -0.6338, -1.2098)],
-        ["C1'", 6, (0.2993,  1.4958, 0.0000)],
+        ["C1'", 6, (0.2993, 1.4958, 0.0000)],
         ["N1", 6, (0.6002, 2.0107, 1.2937)],
         ["C2'", 5, (0.4641, 1.4573, 0.0000)],
-        ["O2'", 7, (-1.9703,  1.3476, 0.0000)],
+        ["O2'", 7, (-1.9703, 1.3476, 0.0000)],
         ["O3'", 4, (0.5548, 1.3039, 0.000)],
-        ["C2", 8, (0.4599,  1.3075, -0.1217)],
-        ["O2", 8, (-0.1636,  2.1569,  0.6203)],
-        ["N3", 8, (1.5714,  1.6152, -0.6754)],
-        ["C4", 8, (2.2175,  0.6759, -1.3322)],
-        ["N4", 8, (3.3089,  1.0260, -1.9859)],
+        ["C2", 8, (0.4599, 1.3075, -0.1217)],
+        ["O2", 8, (-0.1636, 2.1569, 0.6203)],
+        ["N3", 8, (1.5714, 1.6152, -0.6754)],
+        ["C4", 8, (2.2175, 0.6759, -1.3322)],
+        ["N4", 8, (3.3089, 1.0260, -1.9859)],
         ["C5", 8, (1.7732, -0.6640, -1.3484)],
         ["C6", 8, (0.6719, -0.9549, -0.6751)],
     ],
@@ -880,19 +1111,19 @@ rigid_group_atom_positions = {
         ["C4'", 2, (0.5541, 1.4027, 0.000)],
         ["C3'", 3, (0.6673, 1.3669, 0.000)],
         ["O4'", 3, (0.4914, -0.6338, -1.2098)],
-        ["C1'", 6, (0.2976,  1.4937, 0.0000)],
+        ["C1'", 6, (0.2976, 1.4937, 0.0000)],
         ["N9", 6, (0.5974, 1.9948, 1.2654)],
         ["C2'", 5, (0.4641, 1.4573, 0.0000)],
-        ["O2'", 7, (-1.9759,  1.3450,  0.0000)],
+        ["O2'", 7, (-1.9759, 1.3450, 0.0000)],
         ["O3'", 4, (0.5548, 1.3039, 0.000)],
-        ["N1", 8, (1.9303,  3.3536, -0.2684)],
+        ["N1", 8, (1.9303, 3.3536, -0.2684)],
         ["C2", 8, (0.8129, 3.3416, 0.3985)],
         ["N2", 8, (0.4814, 4.4795, 0.8986)],
         ["N3", 8, (0.0727, 2.2908, 0.5647)],
         ["C4", 8, (0.5463, 1.2335, 0.0000)],
-        ["C5", 8, (1.6501,  1.1433, -0.6866)],
-        ["C6", 8, (2.4354,  2.2766, -0.8568)],
-        ["O6", 8, (3.4524,  2.3917, -1.4361)],
+        ["C5", 8, (1.6501, 1.1433, -0.6866)],
+        ["C6", 8, (2.4354, 2.2766, -0.8568)],
+        ["O6", 8, (3.4524, 2.3917, -1.4361)],
         ["N7", 8, (1.7981, -0.1202, -1.1107)],
         ["C8", 8, (0.7989, -0.7620, -0.6819)],
     ],
@@ -908,16 +1139,16 @@ rigid_group_atom_positions = {
         ["C1'", 6, (0.2976, 1.4688, 0.000)],
         ["N1", 6, (0.8326, 1.9765, 1.0916)],
         ["C2'", 5, (0.4641, 1.4573, 0.0000)],
-        ["O2'", 7, (-1.9644,  1.3474,  0.0000)],
+        ["O2'", 7, (-1.9644, 1.3474, 0.0000)],
         ["O3'", 4, (0.5548, 1.3039, 0.0000)],
-        ["C2", 8, (0.1738,  1.8286, 0.0000)],
-        ["O2", 8, (-0.3051,  2.7218,  0.5543)],
-        ["N3", 8, (1.2798,  1.9598, -0.6749)],
-        ["C4", 8, (1.9070,  1.0235, -1.3364)],
-        ["O4", 8, (2.8962,  1.2894, -1.8985)],
+        ["C2", 8, (0.1738, 1.8286, 0.0000)],
+        ["O2", 8, (-0.3051, 2.7218, 0.5543)],
+        ["N3", 8, (1.2798, 1.9598, -0.6749)],
+        ["C4", 8, (1.9070, 1.0235, -1.3364)],
+        ["O4", 8, (2.8962, 1.2894, -1.8985)],
         ["C5", 8, (1.3118, -0.2053, -1.2930)],
         ["C6", 8, (0.2329, -0.3604, -0.6419)],
-    ]
+    ],
 }
 num_frames = 9
 
@@ -965,14 +1196,26 @@ def _make_rigid_transformation_4x4(ex, ey, translation):
 # and an array with (restype, atomtype, coord) for the atom positions
 # and compute affine transformation matrices (4,4) from one rigid group to the
 # previous group
-restype_atomf_to_rigid_group = np.zeros([canonical_num_residues, atom_type_num], dtype=np.int32)
+restype_atomf_to_rigid_group = np.zeros(
+    [canonical_num_residues, atom_type_num], dtype=np.int32
+)
 restype_atomf_mask = np.zeros([canonical_num_residues, atom_type_num], dtype=np.float32)
-restype_atomf_rigid_group_positions = np.zeros([canonical_num_residues, atom_type_num, 3], dtype=np.float32)
-restype_atomc_to_rigid_group = np.zeros([canonical_num_residues, num_atomc], dtype=np.int32)
+restype_atomf_rigid_group_positions = np.zeros(
+    [canonical_num_residues, atom_type_num, 3], dtype=np.float32
+)
+restype_atomc_to_rigid_group = np.zeros(
+    [canonical_num_residues, num_atomc], dtype=np.int32
+)
 restype_atomc_mask = np.zeros([canonical_num_residues, num_atomc], dtype=np.float32)
-restype_atomc_rigid_group_positions = np.zeros([canonical_num_residues, num_atomc, 3], dtype=np.float32)
-restype_atom3_rigid_group_positions = np.zeros([canonical_num_residues, 3, 3], dtype=np.float32)
-restype_rigid_group_default_frame = np.zeros([canonical_num_residues, num_frames, 4, 4], dtype=np.float32)
+restype_atomc_rigid_group_positions = np.zeros(
+    [canonical_num_residues, num_atomc, 3], dtype=np.float32
+)
+restype_atom3_rigid_group_positions = np.zeros(
+    [canonical_num_residues, 3, 3], dtype=np.float32
+)
+restype_rigid_group_default_frame = np.zeros(
+    [canonical_num_residues, num_frames, 4, 4], dtype=np.float32
+)
 
 
 def _make_rigid_group_constants():
@@ -993,7 +1236,7 @@ def _make_rigid_group_constants():
 
             if atomname in backbone_atoms:
                 restype_atom3_rigid_group_positions[
-                restype, atomcidx, :
+                    restype, atomcidx, :
                 ] = atom_position
 
         atom_positions = {
@@ -1053,51 +1296,65 @@ def _make_rigid_group_constants():
 
         elif restype3_is_na(resname):
             # alpha
-            restype_rigid_group_default_frame[restype, 1, :, :] = _make_rigid_transformation_4x4(
+            restype_rigid_group_default_frame[
+                restype, 1, :, :
+            ] = _make_rigid_transformation_4x4(
                 ex=atom_positions["O5'"] - atom_positions["P"],
                 ey=atom_positions["OP1"] - atom_positions["P"],
                 translation=atom_positions["O5'"],
             )
 
             # beta
-            restype_rigid_group_default_frame[restype, 2, :, :] = _make_rigid_transformation_4x4(
+            restype_rigid_group_default_frame[
+                restype, 2, :, :
+            ] = _make_rigid_transformation_4x4(
                 ex=atom_positions["C5'"],
-                ey=np.array([-1., 0., 0.]),
+                ey=np.array([-1.0, 0.0, 0.0]),
                 translation=atom_positions["C5'"],
             )
 
             # gamma
-            restype_rigid_group_default_frame[restype, 3, :, :] = _make_rigid_transformation_4x4(
+            restype_rigid_group_default_frame[
+                restype, 3, :, :
+            ] = _make_rigid_transformation_4x4(
                 ex=atom_positions["C4'"],
-                ey=np.array([-1., 0., 0.]),
+                ey=np.array([-1.0, 0.0, 0.0]),
                 translation=atom_positions["C4'"],
             )
 
             # delta
-            restype_rigid_group_default_frame[restype, 4, :, :] = _make_rigid_transformation_4x4(
+            restype_rigid_group_default_frame[
+                restype, 4, :, :
+            ] = _make_rigid_transformation_4x4(
                 ex=atom_positions["C3'"],
-                ey=np.array([-1., 0., 0.]),
+                ey=np.array([-1.0, 0.0, 0.0]),
                 translation=atom_positions["C3'"],
             )
 
             # nu2
-            restype_rigid_group_default_frame[restype, 5, :, :] = _make_rigid_transformation_4x4(
+            restype_rigid_group_default_frame[
+                restype, 5, :, :
+            ] = _make_rigid_transformation_4x4(
                 ex=atom_positions["C3'"],
-                ey=np.array([-1., 0., 0.]),
+                ey=np.array([-1.0, 0.0, 0.0]),
                 translation=atom_positions["C3'"],
             )
 
             # nu1
-            restype_rigid_group_default_frame[restype, 6, :, :] = _make_rigid_transformation_4x4(
+            restype_rigid_group_default_frame[
+                restype, 6, :, :
+            ] = _make_rigid_transformation_4x4(
                 ex=atom_positions["C2'"],
-                ey=np.array([-1., 0., 0.]),
+                ey=np.array([-1.0, 0.0, 0.0]),
                 translation=atom_positions["C2'"],
             )
 
             # nu0
-            restype_rigid_group_default_frame[restype, 7, :, :] = _make_rigid_transformation_4x4(
+            restype_rigid_group_default_frame[
+                restype, 7, :, :
+            ] = _make_rigid_transformation_4x4(
                 ex=atom_positions["C2'"],
-                ey=np.array([-1., 0., 0.]),
+                ey=np.array([-1.0, 0.0, 0.0]),
                 translation=atom_positions["C2'"],
             )
 
@@ -1106,7 +1363,7 @@ def _make_rigid_group_constants():
             base_atom_positions = [atom_positions[name] for name in base_atom_names]
             mat = _make_rigid_transformation_4x4(
                 ex=base_atom_positions[2],
-                ey=np.array([-1., 0., 0.]),
+                ey=np.array([-1.0, 0.0, 0.0]),
                 translation=base_atom_positions[2],
             )
             restype_rigid_group_default_frame[restype, 8, :, :] = mat
@@ -1139,7 +1396,7 @@ van_der_waals_radius = {
 
 
 def sequence_to_onehot(
-        sequence: str, mapping, map_unknown_to_x: bool = False
+    sequence: str, mapping, map_unknown_to_x: bool = False
 ) -> torch.LongTensor:
     """Maps the given sequence into a one-hot encoded matrix.
     Args:
@@ -1309,9 +1566,15 @@ def load_stereo_chemical_props() -> Tuple[
 
 def get_atomc_dists_bounds(overlap_tolerance=1.5, bond_length_tolerance_factor=15):
     """compute upper and lower bounds for bonds to assess violations."""
-    restype_atomc_bond_lower_bound = np.zeros([canonical_num_residues, num_atomc, num_atomc], np.float32)
-    restype_atomc_bond_upper_bound = np.zeros([canonical_num_residues, num_atomc, num_atomc], np.float32)
-    restype_atomc_bond_stddev = np.zeros([canonical_num_residues, num_atomc, num_atomc], np.float32)
+    restype_atomc_bond_lower_bound = np.zeros(
+        [canonical_num_residues, num_atomc, num_atomc], np.float32
+    )
+    restype_atomc_bond_upper_bound = np.zeros(
+        [canonical_num_residues, num_atomc, num_atomc], np.float32
+    )
+    restype_atomc_bond_stddev = np.zeros(
+        [canonical_num_residues, num_atomc, num_atomc], np.float32
+    )
     residue_bonds, residue_virtual_bonds, _ = load_stereo_chemical_props()
     for restype, restype_letter in enumerate(index_to_restype_1):
         resname = restype_1to3[restype_letter]
@@ -1367,7 +1630,11 @@ between_res_cos_angles_ca_c_n = [-0.4473, 0.0311]  # degrees: 116.568 +- 1.995
 
 def select_torsion_angles(input, aatype):
     chi_angles = einops.rearrange(
-        input[..., 3:, :], "... (f a) d -> ... f d a", f=5, a=canonical_num_residues, d=2
+        input[..., 3:, :],
+        "... (f a) d -> ... f d a",
+        f=5,
+        a=canonical_num_residues,
+        d=2,
     )[torch.arange(len(aatype)), ..., aatype]
     input_torsion_angles = torch.cat((input[..., :3, :], chi_angles), dim=-2)
     input_torsion_angles = torch.nn.functional.normalize(input_torsion_angles, dim=-1)
@@ -1377,8 +1644,8 @@ def select_torsion_angles(input, aatype):
 num_net_torsions = canonical_num_residues * 5 + 3
 
 nuc_torsion_frames = [
-    ["OP1", "P", "O5'", "C5'"],    # alpha, 1
-    ["P", "O5'", "C5'", "C4'"],    # beta, 2
+    ["OP1", "P", "O5'", "C5'"],  # alpha, 1
+    ["P", "O5'", "C5'", "C4'"],  # beta, 2
     ["O5'", "C5'", "C4'", "C3'"],  # gamma, 3
     ["C5'", "C4'", "C3'", "O3'"],  # delta, 4
     ["C5'", "C4'", "C3'", "C2'"],  # nu2, 5
