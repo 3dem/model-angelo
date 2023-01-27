@@ -23,7 +23,8 @@ from model_angelo.utils.grid import (
 )
 from model_angelo.utils.misc_utils import abort_if_relion_abort
 from model_angelo.utils.save_pdb_utils import points_to_pdb, ca_ps_to_pdb
-from model_angelo.utils.torch_utils import get_model_from_file
+from model_angelo.utils.torch_utils import get_model_from_file, get_device_names
+from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
 
 
 def grid_to_points(
@@ -128,13 +129,14 @@ def infer(args):
     model_angelo_output_dir = os.path.dirname(args.output_path)
 
     checkpoint = torch.load(
-        os.path.join(args.log_dir, args.model_checkpoint), map_location=args.device
+        os.path.join(args.log_dir, args.model_checkpoint), map_location="cpu"
     )
     checkpoint_args = checkpoint["args"]
+    device_names = get_device_names(args.device)
+    num_devices = len(device_names)
 
     module = (
         get_model_from_file(os.path.join(args.log_dir, "model.py"))
-        .to(args.device)
         .eval()
     )
 
@@ -220,43 +222,49 @@ def infer(args):
     pbar = tqdm.tqdm(
         total=len(coordinates_to_infer), file=sys.stdout, position=0, leave=True,
     )
-    with torch.no_grad():
+    with MultiGPUWrapper(module, device_names) as wrapper:
         while i < len(coordinates_to_infer):
-            batch_grid = []
-            batch_coordinates = []
-            for _ in range(args.batch_size):
-                if i < len(coordinates_to_infer):
-                    curr_coordinate = coordinates_to_infer[i]
-                    coordinate_slice = np.s_[
-                        ...,
-                        curr_coordinate[0] : curr_coordinate[0] + bz,
-                        curr_coordinate[1] : curr_coordinate[1] + bz,
-                        curr_coordinate[2] : curr_coordinate[2] + bz,
-                    ]
-                    sliced_grid = grid[coordinate_slice][None].clone()
-                    sliced_grid_std = grid_std[coordinate_slice][None].clone()
-                    batch_coordinates.append(curr_coordinate)
-                    batch_grid.append(torch.cat((sliced_grid, sliced_grid_std), dim=0))
-                    i += 1
-            batch_grid = torch.stack(batch_grid).to(args.device)
-            net_output = module(batch_grid)
-            pbar.update(len(batch_grid))
+            meta_batch_list = []
+            meta_batch_coordinates = []
+            for _ in device_names:
+                batch_grid = []
+                batch_coordinates = []
+                for _ in range(args.batch_size):
+                    if i < len(coordinates_to_infer):
+                        curr_coordinate = coordinates_to_infer[i]
+                        coordinate_slice = np.s_[
+                            ...,
+                            curr_coordinate[0] : curr_coordinate[0] + bz,
+                            curr_coordinate[1] : curr_coordinate[1] + bz,
+                            curr_coordinate[2] : curr_coordinate[2] + bz,
+                        ]
+                        sliced_grid = grid[coordinate_slice][None].clone()
+                        sliced_grid_std = grid_std[coordinate_slice][None].clone()
+                        batch_coordinates.append(curr_coordinate)
+                        batch_grid.append(torch.cat((sliced_grid, sliced_grid_std), dim=0))
+                        i += 1
+                batch_grid = torch.stack(batch_grid)
+                meta_batch_list.append(batch_grid)
+                meta_batch_coordinates.append(batch_coordinates)
+            meta_net_output = wrapper(meta_batch_list)
+            pbar.update(sum(len(batch_grid) for batch_grid in meta_batch_list))
             abort_if_relion_abort(model_angelo_output_dir)
 
-            for j, c in enumerate(batch_coordinates):
-                batch_slice = np.s_[
-                    ...,
-                    c[0] + crop : c[0] + bz - crop,
-                    c[1] + crop : c[1] + bz - crop,
-                    c[2] + crop : c[2] + bz - crop,
-                ]
-                net_output_batch = torch.sigmoid(
-                    net_output[
-                        j, ..., crop : bz - crop, crop : bz - crop, crop : bz - crop,
+            for batch_coordinates, net_output in zip(meta_batch_coordinates, meta_net_output):
+                for j, c in enumerate(batch_coordinates):
+                    batch_slice = np.s_[
+                        ...,
+                        c[0] + crop : c[0] + bz - crop,
+                        c[1] + crop : c[1] + bz - crop,
+                        c[2] + crop : c[2] + bz - crop,
                     ]
-                )
-                output[batch_slice] += net_output_batch.cpu()
-                count_output[batch_slice] += 1
+                    net_output_batch = torch.sigmoid(
+                        net_output[
+                            j, ..., crop : bz - crop, crop : bz - crop, crop : bz - crop,
+                        ]
+                    )
+                    output[batch_slice] += net_output_batch.cpu()
+                    count_output[batch_slice] += 1
 
     pbar.close()
 

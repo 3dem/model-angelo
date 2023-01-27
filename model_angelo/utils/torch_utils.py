@@ -520,6 +520,12 @@ def get_device_name(device_name: str) -> str:
             f"Either do not set, set to cpu, or give a number"
         )
 
+def get_device_names(device_name_str: str) -> List[str]:
+    if "," not in device_name_str:
+        return [get_device_name(device_name_str)]
+    else:
+        return [get_device_name(x.strip()) for x in device_name_str.split(",") if len(x.strip()) > 0]
+
 
 class ShapeError(Exception):
     pass
