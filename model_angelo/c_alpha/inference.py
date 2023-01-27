@@ -244,7 +244,7 @@ def infer(args):
                         batch_grid.append(torch.cat((sliced_grid, sliced_grid_std), dim=0))
                         i += 1
                 batch_grid = torch.stack(batch_grid)
-                meta_batch_list.append(batch_grid)
+                meta_batch_list.append({"x": batch_grid})
                 meta_batch_coordinates.append(batch_coordinates)
             meta_net_output = wrapper(meta_batch_list)
             pbar.update(sum(len(batch_grid) for batch_grid in meta_batch_list))

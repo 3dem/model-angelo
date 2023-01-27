@@ -3,7 +3,34 @@ import torch
 from model_angelo.utils.affine_utils import init_random_affine_from_translation
 
 
-class GNNOutput:
+
+class GNNIO:
+    def __init__(self, result_dict = None):
+        self.result_dict = result_dict
+
+    def update(self, **kwargs):
+        for key, value in kwargs.items():
+            if key in self.result_dict:
+                self.result_dict[key] = [value]
+
+    def __getitem__(self, item):
+        return self.result_dict[item]
+
+    def __setitem__(self, key, value):
+        self.result_dict[key] = value
+
+    def to(self, device: str):
+        for key in self.keys:
+            if torch.is_tensor(self.result_dict[key]):
+                self.result_dict[key] = self.result_dict[key].to(device)
+            elif self.result_dict[key] is None:
+                pass
+            else:
+                self.result_dict[key] = [x.to(device) for x in self.result_dict[key]]
+        return self
+
+
+class GNNOutput(GNNIO):
     def __init__(
         self,
         positions: torch.Tensor = None,
@@ -11,7 +38,7 @@ class GNNOutput:
         hidden_features: int = 256,
         init_affine: torch.Tensor = None,
     ):
-        self.result_dict = {}
+        super().__init__()
         self.keys = [
             "pred_positions",
             "pred_ncac",
@@ -32,19 +59,6 @@ class GNNOutput:
             hidden_features=hidden_features,
             init_affine=init_affine,
         )
-
-    def update(
-        self, **kwargs,
-    ):
-        for key, value in kwargs.items():
-            if key in self.result_dict:
-                self.result_dict[key] = [value]
-
-    def __getitem__(self, item):
-        return self.result_dict[item]
-
-    def __setitem__(self, key, value):
-        self.result_dict[key] = value
 
     def refresh(
         self,
@@ -76,10 +90,3 @@ class GNNOutput:
                 ).requires_grad_()
             ]
 
-    def to(self, device: str):
-        for key in self.keys:
-            if torch.is_tensor(self.result_dict[key]):
-                self.result_dict[key] = self.result_dict[key].to(device)
-            else:
-                self.result_dict[key] = [x.to(device) for x in self.result_dict[key]]
-        return self

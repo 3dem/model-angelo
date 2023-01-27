@@ -38,7 +38,10 @@ from model_angelo.utils.protein import (
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
+    get_device_names,
 )
+from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
+
 
 
 def infer(args):
@@ -51,7 +54,9 @@ def infer(args):
     )
     logger.info(f"Loaded module from step: {step}")
 
-    module = module.eval().to(args.device)
+    module = module.eval()
+    device_names = get_device_names(args.device)
+    num_devices = len(device_names)
     lang_model, alphabet = get_esm_model(args.esm_model)
     batch_converter = alphabet.get_batch_converter()
 
@@ -129,42 +134,43 @@ def infer(args):
     # Get an initial set of pointers to neighbours for more efficient inference
     init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
 
-    while residues_left > 0:
-        idxs = argmin_random(
-            collated_results["counts"], init_neighbours, args.batch_size
-        )
-        data = get_inference_data(
-            protein, grid_data, idxs, crop_length=args.crop_length
-        )
-        results = run_inference_on_data(
-            module,
-            data,
-            seq_attention_batch_size=args.seq_attention_batch_size,
-            fp16=args.fp16,
-        )
-        for i in range(args.batch_size):
-            collated_results, protein = collate_nn_results(
-                collated_results,
-                results,
-                data["indices"],
-                protein,
-                offset=i * args.crop_length,
+    with MultiGPUWrapper(module, device_names, args.fp16) as wrapper:
+        while residues_left > 0:
+            idxs = argmin_random(
+                collated_results["counts"], init_neighbours, args.batch_size * num_devices,
             )
-        residues_left = (
-            num_res
-            - torch.sum(collated_results["counts"] > args.repeat_per_residue - 1).item()
-        )
-        steps_left = (
-            total_steps
-            - torch.sum(
-                collated_results["counts"].clip(0, args.repeat_per_residue)
-            ).item()
-        )
+            data = get_inference_data(
+                protein, grid_data, idxs, crop_length=args.crop_length, num_devices=num_devices,
+            )
+            results = run_inference_on_data(
+                wrapper,
+                data,
+                seq_attention_batch_size=args.seq_attention_batch_size,
+                fp16=args.fp16,
+            )
+            for device_id in range(num_devices):
+                for i in range(args.batch_size):
+                    collated_results, protein = collate_nn_results(
+                        collated_results,
+                        results[device_id],
+                        data[device_id]["indices"],
+                        protein,
+                        offset=i * args.crop_length,
+                    )
+            residues_left = (
+                num_res
+                - torch.sum(collated_results["counts"] > args.repeat_per_residue - 1).item()
+            )
+            steps_left = (
+                total_steps
+                - torch.sum(
+                    collated_results["counts"].clip(0, args.repeat_per_residue)
+                ).item()
+            )
 
-        pbar.update(n=int(steps_left_last - steps_left))
-        steps_left_last = steps_left
-        abort_if_relion_abort(model_angelo_output_dir)
-
+            pbar.update(n=int(steps_left_last - steps_left))
+            steps_left_last = steps_left
+            abort_if_relion_abort(model_angelo_output_dir)
     pbar.close()
 
     final_results = get_final_nn_results(collated_results)

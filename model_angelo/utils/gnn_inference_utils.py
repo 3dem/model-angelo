@@ -74,7 +74,7 @@ def init_empty_collate_results(
 
 
 def get_inference_data(
-    protein, grid_data, idxs, crop_length=200,
+        protein, grid_data, idxs, crop_length=200, num_devices: int = 1,
 ):
     grid = ((grid_data.grid - np.mean(grid_data.grid)) / np.std(grid_data.grid)).astype(
         np.float32
@@ -86,33 +86,37 @@ def get_inference_data(
 
     batch = None
     batch_num = 1
-    if len(ca_positions) > crop_length:
-        kd = cKDTree(ca_positions)
-        _, picked_indices = kd.query(ca_positions[idxs], k=crop_length)
-        batch_num = len(idxs)
-        batch = torch.concat(
-            [torch.ones(crop_length, dtype=torch.long) * i for i in range(batch_num)],
-            dim=0,
-        )
-
-    output_dict = {
-        "affines": torch.from_numpy(backbone_frames[picked_indices]),
-        "cryo_grids": torch.from_numpy(grid[None]),  # Add channel dim
-        "cryo_global_origins": torch.from_numpy(
-            grid_data.global_origin.astype(np.float32)
-        ),
-        "cryo_voxel_sizes": torch.Tensor([grid_data.voxel_size]),
-        "indices": torch.from_numpy(picked_indices),
-        "prot_mask": torch.from_numpy(protein.prot_mask[picked_indices]),
-        "num_nodes": len(picked_indices),
-        "batch_num": batch_num,
-        "batch": batch,
-    }
-    if protein.residue_to_lm_embedding is not None:
-        output_dict["sequence"] = torch.from_numpy(
-            np.copy(protein.residue_to_lm_embedding)
-        )
-    return output_dict
+    output_list = []
+    batch_num_per_device = len(idxs) // num_devices
+    for j in range(num_devices):
+        if len(ca_positions) > crop_length:
+            kd = cKDTree(ca_positions)
+            _, picked_indices = kd.query(ca_positions[idxs[j * batch_num_per_device: (j + 1) * batch_num_per_device]], k=crop_length)
+            batch_num = batch_num_per_device
+            batch = torch.concat(
+                [torch.ones(crop_length, dtype=torch.long) * i for i in range(batch_num)],
+                dim=0,
+            )
+    
+        output_dict = {
+            "affines": torch.from_numpy(backbone_frames[picked_indices]),
+            "cryo_grids": torch.from_numpy(grid[None]),  # Add channel dim
+            "cryo_global_origins": torch.from_numpy(
+                grid_data.global_origin.astype(np.float32)
+            ),
+            "cryo_voxel_sizes": torch.Tensor([grid_data.voxel_size]),
+            "indices": torch.from_numpy(picked_indices),
+            "prot_mask": torch.from_numpy(protein.prot_mask[picked_indices]),
+            "num_nodes": len(picked_indices),
+            "batch_num": batch_num,
+            "batch": batch,
+        }
+        if protein.residue_to_lm_embedding is not None:
+            output_dict["sequence"] = torch.from_numpy(
+                np.copy(protein.residue_to_lm_embedding)
+            )
+        output_list.append(output_dict)
+    return output_list
 
 
 def update_protein_gt_frames(
@@ -165,22 +169,18 @@ def collate_nn_results(
 @torch.no_grad()
 def run_inference_on_data(
     module,
-    data,
+    meta_batch_list,
     run_iters: int = 2,
     seq_attention_batch_size: int = 200,
     fp16: bool = False,
 ):
-    with_seq = "sequence" in data
-    device = get_module_device(module)
-    device_type = "cuda" if "cpu" not in str(device) else "cpu"
-    data_type = torch.float32 if not fp16 else torch.float16
-    affines = data["affines"].to(device).to(data_type)
-    with torch.autocast(
-        device_type=device_type, dtype=data_type
-    ) if device_type != "cpu" else nullcontext():
+    with_seq = "sequence" in meta_batch_list[0]
+    meta_input_list = []
+    for data in meta_batch_list:
+        affines = data["affines"]
         kwargs = {
             "positions": get_affine_translation(affines),
-            "prot_mask": data["prot_mask"].to(device),
+            "prot_mask": data["prot_mask"],
             "init_affine": affines,
             "record_training": False,
             "run_iters": run_iters,
@@ -188,40 +188,31 @@ def run_inference_on_data(
         if with_seq:
             kwargs["seq_attention_batch_size"] = seq_attention_batch_size
         if data["batch_num"] == 1:
-            kwargs["sequence"] = data["sequence"][None].to(device)
-            kwargs["sequence_mask"] = torch.ones(
-                1, data["sequence"].shape[0], device=device
-            )
+            kwargs["sequence"] = data["sequence"][None]
+            kwargs["sequence_mask"] = torch.ones(1, data["sequence"].shape[0])
             kwargs["batch"] = None
-            kwargs["cryo_grids"] = [data["cryo_grids"].to(device).to(data_type)]
-            kwargs["cryo_global_origins"] = [
-                data["cryo_global_origins"].to(device).to(data_type)
-            ]
-            kwargs["cryo_voxel_sizes"] = [
-                data["cryo_voxel_sizes"].to(device).to(data_type)
-            ]
+            kwargs["cryo_grids"] = [data["cryo_grids"]]
+            kwargs["cryo_global_origins"] = [data["cryo_global_origins"]]
+            kwargs["cryo_voxel_sizes"] = [data["cryo_voxel_sizes"]]
         else:
             kwargs["sequence"] = (
-                data["sequence"][None].expand(data["batch_num"], -1, -1,).to(device)
+                data["sequence"][None].expand(data["batch_num"], -1, -1,)
             )
             kwargs["sequence_mask"] = torch.ones(
-                data["batch_num"], data["sequence"].shape[0], device=device
+                data["batch_num"], data["sequence"].shape[0],
             )
-            kwargs["batch"] = data["batch"].to(device)
+            kwargs["batch"] = data["batch"]
             kwargs["cryo_grids"] = [
-                data["cryo_grids"].to(device).to(data_type)
-                for _ in range(data["batch_num"])
+                data["cryo_grids"] for _ in range(data["batch_num"])
             ]
             kwargs["cryo_global_origins"] = [
-                data["cryo_global_origins"].to(device).to(data_type)
-                for _ in range(data["batch_num"])
+                data["cryo_global_origins"] for _ in range(data["batch_num"])
             ]
             kwargs["cryo_voxel_sizes"] = [
-                data["cryo_voxel_sizes"].to(device).to(data_type)
-                for _ in range(data["batch_num"])
+                data["cryo_voxel_sizes"] for _ in range(data["batch_num"])
             ]
-        result = module(**kwargs)
-    result.to("cpu").to(torch.float32)
+        meta_input_list.append(kwargs)
+    result = module(meta_input_list)
     return result
 
 
