@@ -102,7 +102,18 @@ class MultiGPUWrapper(nn.Module):
                 self.input_queues.append(mp.Queue())
                 self.output_queues.append(mp.Queue())
                 self.processes.append(
-                    mp.Process(target=run_inference, args=(model, device, rank_id, self.world_size, self.input_queues[-1], self.output_queues[-1], self.dtype))
+                    mp.Process(
+                        target=run_inference,
+                        args=(
+                            model,
+                            device,
+                            rank_id,
+                            self.world_size,
+                            self.input_queues[-1],
+                            self.output_queues[-1],
+                            self.dtype
+                        )
+                    )
                 )
                 self.processes[-1].start()
         else:
@@ -114,13 +125,14 @@ class MultiGPUWrapper(nn.Module):
             device = self.devices[i]
             if self.dtype == torch.float16:
                 data = cast_dict_to_half(data)
-            data = send_dict_to_device(data, device)
             if self.world_size > 1:
                 input_queue = self.input_queues[i]
                 input_queue.put(InferenceData(data=data, status=1))
             else:
-                with torch.cuda.amp.autocast(dtype=self.dtype):
-                    output_list.append(self.model(**data).to("cpu").to(torch.float32))
+                with torch.cuda.amp.autocast(dtype=self.dtype), torch.no_grad():
+                    output_list.append(
+                        self.model(**send_dict_to_device(data, device)).to("cpu").to(torch.float32)
+                    )
         if self.world_size > 1:
             for output_queue, _ in zip(self.output_queues, data_list):
                 output_list.append(output_queue.get())
@@ -128,18 +140,19 @@ class MultiGPUWrapper(nn.Module):
 
 
     def __del__(self):
-        for input_queue in self.input_queues:
-            try:
-                input_queue.put(InferenceData(data=None, status=0))
-            except:
-                pass
-        for input_queue, output_queue in zip(self.input_queues, self.output_queues):
-            input_queue.close()
-            input_queue.join_thread()
-            output_queue.close()
-            output_queue.join_thread()
-        for p in self.processes:
-            p.join()
+        if self.world_size > 1:
+            for input_queue in self.input_queues:
+                try:
+                    input_queue.put(InferenceData(data=None, status=0))
+                except:
+                    pass
+            for input_queue, output_queue in zip(self.input_queues, self.output_queues):
+                input_queue.close()
+                input_queue.join_thread()
+                output_queue.close()
+                output_queue.join_thread()
+            for p in self.processes:
+                p.join()
 
     def __enter__(self):
         return self

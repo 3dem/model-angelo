@@ -133,7 +133,6 @@ def infer(args):
     )
     checkpoint_args = checkpoint["args"]
     device_names = get_device_names(args.device)
-    num_devices = len(device_names)
 
     module = (
         get_model_from_file(os.path.join(args.log_dir, "model.py"))
@@ -247,7 +246,7 @@ def infer(args):
                 meta_batch_list.append({"x": batch_grid})
                 meta_batch_coordinates.append(batch_coordinates)
             meta_net_output = wrapper(meta_batch_list)
-            pbar.update(sum(len(batch_grid) for batch_grid in meta_batch_list))
+            pbar.update(sum(len(batch_grid["x"]) for batch_grid in meta_batch_list))
             abort_if_relion_abort(model_angelo_output_dir)
 
             for batch_coordinates, net_output in zip(meta_batch_coordinates, meta_net_output):
