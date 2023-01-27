@@ -77,7 +77,15 @@ class MultiGPUWrapper(nn.Module):
 
     def __del__(self):
         for input_queue in self.input_queues:
-            input_queue.put(InferenceData(data=None, status=0))
+            try:
+                input_queue.put(InferenceData(data=None, status=0))
+            except:
+                pass
+        for input_queue, output_queue in zip(self.input_queues, self.output_queues):
+            input_queue.close()
+            input_queue.join_thread()
+            output_queue.close()
+            output_queue.join_thread()
         for p in self.processes:
             p.join()
 
