@@ -127,7 +127,9 @@ class MultiGPUWrapper(nn.Module):
                 data = cast_dict_to_half(data)
             if self.world_size > 1:
                 input_queue = self.input_queues[i]
-                input_queue.put(InferenceData(data=data, status=1))
+                input_queue.put(
+                    InferenceData(data=send_dict_to_device(data, device), status=1)
+                )
             else:
                 with torch.cuda.amp.autocast(dtype=self.dtype), torch.no_grad():
                     output_list.append(

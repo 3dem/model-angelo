@@ -120,7 +120,6 @@ def main(parsed_args):
 
         filter_useless_warnings()
 
-        parsed_args.device = get_device_name(parsed_args.device)
         if parsed_args.model_bundle_path is None:
             model_bundle_path = download_and_install_model(
                 parsed_args.model_bundle_name
