@@ -108,6 +108,7 @@ def add_args(parser):
 
 
 def main(parsed_args):
+    filter_useless_warnings()
     logger = setup_logger(os.path.join(parsed_args.output_dir, "model_angelo.log"))
     with logger.catch(
         message="Error in ModelAngelo",
@@ -117,8 +118,6 @@ def main(parsed_args):
             pipeline_control=parsed_args.pipeline_control,
         ),
     ):
-
-        filter_useless_warnings()
 
         if parsed_args.model_bundle_path is None:
             model_bundle_path = download_and_install_model(

@@ -6,6 +6,8 @@ from typing import List
 from collections import namedtuple
 import os
 
+from model_angelo.utils.misc_utils import filter_useless_warnings
+from model_angelo.utils.torch_utils import get_model_from_file
 
 # Currently hard-coded, can change later
 if os.environ.get("MASTER_ADDR") is None:
@@ -56,19 +58,34 @@ def cast_dict_to_full(dictionary):
             dictionary[key] = [x.to(torch.float32) for x in dictionary[key] if x.dtype == torch.float16]
     return dictionary
 
+def init_model(model_definition_path: str, state_dict_path: str, device: str) -> nn.Module:
+    model = get_model_from_file(model_definition_path).eval()
+    checkpoint = torch.load(state_dict_path, map_location="cpu")
+    if "model" not in checkpoint:
+        model.load_state_dict(checkpoint)
+    else:
+        model.load_state_dict(checkpoint["model"])
+    model.to(device)
+    return model
 
 def run_inference(
-        model: nn.Module,
-        device: str,
         rank_id: int,
+        model_definition_path: str,
+        state_dict_path: str,
+        devices: List[str],
         world_size: int,
-        input_queue: mp.Queue,
-        output_queue: mp.Queue,
+        input_queues: List[mp.Queue],
+        output_queues: List[mp.Queue],
         dtype: torch.dtype = torch.float32,
 ):
+    device = devices[rank_id]
+    input_queue = input_queues[rank_id]
+    output_queue = output_queues[rank_id]
+    model = init_model(model_definition_path, state_dict_path, device)
+
     dist.init_process_group("gloo", rank=rank_id, world_size=world_size)
-    model.eval()
-    model.to(device)
+    filter_useless_warnings()
+
     while True:
         with torch.no_grad():
             try:
@@ -82,13 +99,18 @@ def run_inference(
             except Exception as e:
                 output_queue.put(None)
                 raise e
-                return
 
 
 class MultiGPUWrapper(nn.Module):
-    def __init__(self, model: nn.Module, devices: List[str], fp16: bool = False):
+    def __init__(
+            self,
+            model_definition_path: str,
+            state_dict_path: str,
+            devices: List[str],
+            fp16: bool = False
+    ):
         super().__init__()
-        self.processes = []
+        self.proc_ctx = None
         self.input_queues = []
         self.output_queues = []
         self.world_size = len(devices)
@@ -96,28 +118,29 @@ class MultiGPUWrapper(nn.Module):
         self.dtype = torch.float32 if not fp16 else torch.float16
 
         if self.world_size > 1:
-            model.share_memory()
-        
-            for rank_id, device in enumerate(devices):
+            torch.multiprocessing.set_start_method('spawn', force=True)
+
+            self.input_queues, self.output_queues = [], []
+            for _ in range(self.world_size):
                 self.input_queues.append(mp.Queue())
                 self.output_queues.append(mp.Queue())
-                self.processes.append(
-                    mp.Process(
-                        target=run_inference,
-                        args=(
-                            model,
-                            device,
-                            rank_id,
-                            self.world_size,
-                            self.input_queues[-1],
-                            self.output_queues[-1],
-                            self.dtype
-                        )
-                    )
-                )
-                self.processes[-1].start()
+
+            self.proc_ctx = mp.spawn(
+                run_inference,
+                args=(
+                    model_definition_path,
+                    state_dict_path,
+                    devices,
+                    self.world_size,
+                    self.input_queues,
+                    self.output_queues,
+                    self.dtype
+                ),
+                nprocs=self.world_size,
+                join=False,
+            )
         else:
-            self.model = model.to(self.devices[0])
+            self.model = init_model(model_definition_path, state_dict_path, devices[0])
 
     def forward(self, data_list: List) -> List:
         output_list = []
@@ -153,8 +176,7 @@ class MultiGPUWrapper(nn.Module):
                 input_queue.join_thread()
                 output_queue.close()
                 output_queue.join_thread()
-            for p in self.processes:
-                p.join()
+            self.proc_ctx.join()
 
     def __enter__(self):
         return self

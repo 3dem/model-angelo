@@ -61,9 +61,7 @@ def init_optimizer_with_gradients(model: nn.Module, optimizer: torch.optim.Optim
     optimizer.zero_grad()
 
 
-def checkpoint_load_latest(
-    log_dir: str, device: torch.DeviceObjType, match_model: bool = True, **kwargs
-) -> int:
+def find_latest_checkpoint(log_dir: str) -> Tuple[str, int]:
     checkpoints = glob.glob(os.path.join(log_dir, "chkpt_*"))
     if len(checkpoints) == 0:
         return 0
@@ -71,9 +69,14 @@ def checkpoint_load_latest(
     checkpoints = sorted(checkpoints, key=lambda x: x[1])
 
     checkpoint_to_load, step_num = checkpoints[-1]
+    return checkpoint_to_load, step_num
 
+
+def checkpoint_load_latest(
+    log_dir: str, device: torch.DeviceObjType, match_model: bool = True, **kwargs
+) -> int:
+    checkpoint_to_load, step_num = find_latest_checkpoint(log_dir)
     state_dicts = torch.load(checkpoint_to_load, map_location=device)
-
     if match_model:
         warnings.warn(
             "In checkpoint_load_latest, match_model is set to True. "
@@ -85,7 +88,6 @@ def checkpoint_load_latest(
             v.load_state_dict(state_dicts[k], strict=not match_model)
         elif hasattr(v, "load_state_dict") and not match_model:
             v.load_state_dict(state_dicts[k])
-
     return step_num
 
 

@@ -23,9 +23,8 @@ from model_angelo.gnn.inference import infer as gnn_infer
 from model_angelo.utils.misc_utils import (
     setup_logger,
     write_relion_job_exit_status,
-    filter_useless_warnings,
     Args,
-    abort_if_relion_abort,
+    abort_if_relion_abort, filter_useless_warnings,
 )
 from model_angelo.utils.torch_utils import download_and_install_model, get_device_name
 
@@ -108,6 +107,7 @@ def add_args(parser):
 
 
 def main(parsed_args):
+    filter_useless_warnings()
     logger = setup_logger(os.path.join(parsed_args.output_dir, "model_angelo.log"))
     with logger.catch(
         message="Error in ModelAngelo",
@@ -117,7 +117,6 @@ def main(parsed_args):
             pipeline_control=parsed_args.pipeline_control,
         ),
     ):
-        filter_useless_warnings()
 
         if parsed_args.model_bundle_path is None:
             model_bundle_path = download_and_install_model(

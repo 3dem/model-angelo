@@ -127,24 +127,13 @@ def infer(args):
 
     os.makedirs(args.output_path, exist_ok=True)
     model_angelo_output_dir = os.path.dirname(args.output_path)
-
-    checkpoint = torch.load(
-        os.path.join(args.log_dir, args.model_checkpoint), map_location="cpu"
-    )
-    checkpoint_args = checkpoint["args"]
     device_names = get_device_names(args.device)
 
-    module = (
-        get_model_from_file(os.path.join(args.log_dir, "model.py"))
-        .eval()
-    )
+    model_definition_path = os.path.join(args.log_dir, "model.py")
+    state_dict_path = os.path.join(args.log_dir, args.model_checkpoint) 
 
-    module.load_state_dict(checkpoint["model"])
-
-    logger.info(f"Using model file {os.path.join(args.log_dir, 'model.py')}")
-    logger.info(
-        f"Using checkpoint file {os.path.join(args.log_dir, args.model_checkpoint)}"
-    )
+    logger.info(f"Using model file {model_definition_path}")
+    logger.info(f"Using checkpoint file {state_dict_path}")
 
     if args.map_path.endswith("pkl"):
         ds = pickle.load(open(args.map_path, "br"))
@@ -195,7 +184,7 @@ def infer(args):
     grid_std = get_local_std(grid[None, None])[0, 0]
     grid_std /= torch.max(grid_std) + 1e-6
 
-    bz = checkpoint_args.box_size
+    bz = args.box_size
     stride = args.stride
     x_coordinates = [i * stride for i in range((grid.shape[-1] - bz) // stride)] + [
         grid.shape[-1] - 1 - bz
@@ -214,14 +203,12 @@ def infer(args):
     logger.info(f"Input structure has shape: {grid_np.shape[-3:]}")
     logger.info("Running with these arguments:")
     logger.info(args)
-    logger.info("Model has these arguments:")
-    logger.info(checkpoint_args)
 
     prediction_start_time = time.time()
     pbar = tqdm.tqdm(
         total=len(coordinates_to_infer), file=sys.stdout, position=0, leave=True,
     )
-    with MultiGPUWrapper(module, device_names) as wrapper:
+    with MultiGPUWrapper(model_definition_path, state_dict_path, device_names) as wrapper:
         while i < len(coordinates_to_infer):
             meta_batch_list = []
             meta_batch_coordinates = []
@@ -242,11 +229,13 @@ def infer(args):
                         batch_coordinates.append(curr_coordinate)
                         batch_grid.append(torch.cat((sliced_grid, sliced_grid_std), dim=0))
                         i += 1
-                batch_grid = torch.stack(batch_grid)
-                meta_batch_list.append({"x": batch_grid})
-                meta_batch_coordinates.append(batch_coordinates)
-            meta_net_output = wrapper(meta_batch_list)
-            pbar.update(sum(len(batch_grid["x"]) for batch_grid in meta_batch_list))
+                if len(batch_grid) > 0:
+                    batch_grid = torch.stack(batch_grid)
+                    meta_batch_list.append({"x": batch_grid})
+                    meta_batch_coordinates.append(batch_coordinates)
+            if len(meta_batch_list) > 0:
+                meta_net_output = wrapper(meta_batch_list)
+                pbar.update(sum(len(batch_grid["x"]) for batch_grid in meta_batch_list))
             abort_if_relion_abort(model_angelo_output_dir)
 
             for batch_coordinates, net_output in zip(meta_batch_coordinates, meta_net_output):
@@ -432,10 +421,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save-output-grid",
         action="store_true",
-        help="For debug purposes, the output grid of the network.",
+        help="For debug purposes, the output grid of the network",
     )
     parser.add_argument(
         "--crop", type=int, default=6, help="Margin on each output window to discard"
+    )
+    parser.add_argument(
+        "--box-size", type=int, default=64, help="Box size of CNN prediction"
     )
     args = parser.parse_args()
 

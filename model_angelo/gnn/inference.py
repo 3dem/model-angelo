@@ -38,7 +38,7 @@ from model_angelo.utils.protein import (
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
-    get_device_names,
+    get_device_names, find_latest_checkpoint,
 )
 from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
 
@@ -48,24 +48,17 @@ def infer(args):
     os.makedirs(args.output_dir, exist_ok=True)
     model_angelo_output_dir = os.path.dirname(args.output_dir)
 
-    module = get_model_from_file(os.path.join(args.model_dir, "model.py"))
-    step = checkpoint_load_latest(
-        args.model_dir, torch.device("cpu"), match_model=False, model=module,
-    )
+    model_definition_path = os.path.join(args.model_dir, "model.py")
+    state_dict_path, step = find_latest_checkpoint(args.model_dir)
     logger.info(f"Loaded module from step: {step}")
 
-    module = module.eval()
     device_names = get_device_names(args.device)
     num_devices = len(device_names)
     lang_model, alphabet = get_esm_model(args.esm_model)
     batch_converter = alphabet.get_batch_converter()
 
     lang_model = lang_model.eval()
-
-    if hasattr(module, "voxel_size"):
-        voxel_size = module.voxel_size
-    else:
-        voxel_size = 1.5
+    voxel_size = args.voxel_size
 
     protein = None
     if args.struct.endswith("prot"):
@@ -134,7 +127,7 @@ def infer(args):
     # Get an initial set of pointers to neighbours for more efficient inference
     init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
 
-    with MultiGPUWrapper(module, device_names, args.fp16) as wrapper:
+    with MultiGPUWrapper(model_definition_path, state_dict_path, device_names, args.fp16) as wrapper:
         while residues_left > 0:
             idxs = argmin_random(
                 collated_results["counts"], init_neighbours, args.batch_size * num_devices,
@@ -243,6 +236,12 @@ if __name__ == "__main__":
         "--write-hmm-profiles",
         action="store_true",
         help="Write HMM profiles, even though it is built with sequence.",
+    )
+    parser.add_argument(
+        "--voxel-size",
+        type=float,
+        default=1.0,
+        help="The voxel size that the GNN should be interpolating to."
     )
     args = parser.parse_args()
     infer(args)

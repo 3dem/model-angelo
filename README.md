@@ -100,9 +100,15 @@ hmmsearch -o A.txt -A A.sto output/hmm_profiles/A.hmm PATH_TO_DB
 ```
 You will have your result as a multiple sequence alignment here: `A.sto`. 
 
+## FAQs
+
+1. **How do I change which GPU ModelAngelo runs on?** You can specify the device(s) ModelAngelo runs on by using the `--device` flag. So, for example, to use GPU with Id 0, you write `--device 0`. To use the first two GPUs of your computer, you can write `--device 0,1`.
+2. **Do I need to repeat the sequence of a dimer twice in the FASTA file?** No, each *unique* sequence only needs to show up once in the FASTA file. Duplicates are always removed.
+3. **How does ModelAngelo deal with glycosylation sites, non standard amino acids, etc?** It *doesn't*. These parts of the model should be checked manually.
+4. **How does ModelAngelo deal with cis prolines?** It *doesn't*. However, we find that a round of refinement (with REFMAC, for example) fixes this issue.
+
 ## Common issues
 1. ModelAngelo currently does not build nucleotides. It also may make mistakes if nucleotide sequences are in the sequence fasta file.
-
 2. If the result looks very bad, with many disconnected chains, take a look at the alpha helices. If these are made of short and disconnected chains, the map was probably in the wrong handedness. If you flip the map and run again, you should see much better results.
 
 ## Citation
