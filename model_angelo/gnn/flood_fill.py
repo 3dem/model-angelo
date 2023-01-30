@@ -220,7 +220,7 @@ def final_results_to_cif(
 
     # Prune chains based on length
     # TODO: This does nothing, get rid of it
-    pruned_chains = [c for c in chains if len(c) > 0]
+    pruned_chains = [c for c in chains if len(c) > 2]
 
     if refine:
         protein_to_cif(protein, cif_path)
@@ -323,7 +323,7 @@ def final_results_to_cif(
             sequence_idxs=fix_chains_output.best_match_output.sequence_idxs,
             bfactors=chain_bfactors,
             match_scores=fix_chains_output.best_match_output.match_scores,
-            chain_prune_length=4,
+            chain_prune_length=3,
             hmm_output_match_sequences=fix_chains_output.best_match_output.hmm_output_match_sequences,
         )
 
