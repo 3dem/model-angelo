@@ -42,7 +42,7 @@ then
   exit 1;
 fi
 
-conda install -y pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
+conda install -y pytorch torchvision torchaudio cudatoolkit=11.7 -c pytorch
 
 if [ "${torch_home_path}" ]
 then

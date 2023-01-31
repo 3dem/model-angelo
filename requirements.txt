@@ -6,5 +6,5 @@ matplotlib
 mrcfile
 pandas
 fair-esm
-pyhmmer
+pyhmmer >= 0.7.1
 loguru

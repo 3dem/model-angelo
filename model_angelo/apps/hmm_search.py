@@ -143,11 +143,9 @@ def main(parsed_args):
     os.makedirs(parsed_args.output_dir, exist_ok=True)
 
     pruned_hmms = [k for k in hmms if k[1].alphabet == alphabet]
-    with pyhmmer.easel.SequenceFile(
-        parsed_args.fasta_path, alphabet=alphabet, digital=True
-    ) as sf:
-        digital_sequences = list(sf)
-    print(digital_sequences[0])
+
+    with pyhmmer.easel.SequenceFile(parsed_args.fasta_path, alphabet=alphabet, digital=True) as sf:
+        digital_sequences = sf.read_block()
 
     pipeline = pyhmmer.plan7.Pipeline(
         alphabet,
@@ -158,14 +156,15 @@ def main(parsed_args):
         T=parsed_args.T,
     )
     for (name, hmm) in tqdm.tqdm(pruned_hmms):
-        hits = pipeline.search_hmm(hmm, digital_sequences)
-
+        try:
+            hits = pipeline.search_hmm(hmm, digital_sequences)
+        except Exception as e:
+            print(f"Chain {name} failed")
+            continue
         if parsed_args.pipeline_control:
             abort_if_relion_abort(parsed_args.output_dir)
-
         with open(os.path.join(parsed_args.output_dir, f"{name}.hhr"), "wb") as f:
             hits.write(f)
-
         try:
             msa = hits.to_msa(alphabet)
             with open(os.path.join(parsed_args.output_dir, f"{name}.a2m"), "wb") as f:
