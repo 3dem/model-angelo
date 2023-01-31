@@ -134,6 +134,7 @@ def infer(args):
         print_fn=logger.info,
         aggressive_pruning=False,
         refine=args.refine,
+        save_hmms=True,
     )
 
     return output_path

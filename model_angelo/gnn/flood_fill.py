@@ -148,7 +148,18 @@ def final_results_to_cif(
         prot_sequences = protein.unified_seq.split("|||")
     else:
         prot_sequences = None
-    aatype = protein.aatype
+    if protein.aatype is not None:
+        aatype = protein.aatype
+    else:
+        # Rest of code
+        aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int32)
+        aatype[prot_mask] = np.argmax(
+            final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1
+        )
+        aatype[~prot_mask] = (
+                np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1)
+                + num_prot
+        )
     existence_mask = (
         (torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3).numpy()
         if not refine
@@ -162,15 +173,6 @@ def final_results_to_cif(
         )
         existence_mask[~prot_mask] *= remove_overlapping_ca(
             get_affine_translation(backbone_affine[~prot_mask])
-        )
-        # Rest of code
-        aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int32)
-        aatype[prot_mask] = np.argmax(
-            final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1
-        )
-        aatype[~prot_mask] = (
-            np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1)
-            + num_prot
         )
         aatype = aatype[existence_mask]
     backbone_affine = backbone_affine[existence_mask]

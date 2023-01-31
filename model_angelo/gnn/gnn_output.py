@@ -89,4 +89,3 @@ class GNNOutput(GNNIO):
                     else init_affine
                 ).requires_grad_()
             ]
-
