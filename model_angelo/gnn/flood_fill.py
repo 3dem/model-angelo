@@ -144,7 +144,10 @@ def final_results_to_cif(
     refine: bool = False,
 ):
     prot_mask = protein.prot_mask
-    prot_sequences = protein.unified_seq.split("|||")
+    if protein.unified_seq is not None:
+        prot_sequences = protein.unified_seq.split("|||")
+    else:
+        prot_sequences = None
     aatype = protein.aatype
     existence_mask = (
         (torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3).numpy()

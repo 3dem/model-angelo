@@ -188,19 +188,21 @@ def run_inference_on_data(
         if with_seq:
             kwargs["seq_attention_batch_size"] = seq_attention_batch_size
         if data["batch_num"] == 1:
-            kwargs["sequence"] = data["sequence"][None]
-            kwargs["sequence_mask"] = torch.ones(1, data["sequence"].shape[0])
+            if with_seq:
+                kwargs["sequence"] = data["sequence"][None]
+                kwargs["sequence_mask"] = torch.ones(1, data["sequence"].shape[0])
             kwargs["batch"] = None
             kwargs["cryo_grids"] = [data["cryo_grids"]]
             kwargs["cryo_global_origins"] = [data["cryo_global_origins"]]
             kwargs["cryo_voxel_sizes"] = [data["cryo_voxel_sizes"]]
         else:
-            kwargs["sequence"] = (
-                data["sequence"][None].expand(data["batch_num"], -1, -1,)
-            )
-            kwargs["sequence_mask"] = torch.ones(
-                data["batch_num"], data["sequence"].shape[0],
-            )
+            if with_seq:
+                kwargs["sequence"] = (
+                    data["sequence"][None].expand(data["batch_num"], -1, -1,)
+                )
+                kwargs["sequence_mask"] = torch.ones(
+                    data["batch_num"], data["sequence"].shape[0],
+                )
             kwargs["batch"] = data["batch"]
             kwargs["cryo_grids"] = [
                 data["cryo_grids"] for _ in range(data["batch_num"])
@@ -304,4 +306,10 @@ def get_base_parser():
         "--batch-size", default=1, type=int, help="How many batches to run in parallel"
     )
     parser.add_argument("--fp16", action="store_true", help="Use fp16 in inference")
+    parser.add_argument(
+        "--voxel-size",
+        type=float,
+        default=1.0,
+        help="The voxel size that the GNN should be interpolating to."
+    )
     return parser

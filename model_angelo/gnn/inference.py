@@ -237,11 +237,5 @@ if __name__ == "__main__":
         action="store_true",
         help="Write HMM profiles, even though it is built with sequence.",
     )
-    parser.add_argument(
-        "--voxel-size",
-        type=float,
-        default=1.0,
-        help="The voxel size that the GNN should be interpolating to."
-    )
     args = parser.parse_args()
     infer(args)
