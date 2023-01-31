@@ -68,18 +68,17 @@ def knn(x, y, k, batch_x=None, batch_y=None):
     y = torch.cat([y, 2 * y.size(1) * batch_y.view(-1, 1).to(y.dtype)], dim=-1)
 
     tree = cKDTree(x.cpu().detach().numpy())
-    dist, col = tree.query(
-        y.cpu().detach().cpu(), k=k, distance_upper_bound=x.size(1))
+    dist, col = tree.query(y.cpu().detach().cpu(), k=k, distance_upper_bound=x.size(1))
     dist = torch.from_numpy(dist).to(x.dtype)
     col = torch.from_numpy(col).to(torch.long)
     row = torch.arange(col.size(0), dtype=torch.long).view(-1, 1).repeat(1, k)
-    mask = ~ torch.isinf(dist).view(-1)
+    mask = ~torch.isinf(dist).view(-1)
     row, col = row.view(-1)[mask], col.view(-1)[mask]
 
     return torch.stack([row, col], dim=0)
 
 
-def knn_graph(x, k, batch=None, loop=False, flow='source_to_target'):
+def knn_graph(x, k, batch=None, loop=False, flow="source_to_target"):
     r"""Computes graph edges to the nearest :obj:`k` points.
 
     Args:
@@ -109,9 +108,9 @@ def knn_graph(x, k, batch=None, loop=False, flow='source_to_target'):
         >>> edge_index = knn_graph(x, k=2, batch=batch, loop=False)
     """
 
-    assert flow in ['source_to_target', 'target_to_source']
+    assert flow in ["source_to_target", "target_to_source"]
     row, col = knn(x, x, k if loop else k + 1, batch, batch)
-    row, col = (col, row) if flow == 'source_to_target' else (row, col)
+    row, col = (col, row) if flow == "source_to_target" else (row, col)
     if not loop:
         mask = row != col
         row, col = row[mask], col[mask]

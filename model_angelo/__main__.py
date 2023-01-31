@@ -11,8 +11,7 @@ def main():
     import model_angelo
 
     parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawTextHelpFormatter,
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "--version",
@@ -25,6 +24,7 @@ def main():
     import model_angelo.apps.evaluate
     import model_angelo.apps.eval_per_resid
     import model_angelo.apps.hmm_search
+    import model_angelo.apps.refine
 
     modules = {
         "build": model_angelo.apps.build,
@@ -32,11 +32,10 @@ def main():
         "evaluate": model_angelo.apps.evaluate,
         "eval_per_resid": model_angelo.apps.eval_per_resid,
         "hmm_search": model_angelo.apps.hmm_search,
+        "refine": model_angelo.apps.refine,
     }
 
-    subparsers = parser.add_subparsers(
-        title="Choose a module",
-    )
+    subparsers = parser.add_subparsers(title="Choose a module",)
     subparsers.required = "True"
 
     for key in modules:

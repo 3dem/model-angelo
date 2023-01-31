@@ -80,7 +80,9 @@ class SpatialIPA(nn.Module):
 
         self.forward = self.forward_checkpoint if checkpoint else self.forward_normal
 
-    def forward_normal(self, x, affines, edge_index=None, batch=None, **kwargs):
+    def forward_normal(
+        self, x, affines, prot_mask, edge_index=None, batch=None, **kwargs
+    ):
         """Calculates point wise attention to each query point and updates features
 
         Args:
@@ -89,7 +91,8 @@ class SpatialIPA(nn.Module):
             edge_index: Graph connectivity, of shape (N, k)
             batch: If using Pytorch Geometric graph batching, this is crucial
         """
-        bde_out = self.backbone_distance_emb(x, affines, edge_index, batch)
+        dtype = x.dtype
+        bde_out = self.backbone_distance_emb(x, affines, prot_mask, edge_index, batch)
 
         loc_query = self.loc_q(
             bde_out.x_ne
@@ -114,21 +117,23 @@ class SpatialIPA(nn.Module):
             dim=-1
         )  # N kz ahz
 
-        attention_weights = torch.softmax(
-            loc_attention_scores,
-            dim=1,  # N kz ahz
+        attention_weights = torch.softmax(loc_attention_scores, dim=1,).to(  # N kz ahz
+            dtype
         )
         new_features_loc = torch.einsum("nkaqi,nka->naqi", loc_value, attention_weights)
 
-        new_features = self.ag(new_features_loc)  # Back to (N, ifz)
-        new_features = self.en(x + new_features / math.sqrt(2))
+        new_features = self.ag(new_features_loc).to(dtype)  # Back to (N, ifz)
+        new_features = self.en(x + new_features / math.sqrt(2)).to(dtype)
         return new_features, bde_out.edge_index
 
-    def forward_checkpoint(self, x, affines, edge_index=None, batch=None, **kwargs):
+    def forward_checkpoint(
+        self, x, affines, prot_mask, edge_index=None, batch=None, **kwargs
+    ):
         return torch.utils.checkpoint.checkpoint(
             self.forward_normal,
             x,
             affines,
+            prot_mask,
             edge_index,
             batch,
             preserve_rng_state=False,

@@ -22,11 +22,14 @@ from model_angelo.utils.grid import (
     save_mrc,
 )
 from model_angelo.utils.misc_utils import abort_if_relion_abort
-from model_angelo.utils.save_pdb_utils import points_to_pdb
-from model_angelo.utils.torch_utils import get_model_from_file
+from model_angelo.utils.save_pdb_utils import points_to_pdb, ca_ps_to_pdb
+from model_angelo.utils.torch_utils import get_model_from_file, get_device_names
+from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
 
 
-def grid_to_points(grid, threshold, neighbour_distance_threshold):
+def grid_to_points(
+    grid, threshold, neighbour_distance_threshold, prune_distance=1.1,
+):
     lattice = np.flip(get_lattice_meshgrid_np(grid.shape[-1], no_shift=True), -1)
 
     output_points_before_pruning = np.copy(lattice[grid > threshold, :].reshape(-1, 3))
@@ -40,7 +43,7 @@ def grid_to_points(grid, threshold, neighbour_distance_threshold):
 
         new_points = np.copy(points)
         for p in points:
-            neighbours = kdtree.query_ball_point(p, 1.1)
+            neighbours = kdtree.query_ball_point(p, prune_distance)
             selection = list(neighbours)
             if len(neighbours) > 1 and np.sum(probs[selection]) > 0:
                 keep_idx = np.argmax(probs[selection])
@@ -124,24 +127,13 @@ def infer(args):
 
     os.makedirs(args.output_path, exist_ok=True)
     model_angelo_output_dir = os.path.dirname(args.output_path)
+    device_names = get_device_names(args.device)
 
-    checkpoint = torch.load(
-        os.path.join(args.log_dir, args.model_checkpoint), map_location=args.device
-    )
-    checkpoint_args = checkpoint["args"]
+    model_definition_path = os.path.join(args.log_dir, "model.py")
+    state_dict_path = os.path.join(args.log_dir, args.model_checkpoint) 
 
-    module = (
-        get_model_from_file(os.path.join(args.log_dir, "model.py"))
-        .to(args.device)
-        .eval()
-    )
-
-    module.load_state_dict(checkpoint["model"])
-
-    logger.info(f"Using model file {os.path.join(args.log_dir, 'model.py')}")
-    logger.info(
-        f"Using checkpoint file {os.path.join(args.log_dir, args.model_checkpoint)}"
-    )
+    logger.info(f"Using model file {model_definition_path}")
+    logger.info(f"Using checkpoint file {state_dict_path}")
 
     if args.map_path.endswith("pkl"):
         ds = pickle.load(open(args.map_path, "br"))
@@ -192,7 +184,7 @@ def infer(args):
     grid_std = get_local_std(grid[None, None])[0, 0]
     grid_std /= torch.max(grid_std) + 1e-6
 
-    bz = checkpoint_args.box_size
+    bz = args.box_size
     stride = args.stride
     x_coordinates = [i * stride for i in range((grid.shape[-1] - bz) // stride)] + [
         grid.shape[-1] - 1 - bz
@@ -211,57 +203,56 @@ def infer(args):
     logger.info(f"Input structure has shape: {grid_np.shape[-3:]}")
     logger.info("Running with these arguments:")
     logger.info(args)
-    logger.info("Model has these arguments:")
-    logger.info(checkpoint_args)
 
     prediction_start_time = time.time()
     pbar = tqdm.tqdm(
-        total=len(coordinates_to_infer),
-        file=sys.stdout,
-        position=0,
-        leave=True,
+        total=len(coordinates_to_infer), file=sys.stdout, position=0, leave=True,
     )
-    with torch.no_grad():
+    with MultiGPUWrapper(model_definition_path, state_dict_path, device_names) as wrapper:
         while i < len(coordinates_to_infer):
-            batch_grid = []
-            batch_coordinates = []
-            for _ in range(args.batch_size):
-                if i < len(coordinates_to_infer):
-                    curr_coordinate = coordinates_to_infer[i]
-                    coordinate_slice = np.s_[
-                        ...,
-                        curr_coordinate[0] : curr_coordinate[0] + bz,
-                        curr_coordinate[1] : curr_coordinate[1] + bz,
-                        curr_coordinate[2] : curr_coordinate[2] + bz,
-                    ]
-                    sliced_grid = grid[coordinate_slice][None].clone()
-                    sliced_grid_std = grid_std[coordinate_slice][None].clone()
-                    batch_coordinates.append(curr_coordinate)
-                    batch_grid.append(torch.cat((sliced_grid, sliced_grid_std), dim=0))
-                    i += 1
-            batch_grid = torch.stack(batch_grid).to(args.device)
-            net_output = module(batch_grid)
-            pbar.update(len(batch_grid))
+            meta_batch_list = []
+            meta_batch_coordinates = []
+            for _ in device_names:
+                batch_grid = []
+                batch_coordinates = []
+                for _ in range(args.batch_size):
+                    if i < len(coordinates_to_infer):
+                        curr_coordinate = coordinates_to_infer[i]
+                        coordinate_slice = np.s_[
+                            ...,
+                            curr_coordinate[0] : curr_coordinate[0] + bz,
+                            curr_coordinate[1] : curr_coordinate[1] + bz,
+                            curr_coordinate[2] : curr_coordinate[2] + bz,
+                        ]
+                        sliced_grid = grid[coordinate_slice][None].clone()
+                        sliced_grid_std = grid_std[coordinate_slice][None].clone()
+                        batch_coordinates.append(curr_coordinate)
+                        batch_grid.append(torch.cat((sliced_grid, sliced_grid_std), dim=0))
+                        i += 1
+                if len(batch_grid) > 0:
+                    batch_grid = torch.stack(batch_grid)
+                    meta_batch_list.append({"x": batch_grid})
+                    meta_batch_coordinates.append(batch_coordinates)
+            if len(meta_batch_list) > 0:
+                meta_net_output = wrapper(meta_batch_list)
+                pbar.update(sum(len(batch_grid["x"]) for batch_grid in meta_batch_list))
             abort_if_relion_abort(model_angelo_output_dir)
 
-            for j, c in enumerate(batch_coordinates):
-                batch_slice = np.s_[
-                    ...,
-                    c[0] + crop : c[0] + bz - crop,
-                    c[1] + crop : c[1] + bz - crop,
-                    c[2] + crop : c[2] + bz - crop,
-                ]
-                net_output_batch = torch.sigmoid(
-                    net_output[
-                        j,
+            for batch_coordinates, net_output in zip(meta_batch_coordinates, meta_net_output):
+                for j, c in enumerate(batch_coordinates):
+                    batch_slice = np.s_[
                         ...,
-                        crop : bz - crop,
-                        crop : bz - crop,
-                        crop : bz - crop,
+                        c[0] + crop : c[0] + bz - crop,
+                        c[1] + crop : c[1] + bz - crop,
+                        c[2] + crop : c[2] + bz - crop,
                     ]
-                )
-                output[batch_slice] += net_output_batch.cpu()
-                count_output[batch_slice] += 1
+                    net_output_batch = torch.sigmoid(
+                        net_output[
+                            j, ..., crop : bz - crop, crop : bz - crop, crop : bz - crop,
+                        ]
+                    )
+                    output[batch_slice] += net_output_batch.cpu()
+                    count_output[batch_slice] += 1
 
     pbar.close()
 
@@ -298,14 +289,13 @@ def infer(args):
     )
     output_file_path = os.path.join(args.output_path, "see_alpha_output_ca.cif")
     points_to_pdb(
-        output_file_path,
-        voxel_size * output_ca_points,
+        output_file_path, voxel_size * output_ca_points,
     )
 
     if args.do_nucleotides:
         logger.info("Starting P grid to points...")
         output_p_points, output_p_points_before_pruning = grid_to_points(
-            p_grid, args.threshold, 12 / voxel_size
+            p_grid, args.threshold, 10 / voxel_size, prune_distance=3.2 / voxel_size,
         )
         logger.info(
             f"Have {len(output_p_points_before_pruning)} P points before pruning and {len(output_p_points)} after pruning"
@@ -317,6 +307,12 @@ def infer(args):
         )
         points_to_pdb(
             os.path.join(args.output_path, "see_alpha_output_p.cif"),
+            voxel_size * output_p_points,
+        )
+        output_file_path = os.path.join(args.output_path, "see_alpha_merged_output.cif")
+        ca_ps_to_pdb(
+            output_file_path,
+            voxel_size * output_ca_points,
             voxel_size * output_p_points,
         )
 
@@ -338,16 +334,16 @@ def infer(args):
         )
     if args.save_real_coordinates:
         points_to_pdb(
-            os.path.join(args.output_path, "real_points.cif"),
-            voxel_size * cas,
+            os.path.join(args.output_path, "real_points.cif"), voxel_size * cas,
         )
-    if args.save_ca_grid:
-        save_mrc(
-            ca_grid.astype(np.float32),
-            voxel_size,
-            global_origin,
-            os.path.join(args.output_path, "ca_grid.mrc"),
-        )
+    if args.save_output_grid:
+        for i, name in enumerate(["ca_output_grid", "p_output_grid"]):
+            save_mrc(
+                output[i].astype(np.float32),
+                voxel_size,
+                global_origin,
+                os.path.join(args.output_path, f"{name}.mrc"),
+            )
     logger.info("Finished inference!")
 
     return output_file_path
@@ -375,15 +371,10 @@ if __name__ == "__main__":
         help="Where to save the output and log file",
     )
     parser.add_argument(
-        "--mask-path",
-        default=None,
-        help="Solvent mask to apply to output",
+        "--mask-path", default=None, help="Solvent mask to apply to output",
     )
     parser.add_argument(
-        "--bfactor",
-        type=float,
-        default=0,
-        help="Bfactor to apply to the map",
+        "--bfactor", type=float, default=0, help="Bfactor to apply to the map",
     )
     parser.add_argument(
         "--device",
@@ -428,15 +419,16 @@ if __name__ == "__main__":
         help="Save predicted backbone trace of the grid",
     )
     parser.add_argument(
-        "--save-ca-grid",
+        "--save-output-grid",
         action="store_true",
-        help="For debug purposes, the output grid of the network.",
+        help="For debug purposes, the output grid of the network",
     )
     parser.add_argument(
         "--crop", type=int, default=6, help="Margin on each output window to discard"
     )
+    parser.add_argument(
+        "--box-size", type=int, default=64, help="Box size of CNN prediction"
+    )
     args = parser.parse_args()
 
-    infer(
-        args,
-    )
+    infer(args,)

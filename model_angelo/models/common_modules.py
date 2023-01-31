@@ -57,20 +57,13 @@ class Normalize(nn.Module):
         x_fc = x[:, 0].unsqueeze(1)
         mu = torch.mean(x_fc, dim=dims, keepdim=True)
         sigma = torch.std(x_fc, dim=dims, keepdim=True)
-        return torch.cat(
-            (
-                (x_fc - mu) / (sigma + 1e-6),
-                x[:, 1:],
-            ),
-            dim=1,
-        )
+        return torch.cat(((x_fc - mu) / (sigma + 1e-6), x[:, 1:],), dim=1,)
 
     def normal_forward(self, x):
         dims = list(range(1, len(x.shape)))
         mu = torch.mean(x, dim=dims, keepdim=True)
         sigma = torch.std(x, dim=dims, keepdim=True)
         return (x - mu) / (sigma + 1e-6)
-
 
 
 class MultiScaleConv(nn.Module):
@@ -131,17 +124,14 @@ class FcResBlock(nn.Module):
         normalization_class=nn.LayerNorm,
     ) -> None:
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(in_features, out_features, bias=False),
-        )
+        self.net = nn.Sequential(nn.Linear(in_features, out_features, bias=False),)
         self.forward = (
             self.residual_forward
             if in_features == out_features
             else self.non_residual_forward
         )
         self.activation = nn.Sequential(
-            activation_class(),
-            normalization_class(out_features),
+            activation_class(), normalization_class(out_features),
         )
 
     def residual_forward(self, x):
@@ -199,3 +189,13 @@ class SinusoidalPositionalEncoding(nn.Module):
         sin_inp_x = torch.einsum("...i,j->...ij", tensor, self.inv_freq)
         emb_x = torch.cat((sin_inp_x.sin(), sin_inp_x.cos()), dim=-1)
         return emb_x
+
+
+class LearnedGate(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.register_parameter("gate", nn.Parameter(torch.zeros(1)))
+
+    def forward(self, x, y):
+        s = torch.sigmoid(self.gate)
+        return s * x + (1 - s) * y

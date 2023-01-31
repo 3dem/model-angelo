@@ -6,6 +6,7 @@ import torch.nn as nn
 from einops.layers.torch import Rearrange
 
 from model_angelo.models.common_modules import FcResBlock
+from model_angelo.utils.residue_constants import canonical_num_residues
 from model_angelo.utils.torch_utils import get_batch_slices, padded_sequence_softmax
 
 SequenceAttentionOutput = namedtuple(
@@ -71,31 +72,19 @@ class SequenceAttention(nn.Module):
         self.afz = in_features if attention_features is None else attention_features
         self.ahz = attention_heads
         self.attention_scale = math.sqrt(self.afz)
-        self.sqrt2 = math.sqrt(2)
+        self.resid_scale = math.sqrt(2)
 
         self.q = nn.Sequential(
             nn.Linear(self.ifz, self.ahz * self.afz, bias=False),
-            Rearrange(
-                "n (ahz afz) -> n ahz afz",
-                ahz=self.ahz,
-                afz=self.afz,
-            ),
+            Rearrange("n (ahz afz) -> n ahz afz", ahz=self.ahz, afz=self.afz,),
         )
         self.k = nn.Sequential(
             nn.Linear(self.sfz, self.ahz * self.afz, bias=False),
-            Rearrange(
-                "b s (ahz afz) -> b s ahz afz",
-                ahz=self.ahz,
-                afz=self.afz,
-            ),
+            Rearrange("b s (ahz afz) -> b s ahz afz", ahz=self.ahz, afz=self.afz,),
         )
         self.v = nn.Sequential(
             nn.Linear(self.sfz, self.ahz * self.afz, bias=False),
-            Rearrange(
-                "b s (ahz afz) -> b s ahz afz",
-                ahz=self.ahz,
-                afz=self.afz,
-            ),
+            Rearrange("b s (ahz afz) -> b s ahz afz", ahz=self.ahz, afz=self.afz,),
         )
 
         self.ag = nn.Sequential(
@@ -104,17 +93,12 @@ class SequenceAttention(nn.Module):
                     (
                         "rearrange",
                         Rearrange(
-                            "n ahz afz -> n (ahz afz)",
-                            ahz=self.ahz,
-                            afz=self.afz,
+                            "n ahz afz -> n (ahz afz)", ahz=self.ahz, afz=self.afz,
                         ),
                     ),
                     ("ln", nn.LayerNorm(self.ahz * self.afz)),
                     ("linear", nn.Linear(self.ahz * self.afz, self.ifz, bias=False)),
-                    (
-                        "dropout",
-                        nn.Dropout(p=0.5),
-                    ),
+                    ("dropout", nn.Dropout(p=0.5),),
                 ]
             )
         )
@@ -122,7 +106,7 @@ class SequenceAttention(nn.Module):
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
-            nn.Linear(self.ifz, 20),
+            nn.Linear(self.ifz, canonical_num_residues),
         )
         self.en = nn.LayerNorm(self.ifz)
 
@@ -133,12 +117,18 @@ class SequenceAttention(nn.Module):
         x,
         packed_sequence_emb,
         packed_sequence_mask,
+        prot_mask,
         batch=None,
         attention_batch_size=200,
         **kwargs,
     ):
         return self._intern_forward(
-            x, packed_sequence_emb, packed_sequence_mask, batch, attention_batch_size
+            x,
+            packed_sequence_emb,
+            packed_sequence_mask,
+            prot_mask,
+            batch,
+            attention_batch_size,
         )
 
     def forward_checkpoint(
@@ -146,6 +136,7 @@ class SequenceAttention(nn.Module):
         x: torch.Tensor,
         packed_sequence_emb: torch.Tensor,
         packed_sequence_mask: torch.Tensor,
+        prot_mask: torch.LongTensor,
         batch=None,
         attention_batch_size: int = 200,
         **kwargs,
@@ -155,6 +146,7 @@ class SequenceAttention(nn.Module):
             x,
             packed_sequence_emb,
             packed_sequence_mask,
+            prot_mask,
             batch,
             attention_batch_size,
             preserve_rng_state=False,
@@ -165,13 +157,17 @@ class SequenceAttention(nn.Module):
         x: torch.Tensor,
         packed_sequence_emb: torch.Tensor,
         packed_sequence_mask: torch.Tensor,
+        prot_mask: torch.LongTensor,
         batch,
         attention_batch_size: int,
     ) -> SequenceAttentionOutput:
         device = x.device
+        dtype = x.dtype
         if batch is None:
-            batch = torch.zeros(x.shape[0], dtype=torch.long, device=device)
-        sequence_query = self.q(x)  # (n, ahz, afz)
+            batch = torch.zeros(x.shape[0], dtype=torch.long, device=x.device)
+        batch = batch[prot_mask]
+
+        sequence_query = self.q(x[prot_mask])  # (n, ahz, afz)
         sequence_key = self.k(packed_sequence_emb)  # (1, seq_len, ahz, afz)
         sequence_value = self.v(packed_sequence_emb)  # (1, seq_len, ahz, afz)
 
@@ -182,13 +178,24 @@ class SequenceAttention(nn.Module):
             self.attention_scale,
             batch_size=attention_batch_size,
             device=device,
-        )
-
+        ).to(dtype)
         batched_mask = packed_sequence_mask[batch].unsqueeze(-1)  # (n, seq_len, 1)
         # Since sequence emb was padded, do not consider the padded parts for attention
         sequence_attention_weights = padded_sequence_softmax(
             sequence_attention_scores, batched_mask, dim=1
         )
+
+        new_features = torch.zeros_like(x)
+        unpacked_sequence_attention_scores = torch.zeros(
+            x.shape[0],
+            *sequence_attention_scores.shape[1:],
+            device=device,
+            dtype=dtype,
+        )
+        seq_aa_logits = torch.zeros(
+            x.shape[0], canonical_num_residues, device=device, dtype=dtype,
+        )
+        unpacked_sequence_attention_scores[prot_mask] = sequence_attention_scores
 
         new_features_attention = get_batched_sequence_attention_features(
             sequence_attention_weights,
@@ -197,12 +204,11 @@ class SequenceAttention(nn.Module):
             batch_size=attention_batch_size,
             device=device,
         )
-
-        new_features = self.ag(new_features_attention)
-        seq_aa_logits = self.seq_aa_head(new_features)
-        new_features = self.en(x + new_features / self.sqrt2)
+        new_features[prot_mask] = self.ag(new_features_attention).to(dtype)
+        seq_aa_logits[prot_mask] = self.seq_aa_head(new_features[prot_mask])
+        new_features = self.en(x + new_features / self.resid_scale).to(dtype)
         return SequenceAttentionOutput(
             x=new_features,
             seq_aa_logits=seq_aa_logits,
-            seq_attention_scores=sequence_attention_scores,
+            seq_attention_scores=unpacked_sequence_attention_scores,
         )

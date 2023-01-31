@@ -16,7 +16,7 @@
       "threshold": 0.05,
       "save_real_coordinates": false,
       "save_cryo_em_grid": false,
-      "do_nucleotides": false,
+      "do_nucleotides": true,
       "save_backbone_trace": false,
       "save_ca_grid": false,
       "crop": 6
