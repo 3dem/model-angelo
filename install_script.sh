@@ -23,7 +23,7 @@ fi
 
 is_conda_model_angelo_installed=$(conda info --envs | grep model_angelo -c)
 if [[ "${is_conda_model_angelo_installed}" == "0" ]];then
-  conda create -n model_angelo python=3.9 -y;
+  conda create -n model_angelo python=3.10 -y;
 fi
 
 torch_home_path="${TORCH_HOME}"
@@ -42,7 +42,7 @@ then
   exit 1;
 fi
 
-conda install -y pytorch torchvision torchaudio cudatoolkit=11.7 -c pytorch
+conda install -y pytorch torchvision torchaudio cudatoolkit=11.7 -c pytorch -c nvidia
 
 if [ "${torch_home_path}" ]
 then
