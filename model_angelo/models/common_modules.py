@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -136,7 +138,7 @@ class FcResBlock(nn.Module):
 
     def residual_forward(self, x):
         y = self.net(x)
-        return self.activation(x + y / np.sqrt(2))
+        return self.activation(x + y / math.sqrt(2))
 
     def non_residual_forward(self, x):
         return self.activation(self.net(x))
