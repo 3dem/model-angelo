@@ -107,7 +107,7 @@ You will have your result as a multiple sequence alignment here: `A.a3m`.
 
 ## Citation
 
-ModelAngelo has been published in the proceedings of the International Conference on Learning Representations (*ICLR*) 2023. You can find the paper on  [Openreview](https://openreview.net/forum?id=65XDF_nwI61))
+ModelAngelo has been published in the proceedings of the International Conference on Learning Representations (*ICLR*) 2023. You can find the paper on  [Openreview](https://openreview.net/forum?id=65XDF_nwI61)
 
 Here is the BibTex
 ```
