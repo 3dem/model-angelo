@@ -523,7 +523,7 @@ def get_device_name(device_name: str) -> str:
         )
 
 def get_device_names(device_name_str: str) -> List[str]:
-    if "," not in device_name_str:
+    if device_name_str is None or "," not in device_name_str:
         return [get_device_name(device_name_str)]
     else:
         return [get_device_name(x.strip()) for x in device_name_str.split(",") if len(x.strip()) > 0]
