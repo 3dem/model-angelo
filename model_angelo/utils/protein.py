@@ -224,21 +224,22 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             chain_res_ids.append(residue_count)
             residue_count += 1
         aatype.extend(chain_aatype)
-        if len(chain_seq) == 0:
-            continue
         chain_idx_to_residues.append(np.array(chain_res_ids, dtype=np.int32))
-        chain_seq = "".join(chain_seq)
         chain_aatype = np.array(chain_aatype, dtype=int)
-        if chain_seq not in temp_sequences_seen:
-            temp_sequences_seen[chain_seq] = seq_len_so_far
-            chain_residue_to_seq_id = list(
-                range(seq_len_so_far, seq_len_so_far + len(chain_seq))
-            )
-            unified_seq.append(chain_seq)
-            seq_len_so_far += len(chain_seq)
+        if len(chain_seq) > 0:
+            chain_seq = "".join(chain_seq)
+            if chain_seq not in temp_sequences_seen:
+                temp_sequences_seen[chain_seq] = seq_len_so_far
+                chain_residue_to_seq_id = list(
+                    range(seq_len_so_far, seq_len_so_far + len(chain_seq))
+                )
+                unified_seq.append(chain_seq)
+                seq_len_so_far += len(chain_seq)
+            else:
+                offset = temp_sequences_seen[chain_seq]
+                chain_residue_to_seq_id = list(range(offset, offset + len(chain_seq)))
         else:
-            offset = temp_sequences_seen[chain_seq]
-            chain_residue_to_seq_id = list(range(offset, offset + len(chain_seq)))
+            chain_residue_to_seq_id = []
         if len(chain_seq) < len(chain_aatype):
             res_to_seq_id_array = np.array(chain_residue_to_seq_id, dtype=int)
             chain_residue_to_seq_id = np.zeros_like(chain_aatype)
