@@ -254,7 +254,6 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     chain_index = np.array([chain_id_mapping[cid] for cid in chain_ids])
 
     atom_positions = np.array(atom_positions)
-    print(len(atomc_positions))
     atomc_positions = np.array(atomc_positions)
     atom_mask = np.array(atom_mask)
     atomc_mask = np.array(atomc_mask)
@@ -534,7 +533,6 @@ def atomf_to_torsion_angles(
 
     # shape (B, N, atoms=4, xyz=3)
     # Pre omega for proteins
-    print( prev_all_atom_pos.shape)
     torsions_atom_pos[prot_mask, 0, :2] = prev_all_atom_pos[
         prot_mask, 1:3, :
     ]  # prev CA, C
