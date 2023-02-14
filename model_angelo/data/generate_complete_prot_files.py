@@ -72,6 +72,8 @@ if __name__ == "__main__":
     model = model.eval().to(args.device)
 
     for input_file, output_file in tqdm.tqdm(zip(input_files, output_files)):
+        if os.path.isfile(output_file):
+            continue
         try:
             protein = get_protein_from_file_path(input_file)
             new_protein = get_lm_embeddings_for_protein(
