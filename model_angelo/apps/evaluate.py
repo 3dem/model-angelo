@@ -5,6 +5,8 @@ Compare a predicted model with a ground truth model. You need:
 2) A target mmCIF file, passed to --target-structure/--t/-t
 """
 import numpy as np
+import os
+import pickle
 import torch
 from Bio.SVDSuperimposer import SVDSuperimposer
 from model_angelo.utils.save_pdb_utils import chain_atom14_to_cif
@@ -222,8 +224,6 @@ def main(parsed_args):
 
 if __name__ == "__main__":
     import argparse
-    import os
-    import pickle
 
     parser = argparse.ArgumentParser()
     parser = add_args(parser)

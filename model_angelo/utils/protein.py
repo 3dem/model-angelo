@@ -139,14 +139,6 @@ class Protein:
 
     keys = PROTEIN_KEYS
 
-    def __post_init__(self):
-        if len(np.unique(self.chain_index)) > PDB_MAX_CHAINS:
-            warnings.warn(
-                f"Should not build an instance with more than {PDB_MAX_CHAINS} chains "
-                "because these cannot be written to PDB format.",
-                RuntimeWarning,
-            )
-
 
 def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     """Takes a file path containing a PDB/mmCIF file and constructs a Protein object.
@@ -167,10 +159,6 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
         raise RuntimeError("Unknown type for structure file:", file_path[-3:])
     structure = parser.get_structure("none", file_path)
     models = list(structure.get_models())
-    if len(models) != 1:
-        warnings.warn(
-            f"Only single model PDBs are supported. Found {len(models)} models."
-        )
     model = models[0]
 
     atom_positions = []
@@ -235,11 +223,11 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             b_factors.append(res_b_factors)
             chain_res_ids.append(residue_count)
             residue_count += 1
+        aatype.extend(chain_aatype)
         if len(chain_seq) == 0:
             continue
         chain_idx_to_residues.append(np.array(chain_res_ids, dtype=np.int32))
         chain_seq = "".join(chain_seq)
-        aatype.extend(chain_aatype)
         chain_aatype = np.array(chain_aatype, dtype=int)
         if chain_seq not in temp_sequences_seen:
             temp_sequences_seen[chain_seq] = seq_len_so_far
@@ -266,13 +254,13 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     chain_index = np.array([chain_id_mapping[cid] for cid in chain_ids])
 
     atom_positions = np.array(atom_positions)
+    print(len(atomc_positions))
     atomc_positions = np.array(atomc_positions)
     atom_mask = np.array(atom_mask)
     atomc_mask = np.array(atomc_mask)
     aatype = np.array(aatype)
     residue_index = np.array(residue_index)
     b_factors = np.array(b_factors)
-
     frames = atomf_to_frames(
         aatype=aatype, all_atom_positions=atom_positions, all_atom_mask=atom_mask
     )
@@ -546,6 +534,7 @@ def atomf_to_torsion_angles(
 
     # shape (B, N, atoms=4, xyz=3)
     # Pre omega for proteins
+    print( prev_all_atom_pos.shape)
     torsions_atom_pos[prot_mask, 0, :2] = prev_all_atom_pos[
         prot_mask, 1:3, :
     ]  # prev CA, C

@@ -96,8 +96,8 @@ def aa_log_probs_to_hmm_file(
     aa_log_probs: np.ndarray,
     confidence: np.ndarray = None,
     output_path: str = None,
-    delta=0.01,
-    gamma=0.5,
+    delta=0.10,
+    gamma=0.4,
     alphabet_type="amino",
 ):
     """
