@@ -175,6 +175,7 @@ def aa_logits_to_hmm(
     confidence: np.ndarray = None,
     base_dir: str = "/tmp",
     alphabet_type: str = "amino",
+    eps: float = 1e-6,
 ) -> HMM:
     processed_aa_logits = np.ones_like(aa_logits) * -100
     processed_aa_logits[alphabet_to_slice[alphabet_type]] = aa_logits[
@@ -207,6 +208,7 @@ def aa_logits_to_hmm(
                 restype_3_to_index["U"],
             ],
         ].sum(axis=-1)
+        exp_logits_gather += eps
         aa_logits_gather = np.log(exp_logits_gather)
         logsumexp = np.log(exp_logits_gather.sum(axis=-1, keepdims=True))
         aa_log_probs = aa_logits_gather - logsumexp
