@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
 
-from model_angelo.models.common_modules import FcResBlock
+from model_angelo.models.common_modules import FcResBlock, LayerNormNoBias
 from model_angelo.utils.residue_constants import canonical_num_residues
 from model_angelo.utils.torch_utils import get_batch_slices, padded_sequence_softmax
 
@@ -96,9 +96,9 @@ class SequenceAttention(nn.Module):
                             "n ahz afz -> n (ahz afz)", ahz=self.ahz, afz=self.afz,
                         ),
                     ),
-                    ("ln", nn.LayerNorm(self.ahz * self.afz)),
+                    ("ln", LayerNormNoBias(self.ahz * self.afz)),
                     ("linear", nn.Linear(self.ahz * self.afz, self.ifz, bias=False)),
-                    ("dropout", nn.Dropout(p=0.5),),
+                    ("dropout", nn.Dropout(p=0.1),),
                 ]
             )
         )
@@ -108,7 +108,7 @@ class SequenceAttention(nn.Module):
             FcResBlock(self.ifz, self.ifz, activation_class=activation_class),
             nn.Linear(self.ifz, canonical_num_residues),
         )
-        self.en = nn.LayerNorm(self.ifz)
+        self.en = LayerNormNoBias(self.ifz)
 
         self.forward = self.forward_checkpoint if checkpoint else self.forward_normal
 

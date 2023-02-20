@@ -7,7 +7,7 @@ from einops.layers.torch import Rearrange
 
 from model_angelo.gnn.backbone_distance_embedding import BackboneDistanceEmbedding
 from model_angelo.models.bottleneck import Bottleneck
-from model_angelo.models.common_modules import FcResBlock, SpatialAvg
+from model_angelo.models.common_modules import FcResBlock, SpatialAvg, LayerNormNoBias
 from model_angelo.utils.affine_utils import get_affine_rot
 from model_angelo.utils.grid import (
     sample_centered_cube_rot_matrix,
@@ -52,7 +52,7 @@ class CryoAttention(nn.Module):
         self.ag = nn.Sequential(
             nn.Linear(self.ahz * self.ifz * 2, self.ifz, bias=False), nn.Dropout(p=0.5),
         )
-        self.en = nn.LayerNorm(self.ifz)
+        self.en = LayerNormNoBias(self.ifz)
 
         # Cryo stuff
         self.q_length = q_length
@@ -72,7 +72,7 @@ class CryoAttention(nn.Module):
             ),
             SpatialAvg(),
             nn.Linear(self.cryo_emb_dim, self.ahz * self.ifz, bias=False),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.1),
         )
 
         self.cryo_vectors_k = nn.Sequential(
@@ -90,12 +90,12 @@ class CryoAttention(nn.Module):
                 x=1,
                 y=1,
             ),
-            nn.LayerNorm(self.cryo_emb_dim * self.q_length),
+            LayerNormNoBias(self.cryo_emb_dim * self.q_length),
             activation_class(),
             nn.Linear(
                 self.cryo_emb_dim * self.q_length, self.ahz * self.ifz, bias=False
             ),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.1),
             Rearrange(
                 "b kz (ahz ifz) -> b kz ahz ifz",
                 kz=self.kz,

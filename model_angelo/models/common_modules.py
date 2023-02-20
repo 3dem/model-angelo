@@ -5,6 +5,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class LayerNormNoBias(nn.Module):
+    """ From nanoGPT: 
+    LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False 
+    """
+
+    def __init__(self, ndim: int):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(ndim))
+
+    def forward(self, input):
+        return F.layer_norm(input, self.weight.shape, self.weight, None, 1e-5)
+
 
 class Swish(nn.Module):
     def forward(self, x):
@@ -123,7 +135,7 @@ class FcResBlock(nn.Module):
         in_features,
         out_features,
         activation_class=nn.ReLU,
-        normalization_class=nn.LayerNorm,
+        normalization_class=LayerNormNoBias,
     ) -> None:
         super().__init__()
         self.net = nn.Sequential(nn.Linear(in_features, out_features, bias=False),)

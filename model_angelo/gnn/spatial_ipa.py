@@ -7,6 +7,7 @@ import torch.nn as nn
 from einops.layers.torch import Rearrange
 
 from model_angelo.gnn.backbone_distance_embedding import BackboneDistanceEmbedding
+from model_angelo.models.common_modules import LayerNormNoBias
 from model_angelo.utils.affine_utils import affine_mul_vecs
 
 
@@ -72,11 +73,11 @@ class SpatialIPA(nn.Module):
                         "linear",
                         nn.Linear(self.ahz * self.ifz * self.qpz, self.ifz, bias=False),
                     ),
-                    ("dropout", nn.Dropout(p=0.5)),
+                    ("dropout", nn.Dropout(p=0.1)),
                 ]
             )
         )
-        self.en = nn.LayerNorm(self.ifz)
+        self.en = LayerNormNoBias(self.ifz)
 
         self.forward = self.forward_checkpoint if checkpoint else self.forward_normal
 
