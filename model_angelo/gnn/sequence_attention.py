@@ -10,7 +10,9 @@ from model_angelo.utils.residue_constants import canonical_num_residues
 from model_angelo.utils.torch_utils import get_batch_slices, padded_sequence_softmax
 
 SequenceAttentionOutput = namedtuple(
-    "SequenceAttentionOutput", ["x", "seq_aa_logits", "seq_attention_scores"]
+    "SequenceAttentionOutput", [
+        "x", "seq_aa_logits", "seq_attention_scores", "sequence_key_cache", "sequence_value_cache"
+    ]
 )
 
 
@@ -27,11 +29,9 @@ def get_batched_sequence_attention_scores(
     )  # nsa
     n_len, s_len = output.shape[:2]
     seq_batches = get_batch_slices(s_len, batch_size)
-    sequence_query = sequence_query[:, None]
+    sequence_query = sequence_query[:, None] / attention_scale
     for seq_batch in seq_batches:
-        output[:, seq_batch] = (sequence_query * sequence_key[:, seq_batch][batch]).sum(
-            dim=-1
-        ) / attention_scale
+        output[:, seq_batch] = (sequence_query * sequence_key[:, seq_batch][batch]).sum(dim=-1)
     return output
 
 
@@ -120,6 +120,8 @@ class SequenceAttention(nn.Module):
         prot_mask,
         batch=None,
         attention_batch_size=200,
+        sequence_key_cache=None,
+        sequence_value_cache=None,
         **kwargs,
     ):
         return self._intern_forward(
@@ -129,6 +131,8 @@ class SequenceAttention(nn.Module):
             prot_mask,
             batch,
             attention_batch_size,
+            sequence_key_cache,
+            sequence_value_cache,
         )
 
     def forward_checkpoint(
@@ -139,6 +143,8 @@ class SequenceAttention(nn.Module):
         prot_mask: torch.LongTensor,
         batch=None,
         attention_batch_size: int = 200,
+        sequence_key_cache: torch.Tensor = None,
+        sequence_value_cache: torch.Tensor = None,
         **kwargs,
     ) -> SequenceAttentionOutput:
         return torch.utils.checkpoint.checkpoint(
@@ -149,6 +155,8 @@ class SequenceAttention(nn.Module):
             prot_mask,
             batch,
             attention_batch_size,
+            sequence_key_cache,
+            sequence_value_cache,
             preserve_rng_state=False,
         )
 
@@ -160,6 +168,8 @@ class SequenceAttention(nn.Module):
         prot_mask: torch.LongTensor,
         batch,
         attention_batch_size: int,
+        sequence_key_cache: torch.Tensor = None,
+        sequence_value_cache: torch.Tensor = None,
     ) -> SequenceAttentionOutput:
         device = x.device
         dtype = x.dtype
@@ -168,8 +178,14 @@ class SequenceAttention(nn.Module):
         batch = batch[prot_mask]
 
         sequence_query = self.q(x[prot_mask])  # (n, ahz, afz)
-        sequence_key = self.k(packed_sequence_emb)  # (1, seq_len, ahz, afz)
-        sequence_value = self.v(packed_sequence_emb)  # (1, seq_len, ahz, afz)
+        if sequence_key_cache is not None:
+            sequence_key = sequence_key_cache
+        else:
+            sequence_key = self.k(packed_sequence_emb)  # (1, seq_len, ahz, afz)
+        if sequence_value_cache is not None:
+            sequence_value = sequence_value_cache
+        else:
+            sequence_value = self.v(packed_sequence_emb)  # (1, seq_len, ahz, afz)
 
         sequence_attention_scores = get_batched_sequence_attention_scores(
             sequence_query,
@@ -211,4 +227,6 @@ class SequenceAttention(nn.Module):
             x=new_features,
             seq_aa_logits=seq_aa_logits,
             seq_attention_scores=unpacked_sequence_attention_scores,
+            sequence_key_cache=sequence_key,
+            sequence_value_cache=sequence_value,
         )

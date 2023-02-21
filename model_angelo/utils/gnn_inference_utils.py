@@ -91,7 +91,9 @@ def get_inference_data(
     for j in range(num_devices):
         if len(ca_positions) > crop_length:
             kd = cKDTree(ca_positions)
-            _, picked_indices = kd.query(ca_positions[idxs[j * batch_num_per_device: (j + 1) * batch_num_per_device]], k=crop_length)
+            _, picked_indices = kd.query(
+                ca_positions[idxs[j * batch_num_per_device: (j + 1) * batch_num_per_device]], k=crop_length
+            )
             batch_num = batch_num_per_device
             batch = torch.concat(
                 [torch.ones(crop_length, dtype=torch.long) * i for i in range(batch_num)],
@@ -112,9 +114,7 @@ def get_inference_data(
             "batch": batch,
         }
         if protein.residue_to_lm_embedding is not None:
-            output_dict["sequence"] = torch.from_numpy(
-                np.copy(protein.residue_to_lm_embedding)
-            )
+            output_dict["sequence"] = torch.from_numpy(protein.residue_to_lm_embedding)
         output_list.append(output_dict)
     return output_list
 
@@ -173,6 +173,7 @@ def run_inference_on_data(
     run_iters: int = 2,
     seq_attention_batch_size: int = 200,
     fp16: bool = False,
+    using_cache: bool = False,
 ):
     with_seq = "sequence" in meta_batch_list[0]
     meta_input_list = []
@@ -184,6 +185,7 @@ def run_inference_on_data(
             "init_affine": affines,
             "record_training": False,
             "run_iters": run_iters,
+            "using_cache": using_cache,
         }
         if with_seq:
             kwargs["seq_attention_batch_size"] = seq_attention_batch_size

@@ -58,7 +58,7 @@ class BackboneDistanceEmbedding(nn.Module):
         neighbour_distances = self.distance_encoding(
             neighbour_positions.norm(dim=-1)
         )  # N kz pd
-        pseudo_aatypes = np.zeros(len(affines), dtype=np.int32)
+        pseudo_aatypes = np.zeros(len(affines), dtype=np.int64)
         pseudo_aatypes[(~prot_mask).cpu().numpy()] = num_prot
         ncac = frames_and_literature_positions_to_atom3_pos(
             pseudo_aatypes, affines

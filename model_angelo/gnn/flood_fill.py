@@ -152,7 +152,7 @@ def final_results_to_cif(
         aatype = protein.aatype
     else:
         # Rest of code
-        aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int32)
+        aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int64)
         aatype[prot_mask] = np.argmax(
             final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1
         )

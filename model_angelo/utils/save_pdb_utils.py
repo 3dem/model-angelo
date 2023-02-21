@@ -9,12 +9,15 @@ from Bio.PDB.mmcifio import MMCIFIO
 from Bio.PDB.StructureBuilder import StructureBuilder
 
 from model_angelo.utils.misc_utils import assertion_check
-from model_angelo.utils.protein import Protein
+from model_angelo.utils.protein import Protein, frames_and_literature_positions_to_atomc_pos, \
+    frames_and_literature_positions_to_atom3_pos
 from model_angelo.utils.residue_constants import (
     index_to_restype_3,
     restype_name_to_atomc_names,
-    index_to_restype_1,
+    index_to_restype_1, num_atomc,
 )
+import torch
+
 
 PDB_CHAIN_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 SEQUENCE_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -213,6 +216,22 @@ def atom14_to_cif(
 def protein_to_cif(
     protein: Protein, path_to_save: str,
 ):
+    # Will be deleted
+    if protein.aatype is None:
+        protein.aatype = np.zeros(len(protein.rigidgroups_gt_frames), dtype=np.int64)
+        protein.aatype[~protein.prot_mask] = 21
+    if protein.chain_id is None:
+        protein.chain_id = ["A"]
+    if protein.chain_index is None:
+        protein.chain_index = np.zeros(len(protein.rigidgroups_gt_frames), dtype=np.int64)
+    if protein.atomc_positions is None:
+        protein.atomc_positions = np.zeros((len(protein.rigidgroups_gt_frames), num_atomc, 3), dtype=np.float32)
+        protein.atomc_mask = np.zeros((len(protein.rigidgroups_gt_frames), num_atomc))
+        protein.atomc_positions[:, :3] = frames_and_literature_positions_to_atom3_pos(
+            protein.aatype, torch.from_numpy(protein.rigidgroups_gt_frames[:, 0])
+        ).numpy()
+        protein.atomc_mask[:, :3] = 1
+    # Up to here
     if protein.b_factors is None:
         bfactors = np.zeros(len(protein.aatype))
     else:

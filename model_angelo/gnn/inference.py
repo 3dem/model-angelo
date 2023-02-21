@@ -41,10 +41,13 @@ from model_angelo.utils.torch_utils import (
     get_device_names, find_latest_checkpoint,
 )
 from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
-
+from model_angelo.utils.save_pdb_utils import protein_to_cif
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
 
 
 def infer(args):
+    torch.manual_seed(42)  # For reproducibility
     os.makedirs(args.output_dir, exist_ok=True)
     model_angelo_output_dir = os.path.dirname(args.output_dir)
 
@@ -112,6 +115,7 @@ def infer(args):
             f"Grid volume file {args.map} is not a supported file format."
         )
 
+    protein_to_cif(protein, os.path.join(args.output_dir, "initial.cif"))
     num_res = len(protein.rigidgroups_gt_frames)
 
     collated_results = init_empty_collate_results(
@@ -126,11 +130,14 @@ def infer(args):
 
     # Get an initial set of pointers to neighbours for more efficient inference
     init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
-
+    using_cache = False
     with MultiGPUWrapper(model_definition_path, state_dict_path, device_names, args.fp16) as wrapper:
         while residues_left > 0:
             idxs = argmin_random(
-                collated_results["counts"], init_neighbours, args.batch_size * num_devices,
+                collated_results["counts"],
+                init_neighbours,
+                batch_size=args.batch_size * num_devices,
+                repeat_per_residue=args.repeat_per_residue,
             )
             data = get_inference_data(
                 protein, grid_data, idxs, crop_length=args.crop_length, num_devices=num_devices,
@@ -140,6 +147,7 @@ def infer(args):
                 data,
                 seq_attention_batch_size=args.seq_attention_batch_size,
                 fp16=args.fp16,
+                using_cache=using_cache,
             )
             for device_id in range(num_devices):
                 for i in range(args.batch_size):
@@ -163,6 +171,7 @@ def infer(args):
 
             pbar.update(n=int(steps_left_last - steps_left))
             steps_left_last = steps_left
+            using_cache = True
             abort_if_relion_abort(model_angelo_output_dir)
     pbar.close()
 

@@ -1197,14 +1197,14 @@ def _make_rigid_transformation_4x4(ex, ey, translation):
 # and compute affine transformation matrices (4,4) from one rigid group to the
 # previous group
 restype_atomf_to_rigid_group = np.zeros(
-    [canonical_num_residues, atom_type_num], dtype=np.int32
+    [canonical_num_residues, atom_type_num], dtype=np.int64
 )
 restype_atomf_mask = np.zeros([canonical_num_residues, atom_type_num], dtype=np.float32)
 restype_atomf_rigid_group_positions = np.zeros(
     [canonical_num_residues, atom_type_num, 3], dtype=np.float32
 )
 restype_atomc_to_rigid_group = np.zeros(
-    [canonical_num_residues, num_atomc], dtype=np.int32
+    [canonical_num_residues, num_atomc], dtype=np.int64
 )
 restype_atomc_mask = np.zeros([canonical_num_residues, num_atomc], dtype=np.float32)
 restype_atomc_rigid_group_positions = np.zeros(
@@ -1675,5 +1675,5 @@ for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]:
         resname_torsion_atom_mask.append(1)
     nuc_torsion_atom_indices.append(resname_torsion_atom_indices)
     nuc_torsion_atom_mask.append(resname_torsion_atom_mask)
-nuc_torsion_atom_indices = np.array(nuc_torsion_atom_indices, dtype=np.int32)
-nuc_torsion_atom_mask = np.array(nuc_torsion_atom_mask, dtype=np.int32)
+nuc_torsion_atom_indices = np.array(nuc_torsion_atom_indices, dtype=np.int64)
+nuc_torsion_atom_mask = np.array(nuc_torsion_atom_mask, dtype=np.int64)

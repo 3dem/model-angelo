@@ -110,6 +110,7 @@ class MultiLayerSeparableIPA(nn.Module):
         )
 
         self.init_training_record()
+        self.sequence_cache = []
 
     def forward(
         self,
@@ -121,6 +122,7 @@ class MultiLayerSeparableIPA(nn.Module):
         record_training: bool = False,
         run_iters: int = 1,
         seq_attention_batch_size: int = 200,
+        using_cache: bool = False,
         **kwargs,
     ) -> GNNOutput:
         assertion_check(
@@ -137,7 +139,8 @@ class MultiLayerSeparableIPA(nn.Module):
             hidden_features=self.hfz,
         )
         self.init_training_record()
-
+        if not using_cache:
+            self.sequence_cache = []
         for run_iter in range(run_iters):
             not_last_iter = run_iter != (run_iters - 1)
             with torch.no_grad() if not_last_iter else contextlib.nullcontext():
@@ -158,18 +161,30 @@ class MultiLayerSeparableIPA(nn.Module):
                         f"x_cryo_attention_{idx}",
                         record_training=record_training,
                     )
+                    if using_cache:
+                        sequence_key_cache, sequence_value_cache = self.sequence_cache[idx]
+                    else:
+                        sequence_key_cache, sequence_value_cache = (None,None)
                     (
                         result["x"],
                         seq_aa_logits,
                         seq_attention_scores,
+                        sequence_key_cache,
+                        sequence_value_cache,
                     ) = self.seq_attentions[idx](
                         x=result["x"],
                         packed_sequence_emb=sequence,
                         packed_sequence_mask=sequence_mask,
                         attention_batch_size=seq_attention_batch_size,
                         prot_mask=prot_mask,
+                        sequence_key_cache=sequence_key_cache,
+                        sequence_value_cache=sequence_value_cache,
                         **kwargs,
                     )
+                    if not using_cache:
+                        self.sequence_cache.append(
+                            (sequence_key_cache.contiguous(), sequence_value_cache.contiguous())
+                        )
                     self.append_to_training_record(
                         result["x"],
                         f"x_seq_attentions_{idx}",
@@ -239,6 +254,8 @@ class MultiLayerSeparableIPA(nn.Module):
                     init_affine=result["pred_affines"][-1],
                     hidden_features=self.hfz,
                 )
+            # By the end of the iter, the sequence is in the cache anyway
+            using_cache = True
         return result
 
     @torch.no_grad()

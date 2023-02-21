@@ -224,7 +224,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             chain_res_ids.append(residue_count)
             residue_count += 1
         aatype.extend(chain_aatype)
-        chain_idx_to_residues.append(np.array(chain_res_ids, dtype=np.int32))
+        chain_idx_to_residues.append(np.array(chain_res_ids, dtype=np.int64))
         chain_aatype = np.array(chain_aatype, dtype=int)
         if len(chain_seq) > 0:
             chain_seq = "".join(chain_seq)
