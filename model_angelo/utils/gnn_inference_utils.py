@@ -221,7 +221,7 @@ def run_inference_on_data(
 
 
 def init_protein_from_see_alpha(
-    see_alpha_file: str, prot_fasta_file: str = None,
+    see_alpha_file: str, prot_fasta_file: str = None, skip_nucleotides: bool = False,
 ) -> Protein:
     ca_ps_dict = load_cas_ps_from_structure(see_alpha_file)
     ca_locations = torch.cat(
@@ -238,12 +238,13 @@ def init_protein_from_see_alpha(
     unified_seq, unified_seq_len = None, None
     if prot_fasta_file is not None:
         unified_seq, unified_seq_len = fasta_to_unified_seq(prot_fasta_file)
+    residue_mask = prot_mask if skip_nucleotides else np.ones(len(rigidgroups_gt_exists), dtype=bool)
     return get_protein_empty_except(
-        rigidgroups_gt_frames=rigidgroups_gt_frames,
-        rigidgroups_gt_exists=rigidgroups_gt_exists,
+        rigidgroups_gt_frames=rigidgroups_gt_frames[residue_mask],
+        rigidgroups_gt_exists=rigidgroups_gt_exists[residue_mask],
         unified_seq=unified_seq,
         unified_seq_len=unified_seq_len,
-        prot_mask=prot_mask,
+        prot_mask=prot_mask[residue_mask],
     )
 
 

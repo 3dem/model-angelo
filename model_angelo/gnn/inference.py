@@ -8,10 +8,6 @@ from loguru import logger
 
 from model_angelo.data.generate_complete_prot_files import get_lm_embeddings_for_protein
 from model_angelo.gnn.flood_fill import final_results_to_cif
-from model_angelo.utils.affine_utils import (
-    get_affine,
-    get_affine_rot,
-)
 from model_angelo.utils.fasta_utils import fasta_to_unified_seq, is_valid_fasta_ending
 from model_angelo.utils.gnn_inference_utils import (
     get_neighbour_idxs,
@@ -41,7 +37,7 @@ from model_angelo.utils.torch_utils import (
     get_device_names, find_latest_checkpoint,
 )
 from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
-from model_angelo.utils.save_pdb_utils import protein_to_cif
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
@@ -63,6 +59,17 @@ def infer(args):
     lang_model = lang_model.eval()
     voxel_size = args.voxel_size
 
+    rna_sequences, dna_sequences = [], []
+    if args.rna_fasta is not None:
+        rna_unified_seq, rna_seq_len = fasta_to_unified_seq(args.rna_fasta)
+        if rna_seq_len > 0:
+            rna_sequences = rna_unified_seq.split("|||")
+    if args.dna_fasta is not None:
+        dna_unified_seq, dna_seq_len = fasta_to_unified_seq(args.dna_fasta)
+        if dna_seq_len > 0:
+            dna_sequences = dna_unified_seq.split("|||")
+    skip_nucleotides = len(rna_sequences) + len(dna_sequences) == 0
+
     protein = None
     if args.struct.endswith("prot"):
         protein = load_protein_from_prot(args.struct)
@@ -79,22 +86,12 @@ def infer(args):
                     raise RuntimeError(
                         f"File {seq_file} is not a supported file format."
                     )
-            protein = init_protein_from_see_alpha(args.struct, args.protein_fasta)
+            protein = init_protein_from_see_alpha(args.struct, args.protein_fasta, skip_nucleotides=skip_nucleotides)
         else:
             protein = get_protein_from_file_path(args.struct)
         protein = get_lm_embeddings_for_protein(lang_model, batch_converter, protein)
     if protein is None:
         raise RuntimeError(f"File {args.struct} is not a supported file format.")
-
-    rna_sequences, dna_sequences = [], []
-    if args.rna_fasta is not None:
-        rna_unified_seq, rna_seq_len = fasta_to_unified_seq(args.rna_fasta)
-        if rna_seq_len > 0:
-            rna_sequences = rna_unified_seq.split("|||")
-    if args.dna_fasta is not None:
-        dna_unified_seq, dna_seq_len = fasta_to_unified_seq(args.dna_fasta)
-        if dna_seq_len > 0:
-            dna_sequences = dna_unified_seq.split("|||")
 
     grid_data = None
     if args.map.endswith("mrc"):
@@ -115,9 +112,7 @@ def infer(args):
             f"Grid volume file {args.map} is not a supported file format."
         )
 
-    protein_to_cif(protein, os.path.join(args.output_dir, "initial.cif"))
     num_res = len(protein.rigidgroups_gt_frames)
-
     collated_results = init_empty_collate_results(
         num_res, protein.unified_seq_len, device="cpu",
     )
@@ -200,10 +195,6 @@ def infer(args):
 
 
 if __name__ == "__main__":
-    import argparse
-
-    from model_angelo.utils.grid import load_mrc
-
     parser = get_base_parser()
     parser.add_argument(
         "--protein-fasta",
