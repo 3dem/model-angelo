@@ -68,7 +68,7 @@ class SpatialIPA(nn.Module):
                             ifz=self.ifz,
                         ),
                     ),
-                    ("ln", nn.LayerNorm(self.ahz * self.ifz * self.qpz)),
+                    ("ln", LayerNormNoBias(self.ahz * self.ifz * self.qpz)),
                     (
                         "linear",
                         nn.Linear(self.ahz * self.ifz * self.qpz, self.ifz, bias=False),
