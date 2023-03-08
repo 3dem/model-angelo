@@ -135,7 +135,7 @@ class Protein:
     # Chains to residues
     chain_idx_to_residues: List[np.ndarray]
     # Whether or not the residue is a protein residue
-    prot_mask: np.ndarray
+    prot_mask: np.ndarray  # (num_res,)
 
     keys = PROTEIN_KEYS
 
@@ -950,6 +950,15 @@ def make_up_fr_from_prot(prot: Protein):
     final_results["aa_logits"] = np.zeros((len(prot.aatype, 28)))
     final_results["aa_logits"][np.arange(len(prot.aatype)), prot.aatype] = 2
     final_results["pred_affines"] = prot.rigidgroups_gt_frames[:, 0]
+
+
+def slice_protein(protein: Protein, slice_array: np.ndarray) -> Protein:
+    num_res = len(protein.aatype)
+    for key in PROTEIN_KEYS:
+        value = getattr(protein, key)
+        if hasattr(value, "shape") and value.shape[0] == num_res:
+            setattr(protein, key, value[slice_array])
+    return protein
 
 
 if __name__ == "__main__":

@@ -26,8 +26,8 @@ def get_residue_fit_report(
     two_rounds=False,
     eps=1e-9,
 ):
-    input_cas = input_protein.atom_positions[:, atom_order["CA"]]
-    target_cas = target_protein.atom_positions[:, atom_order["CA"]]
+    input_cas = input_protein.atomc_positions[:, atom_order["CA"]]
+    target_cas = target_protein.atomc_positions[:, atom_order["CA"]]
     (
         target_correspondence,
         input_correspondence,
@@ -57,10 +57,10 @@ def get_residue_fit_report(
     input_cas_cor = input_cas[input_correspondence]
     target_cas_cor = target_cas[target_correspondence]
 
-    input_atoms = input_protein.atom_positions[input_correspondence]
-    target_atoms = target_protein.atom_positions[target_correspondence]
-    input_mask = input_protein.atom_mask[input_correspondence]
-    target_mask = target_protein.atom_mask[target_correspondence]
+    input_atoms = input_protein.atomc_positions[input_correspondence]
+    target_atoms = target_protein.atomc_positions[target_correspondence]
+    input_mask = input_protein.atomc_mask[input_correspondence]
+    target_mask = target_protein.atomc_mask[target_correspondence]
 
     sup = SVDSuperimposer()
     sup.set(target_cas_cor, input_cas_cor)
@@ -118,7 +118,7 @@ def get_residue_fit_report(
         [backbone_rms, np.full(len(input_type) - len(backbone_rms), -1)], 0
     )
 
-    unmatched_target_mask = target_protein.atom_mask[unmatched_target_idxs]
+    unmatched_target_mask = target_protein.atomc_mask[unmatched_target_idxs]
     b_factors = np.concatenate(
         [
             np.sum(target_protein.b_factors[target_correspondence] * target_mask, -1)

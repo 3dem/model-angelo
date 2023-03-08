@@ -31,6 +31,7 @@ from model_angelo.utils.protein import (
     load_protein_from_prot,
     dump_protein_to_prot,
 )
+from model_angelo.utils.save_pdb_utils import protein_to_cif
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
@@ -111,7 +112,7 @@ def infer(args):
         raise RuntimeError(
             f"Grid volume file {args.map} is not a supported file format."
         )
-
+    protein_to_cif(protein, os.path.join(args.output_dir, "initial.cif"))
     num_res = len(protein.rigidgroups_gt_frames)
     collated_results = init_empty_collate_results(
         num_res, protein.unified_seq_len, device="cpu",
