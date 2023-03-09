@@ -239,14 +239,9 @@ class MatchToSequence:
             keep_list = []
             for idx in chain:
                 keep_list.append(not idx_info[idx]["used"])
-
                 close_ids = kdtree.query_ball_point(ca_pos[idx], r=2)
                 for close_id in close_ids:
-                    if (
-                        close_id in idx_info
-                        and idx_info[close_id]["res_idx"] == idx_info[idx]["res_idx"]
-                        and idx_info[close_id]["seq_idx"] == idx_info[idx]["seq_idx"]
-                    ):
+                    if close_id in idx_info:
                         idx_info[close_id]["used"] = True
 
             keep_arr = np.array(keep_list)

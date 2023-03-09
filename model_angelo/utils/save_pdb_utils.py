@@ -214,7 +214,7 @@ def atom14_to_cif(
 
 
 def protein_to_cif(
-    protein: Protein, path_to_save: str,
+    protein: Protein, path_to_save: str, split_chains: bool = False,
 ):
     # Will be deleted
     if protein.aatype is None:
@@ -247,15 +247,20 @@ def protein_to_cif(
     struct.init_chain(protein.chain_id[0])
 
     prev_chain = protein.chain_index[0]
+    prev_residue_index = protein.residue_index[0]
     for i in range(protein.aatype.shape[0]):
         res_name_3 = index_to_restype_3[protein.aatype[i]]
         bfactor = bfactors[i]
         atom_names = restype_name_to_atomc_names[res_name_3]
         res_counter = 0
         if prev_chain != protein.chain_index[i]:
-            curr_chain += 1
+            curr_chain = 0
             struct.init_chain(protein.chain_id[protein.chain_index[i]])
+        if split_chains and protein.residue_index[i] != prev_residue_index + 1:
+            curr_chain += 1
+            struct.init_chain(protein.chain_id[protein.chain_index[i]] + f"_{curr_chain}")
         prev_chain = protein.chain_index[i]
+        prev_residue_index = protein.residue_index[i]
 
         struct.init_residue(res_name_3, " ", i, " ")
         for atom_name, pos, mask in zip(
