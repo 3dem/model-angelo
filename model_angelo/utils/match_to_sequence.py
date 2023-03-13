@@ -147,7 +147,7 @@ class MatchToSequence:
             if aggressive_pruning and np.sum(
                 self.exists_in_sequence_mask[chain_id] > 0.5
             ) < chain_prune_length <= len(chains[chain_id]):
-                # In this case, we keep the chain but mutate the residues to A
+                # In this case, we keep the chain but mutate the residues to U
                 new_sequences.append(
                     np.array(
                         [restype_3_to_index["U"]] * len(self.new_sequences[chain_id]),

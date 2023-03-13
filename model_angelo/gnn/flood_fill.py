@@ -142,6 +142,7 @@ def final_results_to_cif(
     aggressive_pruning: bool = False,
     save_hmms: bool = False,
     refine: bool = False,
+    chain_prune_length: int = 4,
 ):
     prot_mask = protein.prot_mask
     if protein.unified_seq is not None:
@@ -224,27 +225,20 @@ def final_results_to_cif(
             )
             chains += [idxs[c] for c in nuc_chains]
 
-    # Prune chains based on length
-    # TODO: This does nothing, get rid of it
-    pruned_chains = [c for c in chains if len(c) > 2]
 
     if refine:
         protein_to_cif(protein, cif_path)
     else:
         chain_atom14_to_cif(
-            [aatype[c] for c in pruned_chains],
-            [all_atoms[c] for c in pruned_chains],
-            [atom_mask[c] for c in pruned_chains],
+            [aatype[c] for c in chains],
+            [all_atoms[c] for c in chains],
+            [atom_mask[c] for c in chains],
             cif_path,
-            bfactors=[bfactors[c] for c in pruned_chains],
+            bfactors=[bfactors[c] for c in chains],
         )
 
     chain_aa_logits = [final_results["aa_logits"][existence_mask][c] for c in chains]
-    pruned_chain_aa_logits = [
-        final_results["aa_logits"][existence_mask][c] for c in pruned_chains
-    ]
     chain_prot_mask = [prot_mask[c] for c in chains]
-    pruned_chain_prot_mask = [prot_mask[c] for c in pruned_chains]
     chain_hmm_confidence = [
         local_confidence_score_sigmoid(
             final_results["local_confidence"][existence_mask][c]
@@ -262,13 +256,13 @@ def final_results_to_cif(
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
 
-        for i, chain_aa_logits in enumerate(pruned_chain_aa_logits):
+        for i, chain_aa_logits in enumerate(chain_aa_logits):
             chain_name = (
                 number_to_chain_str(i)
                 if protein.chain_id is None
                 else protein.chain_id[i]
             )
-            if np.any(pruned_chain_prot_mask[i]):
+            if np.any(chain_prot_mask[i]):
                 dump_aa_logits_to_hmm_file(
                     chain_aa_logits,
                     os.path.join(hmm_dir_path, f"{chain_name}.hmm"),
@@ -328,7 +322,7 @@ def final_results_to_cif(
             sequence_idxs=fix_chains_output.best_match_output.sequence_idxs,
             bfactors=chain_bfactors,
             match_scores=fix_chains_output.best_match_output.match_scores,
-            chain_prune_length=3,
+            chain_prune_length=chain_prune_length,
             hmm_output_match_sequences=fix_chains_output.best_match_output.hmm_output_match_sequences,
         )
 
@@ -337,7 +331,7 @@ def final_results_to_cif(
             fix_chains_output.best_match_output,
             ca_pos,
             aggressive_pruning=aggressive_pruning,
-            chain_prune_length=4,
+            chain_prune_length=chain_prune_length,
         )
 
         (
@@ -365,7 +359,7 @@ def final_results_to_cif(
             cif_path.replace(".cif", "_aa_probabilities.aap"),
             bfactors=chain_bfactors,
             aa_probs=chain_aa_probs,
-            chain_prune_length=4,
+            chain_prune_length=chain_prune_length,
         )
 
         if (

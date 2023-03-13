@@ -233,7 +233,7 @@ def main(parsed_args):
             gnn_output = gnn_infer(gnn_infer_args)
 
             current_ca_cif_path = os.path.join(
-                current_output_dir, "output_fixed_aa.cif"
+                current_output_dir, "output.cif"
             )
             abort_if_relion_abort(parsed_args.output_dir)
 
