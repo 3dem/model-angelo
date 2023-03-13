@@ -88,7 +88,7 @@ def get_hmm_alignment(
                 alphabet_type="DNA" if not do_pp else "PP",
             )
             dna_processed_msas = pyhmmer.hmmer.hmmalign(
-                hmm_dna, digital_rna_sequences, all_consensus_cols=True
+                hmm_dna, digital_dna_sequences, all_consensus_cols=True
             ).alignment
             dna_seq_idx = np.argmax(
                 np.array([len(remove_non_residue(x)) for x in dna_processed_msas])
@@ -122,7 +122,7 @@ def get_hmm_alignment(
             original_pred_seq = (
                 np.argmax(aa_logits[..., num_prot + 4 :], axis=-1) + num_prot + 4
             )
-        else:
+        elif match_type == "DNA":
             original_seq = None if not do_pp else raw_dna_sequences[dna_seq_idx]
             msa_index_corr = get_msa_index_correspondence(
                 dna_processed_msas[dna_seq_idx], original_seq=original_seq,

@@ -34,7 +34,7 @@ from model_angelo.utils.protein import (
 from model_angelo.utils.torch_utils import (
     checkpoint_load_latest,
     get_model_from_file,
-    get_device_names, find_latest_checkpoint,
+    get_device_names, find_latest_checkpoint, set_overall_seed,
 )
 from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
 
@@ -43,7 +43,7 @@ torch.backends.cudnn.allow_tf32 = True
 
 
 def infer(args):
-    torch.manual_seed(42)  # For reproducibility
+    set_overall_seed(42)  # For reproducibility
     os.makedirs(args.output_dir, exist_ok=True)
     model_angelo_output_dir = os.path.dirname(args.output_dir)
 

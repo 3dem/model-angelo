@@ -529,6 +529,13 @@ def get_device_names(device_name_str: str) -> List[str]:
         return [get_device_name(x.strip()) for x in device_name_str.split(",") if len(x.strip()) > 0]
 
 
+def set_overall_seed(seed: int):
+    import torch, random, numpy
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
+    random.seed(seed)
+
+
 class ShapeError(Exception):
     pass
 

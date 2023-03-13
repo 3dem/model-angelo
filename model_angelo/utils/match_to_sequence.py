@@ -245,9 +245,8 @@ class MatchToSequence:
                         idx_info[close_id]["used"] = True
 
             keep_arr = np.array(keep_list)
-            if len(chain) < 2 and not keep_arr[0]:
+            if np.sum(keep_arr) < 2:
                 continue
-
             new_sequences.append(self.new_sequences[chain_id][keep_arr])
             residue_idxs.append(self.residue_idxs[chain_id][keep_arr])
             exists_in_sequence_mask.append(

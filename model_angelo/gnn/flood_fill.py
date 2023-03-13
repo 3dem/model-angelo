@@ -254,9 +254,9 @@ def final_results_to_cif(
 
     if (
         save_hmms
-        or prot_sequences is None
+        or (prot_sequences is None
         and rna_sequences is None
-        and dna_sequences is None
+        and dna_sequences is None)
     ):
         # Can make HMM profiles with the aa_probs
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
@@ -312,7 +312,6 @@ def final_results_to_cif(
         ) = chains_to_atoms(
             final_results, fix_chains_output, backbone_affine, existence_mask
         )
-
         for chain_id, chain in enumerate(fix_chains_output.chains):
             ca_pos[chain] = chain_all_atoms[chain_id][:, 1]
 
@@ -510,18 +509,19 @@ def flood_fill(
 if __name__ == "__main__":
     from model_angelo.utils.protein import load_protein_from_prot
     from model_angelo.utils.misc_utils import pickle_load
-
+    
+    base_path = "/home/kjamali/Downloads/model_angelo1_paper/bug_fix/8aa5/predictions/third_run/gnn_output_round_1"
     protein = load_protein_from_prot(
-        "/home/kjamali/Downloads/katarina/purpyr_1A_test/protein.prot"
+        f"{base_path}/protein.prot"
     )
     final_results = pickle_load(
-        "/home/kjamali/Downloads/katarina/purpyr_1A_test/final_results.pkl"
+        f"{base_path}/final_results.pkl"
     )
     rna_sequences = pickle_load(
-        "/home/kjamali/Downloads/katarina/purpyr_1A_test/rna_sequences.pkl"
+        f"{base_path}/rna_sequences.pkl"
     )
     dna_sequences = pickle_load(
-        "/home/kjamali/Downloads/katarina/purpyr_1A_test/dna_sequences.pkl"
+        f"{base_path}/dna_sequences.pkl"
     )
 
     final_results_to_cif(
@@ -530,4 +530,5 @@ if __name__ == "__main__":
         cif_path="test.cif",
         rna_sequences=rna_sequences,
         dna_sequences=dna_sequences,
+        aggressive_pruning=True,
     )
