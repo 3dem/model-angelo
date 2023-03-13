@@ -142,9 +142,7 @@ class MatchToSequence:
                 and np.sum(self.exists_in_sequence_mask[chain_id] > 0.5)
                 < chain_prune_length
                 and not self.is_nucleotide[chain_id]
-            ) or (
-                not aggressive_pruning and len(chains[chain_id]) < chain_prune_length
-            ):
+            ) or len(chains[chain_id]) < chain_prune_length:
                 continue
             if aggressive_pruning and np.sum(
                 self.exists_in_sequence_mask[chain_id] > 0.5
