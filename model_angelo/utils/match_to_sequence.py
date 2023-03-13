@@ -187,6 +187,9 @@ class MatchToSequence:
                 exists_in_sequence_mask.append(self.exists_in_sequence_mask[chain_id])
                 new_chains.append(chains[chain_id])
 
+            if len(residue_idxs[-1]) < chain_prune_length:
+                continue
+
             sequence_idxs.append(self.sequence_idxs[chain_id])
             key_start_matches.append(np.min(residue_idxs[-1]))
             key_end_matches.append(np.max(residue_idxs[-1]))
