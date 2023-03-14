@@ -43,6 +43,9 @@ restype_1to3 = {
     "c": "C",
     "g": "G",
     "u": "U",
+    "1": "UNK",
+    "2": "DN",
+    "3": "N",
 }
 
 restype_3to1 = {
@@ -74,6 +77,9 @@ restype_3to1 = {
     "C": "c",
     "G": "g",
     "U": "u",
+    "UNK": "1",
+    "DN": "2",
+    "N": "3",
 }
 
 restype_3_to_index = {
@@ -105,6 +111,9 @@ restype_3_to_index = {
     "C": 25,
     "G": 26,
     "U": 27,
+    "UNK":28,
+    "DN": 29,
+    "N": 30,
 }
 
 restype_1_to_index = {
@@ -136,6 +145,9 @@ restype_1_to_index = {
     "c": 25,
     "g": 26,
     "u": 27,
+    "1": 28,
+    "2": 29,
+    "3": 30,
 }
 
 index_to_restype_1 = [
@@ -167,6 +179,9 @@ index_to_restype_1 = [
     "c",
     "g",
     "u",
+    "1",
+    "2",
+    "3",
 ]
 
 index_to_restype_3 = [
@@ -198,14 +213,14 @@ index_to_restype_3 = [
     "C",
     "G",
     "U",
+    "UNK",
+    "DN",
+    "N",
 ]
 
 num_prot = 20
-prot_restype3 = set(index_to_restype_3[:num_prot])
-prot_restype1 = set(index_to_restype_1[:num_prot])
-
-
-index_to_nuc = index_to_restype_3[num_prot:]
+prot_restype3 = set(index_to_restype_3[:num_prot] + ["UNK"])
+prot_restype1 = set(index_to_restype_1[:num_prot] + ["1"])
 
 
 def restype3_is_na(restype3: str) -> bool:
@@ -574,6 +589,9 @@ restype3_to_atoms = {
         "C6",
     ],
 }
+restype3_to_atoms["UNK"] = restype3_to_atoms["GLY"]
+restype3_to_atoms["DN"] = restype3_to_atoms["DC"]
+restype3_to_atoms["N"] = restype3_to_atoms["C"]
 
 restype3_to_atoms_index = dict(
     [
@@ -665,6 +683,9 @@ chi_angles_atoms = {
     "C": [["C3'", "C2'", "N1", "C2"]],
     "G": [["C3'", "C2'", "N9", "C4"]],
     "U": [["C3'", "C2'", "N1", "C2"]],
+    "UNK": [],
+    "DN": [["C3'", "C2'", "N1", "C2"]],
+    "N": [["C3'", "C2'", "N1", "C2"]],
 }
 
 # If chi angles given in fixed-length array, this matrix determines how to mask
@@ -698,6 +719,9 @@ chi_angles_mask = [
     [1.0, 0.0, 0.0, 0.0],  # C
     [1.0, 0.0, 0.0, 0.0],  # G
     [1.0, 0.0, 0.0, 0.0],  # U
+    [0.0, 0.0, 0.0, 0.0],  # UNK
+    [1.0, 0.0, 0.0, 0.0],  # DN
+    [1.0, 0.0, 0.0, 0.0],  # N
 ]
 
 # The following chi angles are pi periodic: they can be rotated by a multiple
@@ -731,6 +755,9 @@ chi_pi_periodic = [
     [0.0, 0.0, 0.0, 0.0],  # C
     [0.0, 0.0, 0.0, 0.0],  # G
     [0.0, 0.0, 0.0, 0.0],  # U
+    [0.0, 0.0, 0.0, 0.0],  # UNK,
+    [0.0, 0.0, 0.0, 0.0],  # DN,
+    [0.0, 0.0, 0.0, 0.0],  # N,
 ]
 
 # Proteins (AlphaFold2)
@@ -1150,6 +1177,9 @@ rigid_group_atom_positions = {
         ["C6", 8, (0.2329, -0.3604, -0.6419)],
     ],
 }
+rigid_group_atom_positions["UNK"] = rigid_group_atom_positions["GLY"]
+rigid_group_atom_positions["DN"] = rigid_group_atom_positions["DC"]
+rigid_group_atom_positions["N"] = rigid_group_atom_positions["C"]
 num_frames = 9
 
 # atomc -> atom condensed
@@ -1628,14 +1658,26 @@ between_res_cos_angles_c_n_ca = [-0.5203, 0.0353]  # degrees: 121.352 +- 2.315
 between_res_cos_angles_ca_c_n = [-0.4473, 0.0311]  # degrees: 116.568 +- 1.995
 
 
+def rename_aatype_to_convention(aatype):
+    if torch.is_tensor(aatype):
+        new_aatype = aatype.clone()
+    else:
+        new_aatype = aatype.copy()
+    new_aatype[new_aatype == restype_3_to_index["UNK"]] = restype_3_to_index["GLY"]
+    new_aatype[new_aatype == restype_3_to_index["DN"]] = restype_3_to_index["DC"]
+    new_aatype[new_aatype == restype_3_to_index["N"]] = restype_3_to_index["C"]
+    return new_aatype
+
+
 def select_torsion_angles(input, aatype):
+    new_aatype = rename_aatype_to_convention(aatype)
     chi_angles = einops.rearrange(
         input[..., 3:, :],
         "... (f a) d -> ... f d a",
         f=5,
-        a=canonical_num_residues,
+        a=28,
         d=2,
-    )[torch.arange(len(aatype)), ..., aatype]
+    )[torch.arange(len(new_aatype)), ..., new_aatype]
     input_torsion_angles = torch.cat((input[..., :3, :], chi_angles), dim=-2)
     input_torsion_angles = torch.nn.functional.normalize(input_torsion_angles, dim=-1)
     return input_torsion_angles

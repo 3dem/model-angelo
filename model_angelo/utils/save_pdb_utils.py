@@ -304,6 +304,9 @@ def chain_atom14_to_cif(
         bfactors = [np.zeros(len(chain_aas)) for chain_aas in aatype]
     if res_idxs is None:
         res_idxs = [np.arange(1, len(chain_aas) + 1) for chain_aas in aatype]
+    for chain_id, residue_idx in enumerate(res_idxs):
+        if np.sum(residue_idx == -1) > 0:
+            res_idxs[chain_id] = np.arange(1, len(aatype[chain_id]) + 1)
 
     for j in range(len(bfactors)):
         if len(bfactors[j].shape) > 1:
@@ -338,7 +341,7 @@ def chain_atom14_to_cif(
             bfactor = bfactors[chain_id][i]
             atom_names = restype_name_to_atomc_names[res_name_3]
             res_counter = 0
-
+            res_name_3 = "N" if res_name_3 == "DN" else res_name_3
             struct.init_residue(res_name_3, " ", res_idxs[chain_id][i], " ")
             for atom_name, pos, mask in zip(
                 atom_names, atom14[chain_id][i], atom_mask[chain_id][i]
@@ -436,7 +439,7 @@ def write_chain_probabilities(
                 + "\n"
             )
             file_handle.write("Amino acid probability per residue:" + "\n")
-            for i, aa in enumerate(index_to_restype_1):
+            for i, aa in enumerate(index_to_restype_1[:-3]):
                 file_handle.write(
                     f"{aa}:"
                     + ",".join([str(x) for x in aa_probs[chain_id][:, i]])

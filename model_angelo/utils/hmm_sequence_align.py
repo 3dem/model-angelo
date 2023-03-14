@@ -14,7 +14,7 @@ from model_angelo.utils.fasta_utils import (
     nuc_sequence_to_purpyr,
 )
 from model_angelo.utils.match_to_sequence import MatchToSequence
-from model_angelo.utils.residue_constants import num_prot
+from model_angelo.utils.residue_constants import num_prot, restype_3_to_index
 
 HMMAlignment = namedtuple(
     "HMMAlignment",
@@ -111,7 +111,7 @@ def get_hmm_alignment(
             msa_index_corr = get_msa_index_correspondence(made_up_match)
             index_dict = alphabet_to_index["RNA"]
             seq_idx = len(digital_prot_sequences)
-            original_pred_seq = np.argmax(aa_logits[..., num_prot:], axis=-1) + num_prot
+            original_pred_seq = np.full(len(aa_logits), fill_value=restype_3_to_index["N"], dtype=np.int64)
         elif match_type == "RNA":
             original_seq = None if not do_pp else raw_rna_sequences[rna_seq_idx]
             msa_index_corr = get_msa_index_correspondence(
@@ -119,9 +119,7 @@ def get_hmm_alignment(
             )
             index_dict = alphabet_to_index["RNA"]
             seq_idx = rna_seq_idx + len(digital_prot_sequences)
-            original_pred_seq = (
-                np.argmax(aa_logits[..., num_prot + 4 :], axis=-1) + num_prot + 4
-            )
+            original_pred_seq = np.full(len(aa_logits), fill_value=restype_3_to_index["N"], dtype=np.int64)
         elif match_type == "DNA":
             original_seq = None if not do_pp else raw_dna_sequences[dna_seq_idx]
             msa_index_corr = get_msa_index_correspondence(
@@ -131,9 +129,7 @@ def get_hmm_alignment(
             seq_idx = (
                 dna_seq_idx + len(digital_prot_sequences) + len(digital_rna_sequences)
             )
-            original_pred_seq = (
-                np.argmax(aa_logits[..., num_prot : num_prot + 4], axis=-1) + num_prot
-            )
+            original_pred_seq = np.full(len(aa_logits), fill_value=restype_3_to_index["DN"], dtype=np.int64)
         match_sequence = msa_index_corr.sequence
 
     msa_sequence = np.array(

@@ -143,6 +143,7 @@ def final_results_to_cif(
     save_hmms: bool = False,
     refine: bool = False,
     chain_prune_length: int = 4,
+    temperature: float = 0.5,
 ):
     prot_mask = protein.prot_mask
     if protein.unified_seq is not None:
@@ -180,6 +181,7 @@ def final_results_to_cif(
     backbone_affine = backbone_affine[existence_mask]
     final_results["aa_logits"][prot_mask][..., num_prot:] = -100
     final_results["aa_logits"][~prot_mask][..., :num_prot] = -100
+    final_results["aa_logits"] /= temperature
 
     torsion_angles = select_torsion_angles(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype
