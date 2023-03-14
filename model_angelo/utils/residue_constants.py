@@ -606,7 +606,8 @@ for residue in restype3_to_atoms_index:
     if restype3_is_prot(residue):
         restype3_to_atoms_index[residue]["OXT"] = restype3_to_atoms_index[residue]["O"]
 
-canonical_num_residues = len(restype3_to_atoms_index)
+full_num_residues = len(restype3_to_atoms_index)
+canonical_num_residues = full_num_residues - 3
 backbone_atoms_prot = {"CA", "C", "N"}
 backbone_atoms_nuc = {"OP1", "P", "OP2"}
 backbone_atoms = backbone_atoms_prot.union(backbone_atoms_nuc)
@@ -1230,24 +1231,24 @@ def _make_rigid_transformation_4x4(ex, ey, translation):
 # and compute affine transformation matrices (4,4) from one rigid group to the
 # previous group
 restype_atomf_to_rigid_group = np.zeros(
-    [canonical_num_residues, atom_type_num], dtype=np.int64
+    [full_num_residues, atom_type_num], dtype=np.int64
 )
-restype_atomf_mask = np.zeros([canonical_num_residues, atom_type_num], dtype=np.float32)
+restype_atomf_mask = np.zeros([full_num_residues, atom_type_num], dtype=np.float32)
 restype_atomf_rigid_group_positions = np.zeros(
-    [canonical_num_residues, atom_type_num, 3], dtype=np.float32
+    [full_num_residues, atom_type_num, 3], dtype=np.float32
 )
 restype_atomc_to_rigid_group = np.zeros(
-    [canonical_num_residues, num_atomc], dtype=np.int64
+    [full_num_residues, num_atomc], dtype=np.int64
 )
-restype_atomc_mask = np.zeros([canonical_num_residues, num_atomc], dtype=np.float32)
+restype_atomc_mask = np.zeros([full_num_residues, num_atomc], dtype=np.float32)
 restype_atomc_rigid_group_positions = np.zeros(
-    [canonical_num_residues, num_atomc, 3], dtype=np.float32
+    [full_num_residues, num_atomc, 3], dtype=np.float32
 )
 restype_atom3_rigid_group_positions = np.zeros(
-    [canonical_num_residues, 3, 3], dtype=np.float32
+    [full_num_residues, 3, 3], dtype=np.float32
 )
 restype_rigid_group_default_frame = np.zeros(
-    [canonical_num_residues, num_frames, 4, 4], dtype=np.float32
+    [full_num_residues, num_frames, 4, 4], dtype=np.float32
 )
 
 
@@ -1600,13 +1601,13 @@ def load_stereo_chemical_props() -> Tuple[
 def get_atomc_dists_bounds(overlap_tolerance=1.5, bond_length_tolerance_factor=15):
     """compute upper and lower bounds for bonds to assess violations."""
     restype_atomc_bond_lower_bound = np.zeros(
-        [canonical_num_residues, num_atomc, num_atomc], np.float32
+        [full_num_residues, num_atomc, num_atomc], np.float32
     )
     restype_atomc_bond_upper_bound = np.zeros(
-        [canonical_num_residues, num_atomc, num_atomc], np.float32
+        [full_num_residues, num_atomc, num_atomc], np.float32
     )
     restype_atomc_bond_stddev = np.zeros(
-        [canonical_num_residues, num_atomc, num_atomc], np.float32
+        [full_num_residues, num_atomc, num_atomc], np.float32
     )
     residue_bonds, residue_virtual_bonds, _ = load_stereo_chemical_props()
     for restype, restype_letter in enumerate(index_to_restype_1):
@@ -1678,7 +1679,7 @@ def select_torsion_angles(input, aatype):
         input[..., 3:, :],
         "... (f a) d -> ... f d a",
         f=5,
-        a=28,
+        a=canonical_num_residues,
         d=2,
     )[torch.arange(len(new_aatype)), ..., new_aatype]
     input_torsion_angles = torch.cat((input[..., :3, :], chi_angles), dim=-2)
