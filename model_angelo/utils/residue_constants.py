@@ -222,6 +222,9 @@ num_prot = 20
 prot_restype3 = set(index_to_restype_3[:num_prot] + ["UNK"])
 prot_restype1 = set(index_to_restype_1[:num_prot] + ["1"])
 
+index_to_nuc = index_to_restype_3[num_prot:]
+index_to_nuc.pop(index_to_nuc.index("UNK"))
+
 
 def restype3_is_na(restype3: str) -> bool:
     return not (restype3 in prot_restype3)
