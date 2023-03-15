@@ -346,7 +346,7 @@ def atomf_to_frames(
     # Create an array with the atom names.
     # shape (num_restypes, num_rigidgroups, 3_atoms): (28, 9, 3)
     restype_rigidgroup_base_atom_names = np.full(
-        [_rc.canonical_num_residues, _rc.num_frames, 3], "", dtype=object
+        [_rc.full_num_residues, _rc.num_frames, 3], "", dtype=object
     )
 
     # 4,5,6,7: 'chi1,2,3,4-group'
@@ -387,7 +387,7 @@ def atomf_to_frames(
 
     # Create mask for existing rigid groups.
     restype_rigidgroup_mask = np.zeros(
-        [_rc.canonical_num_residues, _rc.num_frames], dtype=np.float32
+        [_rc.full_num_residues, _rc.num_frames], dtype=np.float32
     )
     restype_rigidgroup_mask[:, 0] = 1
     restype_rigidgroup_mask[:, 3] = 1
@@ -444,10 +444,10 @@ def atomf_to_frames(
     # The frames for ambiguous rigid groups are just rotated by 180 degree around
     # the x-axis. The ambiguous group is always the last chi-group.
     restype_rigidgroup_is_ambiguous = np.zeros(
-        [_rc.canonical_num_residues, _rc.num_frames], dtype=np.float32
+        [_rc.full_num_residues, _rc.num_frames], dtype=np.float32
     )
     restype_rigidgroup_rots = np.tile(
-        np.eye(3, dtype=np.float32), [_rc.canonical_num_residues, _rc.num_frames, 1, 1]
+        np.eye(3, dtype=np.float32), [_rc.full_num_residues, _rc.num_frames, 1, 1]
     )
 
     for resname, _ in _rc.residue_atom_renaming_swaps.items():
