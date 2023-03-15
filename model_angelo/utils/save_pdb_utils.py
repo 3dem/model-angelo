@@ -341,8 +341,10 @@ def chain_atom14_to_cif(
             bfactor = bfactors[chain_id][i]
             atom_names = restype_name_to_atomc_names[res_name_3]
             res_counter = 0
-            res_name_3 = "N" if res_name_3 == "DN" else res_name_3
-            struct.init_residue(res_name_3, " ", res_idxs[chain_id][i], " ")
+            # res_name_3 = "N" if res_name_3 == "DN" else res_name_3
+            res_name_3 = "C" if res_name_3 == "N" else ("DC" if res_name_3 == "DN" else res_name_3)
+            field_name = " " if res_name_3 != "N" else "H"
+            struct.init_residue(res_name_3, field_name, res_idxs[chain_id][i], " ")
             for atom_name, pos, mask in zip(
                 atom_names, atom14[chain_id][i], atom_mask[chain_id][i]
             ):
