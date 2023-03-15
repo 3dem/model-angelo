@@ -151,9 +151,9 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
     Returns:
       A new `Protein` parsed from the pdb contents.
     """
-    if file_path.split(".")[-1][:3] == "pdb":
+    if file_path.split(".")[-1][-3:] == "pdb":
         parser = PDBParser(QUIET=True)
-    elif file_path.split(".")[-1][:3] == "cif":
+    elif file_path.split(".")[-1][-3:] == "cif":
         parser = MMCIFParser(QUIET=True)
     else:
         raise RuntimeError("Unknown type for structure file:", file_path[-3:])
