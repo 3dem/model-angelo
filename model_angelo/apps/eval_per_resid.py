@@ -28,12 +28,12 @@ def get_residue_fit_report(
 ):
     input_cas = input_protein.atomc_positions[:, atom_order["CA"]]
     target_cas = target_protein.atomc_positions[:, atom_order["CA"]]
-    input_protein.b_factors = np.sum(input_protein.b_factors * input_protein.atom_mask, axis=-1) / np.sum(
+    input_protein.b_factors = (np.sum(input_protein.b_factors * input_protein.atom_mask, axis=-1) / np.sum(
         input_protein.atom_mask, axis=-1
-    )[:, None]
-    target_protein.b_factors = np.sum(target_protein.b_factors * target_protein.atom_mask, axis=-1) / np.sum(
+    ))[:, None]
+    target_protein.b_factors = (np.sum(target_protein.b_factors * target_protein.atom_mask, axis=-1) / np.sum(
         target_protein.atom_mask, axis=-1
-    )[:, None]
+    ))[:, None]
     (
         target_correspondence,
         input_correspondence,
