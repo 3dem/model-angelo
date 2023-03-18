@@ -7,9 +7,13 @@ from typing import List, Tuple
 import numpy as np
 from Bio import SeqIO
 
-from model_angelo.utils.residue_constants import index_to_restype_1
 
 FASTASequence = namedtuple("FASTASequence", field_names=["seq", "rep", "chains"])
+
+
+class FASTAEmptyError(RuntimeError):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 
 def download_pdb_entry_fasta_file(pdb_entry_name, output_dir):
@@ -21,10 +25,10 @@ def download_pdb_entry_fasta_file(pdb_entry_name, output_dir):
 
 def is_valid_fasta_ending(fasta_path: str) -> bool:
     return (
-        fasta_path.endswith(".fasta") or
-        fasta_path.endswith(".fa") or
-        fasta_path.endswith(".faa") or
-        fasta_path.endswith(".mpfa")
+        fasta_path.endswith(".fasta")
+        or fasta_path.endswith(".fa")
+        or fasta_path.endswith(".faa")
+        or fasta_path.endswith(".mpfa")
     )
 
 
@@ -39,7 +43,9 @@ def read_fasta(fasta_path, auth_chains=True):
             sequence_names.append("unknown")
         if len(desc) > 1:
             chains = desc[1].split(",")
-            chains = [x.replace("Chains", "").replace("Chain", "").strip() for x in chains]
+            chains = [
+                x.replace("Chains", "").replace("Chain", "").strip() for x in chains
+            ]
             if auth_chains:
                 for i in range(len(chains)):
                     if "auth" in chains[i]:
@@ -47,6 +53,14 @@ def read_fasta(fasta_path, auth_chains=True):
         else:
             chains = ["A"]
         sequences.append(FASTASequence(str(record.seq), len(chains), chains))
+
+    if len(sequences) == 0:
+        raise FASTAEmptyError(
+            f"File {fasta_path} has no parsable sequences. Please check your FASTA file."
+            f"For example, this can happen if your sequences are in lower case, while"
+            f"this program expects them to be uppercase."
+        )
+
     return sequences, sequence_names
 
 
@@ -57,7 +71,9 @@ def filter_small_sequences(
     filtered_sequences, filtered_sequence_names = [], []
     for sequence, sequence_name in zip(fasta_sequences, sequence_names):
         filtered_seq = FASTASequence(
-            seq=remove_non_aa(sequence.seq), rep=sequence.seq, chains=sequence.chains
+            seq=remove_non_residue(sequence.seq),
+            rep=sequence.seq,
+            chains=sequence.chains,
         )
         if len(filtered_seq.seq) > 2:
             filtered_sequences.append(filtered_seq)
@@ -66,15 +82,12 @@ def filter_small_sequences(
 
 
 def filter_nucleotide_sequences(
-    fasta_sequences: List[FASTASequence],
-    sequence_names: List[str],
+    fasta_sequences: List[FASTASequence], sequence_names: List[str],
 ):
     filtered_sequences, filtered_sequence_names = [], []
     for sequence, sequence_name in zip(fasta_sequences, sequence_names):
         filtered_seq = FASTASequence(
-            seq=sequence.seq,
-            rep=sequence_name,
-            chains=sequence.chains,
+            seq=sequence.seq, rep=sequence_name, chains=sequence.chains,
         )
         if len(remove_nucleotides(sequence.seq)) > 0:
             filtered_sequences.append(filtered_seq)
@@ -167,14 +180,12 @@ def read_hhr(filename: str, nseq: int) -> List[Tuple[str, str]]:
     return parse_hhr(filename, nseq, align_sequence=True)
 
 
-def remove_non_aa(sequence: str) -> str:
-    return "".join([s for s in sequence if s in index_to_restype_1])
+def remove_non_residue(sequence: str) -> str:
+    return "".join([s for s in sequence if s in "ARNDCQEGHILKMFPSTWYVU"])
 
 
 def fasta_to_unified_seq(fasta_path, auth_chains=True) -> Tuple[str, int]:
     sequences, sequence_names = read_fasta(fasta_path, auth_chains=auth_chains)
-    sequences, sequence_names = filter_small_sequences(sequences, sequence_names)
-    sequences, sequence_names = filter_nucleotide_sequences(sequences, sequence_names)
     sequences = [s.seq for s in sequences]
     unified_seq_len = sum([len(s) for s in sequences])
     unified_seq = "|||".join(sequences)
@@ -185,6 +196,18 @@ def unified_seq_to_fasta(unified_seq) -> List[FASTASequence]:
     sequences = unified_seq.split("|||")
     fasta_list = [FASTASequence(s, "null", str(i)) for (i, s) in enumerate(sequences)]
     return fasta_list
+
+
+def nuc_sequence_to_purpyr(sequence: str) -> str:
+    return (
+        sequence.replace("A", "G")
+        .replace("U", "C")
+        .replace("T", "C")
+        .replace("DA", "G")
+        .replace("DG", "G")
+        .replace("DC", "C")
+        .replace("DT", "C")
+    )
 
 
 def trim_dots(msa: str) -> str:

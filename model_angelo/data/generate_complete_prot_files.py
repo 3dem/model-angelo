@@ -29,8 +29,7 @@ def get_lm_embeddings_for_protein(
         max_chain_length=max_chain_length,
     )
     lm_embeddings = np.concatenate(
-        [result[s]["representations"][33].cpu().numpy() for s in seq_names],
-        axis=0,
+        [result[s]["representations"][33].cpu().numpy() for s in seq_names], axis=0,
     )
     protein_with_lm = add_lm_embeddings_to_protein(protein, lm_embeddings)
     return protein_with_lm
@@ -73,6 +72,8 @@ if __name__ == "__main__":
     model = model.eval().to(args.device)
 
     for input_file, output_file in tqdm.tqdm(zip(input_files, output_files)):
+        if os.path.isfile(output_file):
+            continue
         try:
             protein = get_protein_from_file_path(input_file)
             new_protein = get_lm_embeddings_for_protein(

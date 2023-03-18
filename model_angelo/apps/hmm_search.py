@@ -16,7 +16,10 @@ import glob
 
 import tqdm
 
-from model_angelo.utils.misc_utils import write_relion_job_exit_status, abort_if_relion_abort
+from model_angelo.utils.misc_utils import (
+    write_relion_job_exit_status,
+    abort_if_relion_abort,
+)
 
 
 def add_args(parser):
@@ -26,7 +29,7 @@ def add_args(parser):
     """
     main_args = parser.add_argument_group(
         "Main arguments",
-        description="These are the only arguments a typical user will need."
+        description="These are the only arguments a typical user will need.",
     )
     main_args.add_argument(
         "--input-dir",
@@ -34,7 +37,7 @@ def add_args(parser):
         "--i",
         help="The input directory to this program, i.e. ModelAngelo build_no_seq output directory",
         type=str,
-        required=True
+        required=True,
     )
     main_args.add_argument(
         "--fasta-path",
@@ -54,8 +57,7 @@ def add_args(parser):
     )
 
     additional_args = parser.add_argument_group(
-        "Additional arguments",
-        description="These are sometimes useful."
+        "Additional arguments", description="These are sometimes useful."
     )
     additional_args.add_argument(
         "--alphabet",
@@ -69,8 +71,8 @@ def add_args(parser):
     hmm_search_args = parser.add_argument_group(
         "HMMSearch arguments",
         description="These are the settings that go into HMMSearch, "
-                    "you can make it more or less sensitive.\n"
-                    "Please see http://eddylab.org/software/hmmer/Userguide.pdf",
+        "you can make it more or less sensitive.\n"
+        "Please see http://eddylab.org/software/hmmer/Userguide.pdf",
     )
 
     hmm_search_args.add_argument("--F1", type=float, default=0.02)
@@ -81,7 +83,7 @@ def add_args(parser):
 
     advanced_args = parser.add_argument_group(
         "Advanced arguments",
-        description="These should *not* be changed unless the user is aware of what they do."
+        description="These should *not* be changed unless the user is aware of what they do.",
     )
     advanced_args.add_argument(
         "--config-path", "-c", "--c", help="config file", type=str, default=None
@@ -96,7 +98,7 @@ def add_args(parser):
         "--model-bundle-path",
         type=str,
         default=None,
-        help="Inference model bundle path. If this is set, --model-bundle-name is not used."
+        help="Inference model bundle path. If this is set, --model-bundle-name is not used.",
     )
 
     # Below are RELION arguments, make sure to always add help=argparse.SUPPRESS
@@ -114,7 +116,7 @@ def add_args(parser):
 def main(parsed_args):
     print("---------------------------- ModelAngelo -----------------------------")
     print("By Kiarash Jamali, Scheres Group, MRC Laboratory of Molecular Biology")
-    
+
     hmm_profile_dir = os.path.join(parsed_args.input_dir, "hmm_profiles")
     if not os.path.isdir(hmm_profile_dir):
         print(
@@ -128,10 +130,8 @@ def main(parsed_args):
         )
 
     hmms = [
-        (
-            os.path.split(f)[-1].replace(".hmm", ""),
-            pyhmmer.plan7.HMMFile(f).read()
-        ) for f in glob.glob(f"{hmm_profile_dir}/*.hmm")
+        (os.path.split(f)[-1].replace(".hmm", ""), pyhmmer.plan7.HMMFile(f).read())
+        for f in glob.glob(f"{hmm_profile_dir}/*.hmm")
     ]
 
     alphabet = {
@@ -143,6 +143,7 @@ def main(parsed_args):
     os.makedirs(parsed_args.output_dir, exist_ok=True)
 
     pruned_hmms = [k for k in hmms if k[1].alphabet == alphabet]
+
     with pyhmmer.easel.SequenceFile(parsed_args.fasta_path, alphabet=alphabet, digital=True) as sf:
         digital_sequences = sf.read_block()
 
@@ -175,7 +176,9 @@ def main(parsed_args):
     print("ModelAngelo hmm_search completed successfully!")
     print("-" * 70)
     print(f"You can view your results in {parsed_args.output_dir}")
-    print(f"The results are named according to the chains in your ModelAngelo build_no_seq model")
+    print(
+        f"The results are named according to the chains in your ModelAngelo build_no_seq model"
+    )
 
     if len(pruned_hmms) > 0:
         print(
@@ -185,13 +188,14 @@ def main(parsed_args):
     print("-" * 70)
     print("Enjoy!")
 
-    write_relion_job_exit_status(parsed_args.output_dir, "SUCCESS", pipeline_control=parsed_args.pipeline_control)
+    write_relion_job_exit_status(
+        parsed_args.output_dir, "SUCCESS", pipeline_control=parsed_args.pipeline_control
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__,
     )
     parsed_args = add_args(parser).parse_args()
     main(parsed_args)

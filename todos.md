@@ -1,7 +1,8 @@
 # Todo's
 
 - [ ] Proper error catching for shape errors, issues with FASTA files, etc
-- [ ] Test fully if the poly-A works. Extend to proteins perhaps?
-- [ ] Refinement program
+- [x] Test fully if the poly-A works. Extend to proteins perhaps?
+- [x] Refinement program
 - [ ] Do not run segmentation on masked out areas
-- [ ] Switch poly-A nucleotide to poly-U (or any pyrimidine)
+- [x] Switch poly-A nucleotide to poly-U (or any pyrimidine)
+- [ ] Cache sequence KV

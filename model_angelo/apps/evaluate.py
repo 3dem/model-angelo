@@ -5,13 +5,16 @@ Compare a predicted model with a ground truth model. You need:
 2) A target mmCIF file, passed to --target-structure/--t/-t
 """
 import numpy as np
+import os
+import pickle
 import torch
 from Bio.SVDSuperimposer import SVDSuperimposer
+from model_angelo.utils.save_pdb_utils import chain_atom14_to_cif
 
 from model_angelo.utils.cas_utils import get_correspondence, get_lddt
 from model_angelo.utils.misc_utils import setup_logger
 from model_angelo.utils.protein import Protein, get_protein_from_file_path
-from model_angelo.utils.residue_constants import atom_order, atom37_backbone_mask
+from model_angelo.utils.residue_constants import atom_order, atomc_backbone_mask
 
 
 def get_all_atom_fit_report(
@@ -20,15 +23,30 @@ def get_all_atom_fit_report(
     max_dist=5,
     verbose=False,
     two_rounds=False,
+    output_structure=None,
 ):
-    input_cas = input_protein.atom_positions[:, atom_order["CA"]]
-    target_cas = target_protein.atom_positions[:, atom_order["CA"]]
+    input_cas = np.zeros_like(input_protein.atom_positions[:, 0])
+    target_cas = np.zeros_like(target_protein.atom_positions[:, 0])
+    # Protein parts
+    input_cas[input_protein.prot_mask] = input_protein.atom_positions[
+        input_protein.prot_mask, atom_order["CA"]
+    ]
+    input_cas[~input_protein.prot_mask] = input_protein.atom_positions[
+        ~input_protein.prot_mask, atom_order["P"]
+    ]
+    target_cas[target_protein.prot_mask] = target_protein.atom_positions[
+        target_protein.prot_mask, atom_order["CA"]
+    ]
+    target_cas[~target_protein.prot_mask] = target_protein.atom_positions[
+        ~target_protein.prot_mask, atom_order["P"]
+    ]
+
     target_correspondence, input_correspondence = get_correspondence(
         input_cas, target_cas, max_dist, verbose, two_rounds=two_rounds
     )
 
     if len(target_correspondence) == 0:
-        return (0, 0, 0)
+        return 0, 0, 0, 0, 0
 
     false_positive_count = len(
         set(range(len(input_cas))).difference(input_correspondence)
@@ -41,10 +59,10 @@ def get_all_atom_fit_report(
     input_cas_cor = input_cas[input_correspondence]
     target_cas_cor = target_cas[target_correspondence]
 
-    input_atoms = input_protein.atom_positions[input_correspondence]
-    target_atoms = target_protein.atom_positions[target_correspondence]
-    input_mask = input_protein.atom_mask[input_correspondence]
-    target_mask = target_protein.atom_mask[target_correspondence]
+    input_atoms = input_protein.atomc_positions[input_correspondence]
+    target_atoms = target_protein.atomc_positions[target_correspondence]
+    input_mask = input_protein.atomc_mask[input_correspondence]
+    target_mask = target_protein.atomc_mask[target_correspondence]
 
     sup = SVDSuperimposer()
     sup.set(target_cas_cor, input_cas_cor)
@@ -55,15 +73,36 @@ def get_all_atom_fit_report(
 
     distance = np.linalg.norm(target_atoms - input_atoms_superimposed, axis=-1)
     backbone_rms = np.sum(
-        input_mask * target_mask * atom37_backbone_mask * distance
-    ) / np.sum(input_mask * atom37_backbone_mask * target_mask)
-    ca_rms = np.sum((input_mask * target_mask * distance)[..., 1]) / np.sum((input_mask * target_mask)[..., 1])
+        input_mask * target_mask * atomc_backbone_mask * distance
+    ) / np.sum(input_mask * atomc_backbone_mask * target_mask)
+    ca_rms = np.sum((input_mask * target_mask * distance)[..., 1]) / np.sum(
+        (input_mask * target_mask)[..., 1]
+    )
 
     lddt_score = get_lddt(torch.Tensor(input_cas_cor), torch.Tensor(target_cas_cor))
     sequence_match = np.sum(
         input_protein.aatype[input_correspondence]
         == target_protein.aatype[target_correspondence]
     ) / len(target_correspondence)
+
+    if output_structure is not None:
+        new_bfactors = np.zeros_like(input_protein.b_factors[:, 0])
+        correct_idxs = (
+            input_protein.aatype[input_correspondence]
+            == target_protein.aatype[target_correspondence]
+        ).astype(np.float32)
+        new_bfactors[input_correspondence] = 100 * correct_idxs
+        chain_atom14_to_cif(
+            [input_protein.aatype[c] for c in input_protein.chain_idx_to_residues],
+            [
+                input_protein.atomc_positions[c]
+                for c in input_protein.chain_idx_to_residues
+            ],
+            [input_protein.atomc_mask[c] for c in input_protein.chain_idx_to_residues],
+            path_to_save=output_structure,
+            bfactors=[new_bfactors[c] for c in input_protein.chain_idx_to_residues],
+        )
+
     return (
         backbone_rms,
         ca_rms,
@@ -97,13 +136,18 @@ def add_args(parser):
     )
     parser.add_argument("--output-file", help="If set, saves the results to a file")
     parser.add_argument(
-        "--csv-format", action="store_true", help="If set, writes results in comma separated format."
+        "--output-structure",
+        help="If set, saves the sequence recall results to an mmCIF file, "
+        "B-factors of 100 correspond to correct classifications and "
+        "B-factors of 0 correspond to wrong classifications",
     )
     parser.add_argument(
-        "--name",
-        type=str,
-        default="",
-        help="Name of structure, to add to the csv"
+        "--csv-format",
+        action="store_true",
+        help="If set, writes results in comma separated format.",
+    )
+    parser.add_argument(
+        "--name", type=str, default="", help="Name of structure, to add to the csv"
     )
     return parser
 
@@ -119,12 +163,20 @@ def main(parsed_args):
 
     predicted_protein = get_protein_from_file_path(parsed_args.predicted_structure)
     target_protein = get_protein_from_file_path(parsed_args.target_structure)
-    rmsd, ca_rms, lddt_score, recall, precision, sequence_match = get_all_atom_fit_report(
+    (
+        rmsd,
+        ca_rms,
+        lddt_score,
+        recall,
+        precision,
+        sequence_match,
+    ) = get_all_atom_fit_report(
         predicted_protein,
         target_protein,
         max_dist=parsed_args.max_dist,
         verbose=False,
         two_rounds=True,
+        output_structure=parsed_args.output_structure,
     )
 
     if parsed_args.output_file is not None:
@@ -172,8 +224,6 @@ def main(parsed_args):
 
 if __name__ == "__main__":
     import argparse
-    import os
-    import pickle
 
     parser = argparse.ArgumentParser()
     parser = add_args(parser)
