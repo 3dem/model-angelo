@@ -13,7 +13,7 @@ from model_angelo.utils.save_pdb_utils import chain_atom14_to_cif
 
 from model_angelo.utils.cas_utils import get_correspondence, get_lddt
 from model_angelo.utils.misc_utils import setup_logger
-from model_angelo.utils.protein import Protein, get_protein_from_file_path
+from model_angelo.utils.protein import Protein, get_protein_from_file_path, slice_protein
 from model_angelo.utils.residue_constants import atom_order, atomc_backbone_mask
 
 
@@ -24,7 +24,17 @@ def get_all_atom_fit_report(
     verbose=False,
     two_rounds=False,
     output_structure=None,
+    match_type: str = "both",
 ):
+    if match_type == "protein":
+        input_protein = slice_protein(input_protein, input_protein.prot_mask)
+        target_protein = slice_protein(target_protein, target_protein.prot_mask)
+    elif match_type == "nucleotide":
+        input_protein = slice_protein(input_protein, ~input_protein.prot_mask)
+        target_protein = slice_protein(target_protein, ~target_protein.prot_mask)
+    elif match_type != "both":
+        raise RuntimeError("Only support match types: protein, nucleotide, both")
+
     input_cas = np.zeros_like(input_protein.atom_positions[:, 0])
     target_cas = np.zeros_like(target_protein.atom_positions[:, 0])
     # Protein parts
@@ -149,6 +159,11 @@ def add_args(parser):
     parser.add_argument(
         "--name", type=str, default="", help="Name of structure, to add to the csv"
     )
+    parser.add_argument(
+        "--match-type",
+        default="both",
+        choices=["both", "protein", "nucleotide"],
+    )
     return parser
 
 
@@ -177,6 +192,7 @@ def main(parsed_args):
         verbose=False,
         two_rounds=True,
         output_structure=parsed_args.output_structure,
+        match_type=parsed_args.match_type,
     )
 
     if parsed_args.output_file is not None:
