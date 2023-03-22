@@ -433,6 +433,8 @@ def download_and_install_model(bundle_name: str) -> str:
         "original": "https://cloud.mrc-lmb.cam.ac.uk/s/syttED3Axgy2PY8/download/original.zip",
         "original_no_seq": "https://cloud.mrc-lmb.cam.ac.uk/s/pd67QRmPXBkTJf9/download/original_no_sequence.zip",
         "small_gpu": "https://cloud.mrc-lmb.cam.ac.uk/s/MiTQZfm2o2QDGb5/download/small_gpu.zip",
+        "nucleotides": "https://cloud.mrc-lmb.cam.ac.uk/s/GfmX7MejD94ewnr/download/nucleotides.zip",
+        "nucleotides_no_seq": "https://cloud.mrc-lmb.cam.ac.uk/s/sSHqtaA4KEEz9bc/download/nucleotides_no_sequence.zip",
     }
     dest = os.path.join(
         torch.hub.get_dir(), "checkpoints", "model_angelo_v1.0", bundle_name

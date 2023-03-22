@@ -164,7 +164,7 @@ def get_residue_fit_report(
 
 
 def plot_data(input_type, target_type, ca_rms, backbone_rms, all_atom_rms, b_factors):
-    bin_edges = mquantiles(b_factors[b_factors >= 0], prob=np.linspace(0.0, 1.0, 40))
+    bin_edges = mquantiles(b_factors, prob=np.linspace(0.0, 1.0, 40))
     bin_centers = []
 
     target_mask = target_type >= 0  # Were there is a target

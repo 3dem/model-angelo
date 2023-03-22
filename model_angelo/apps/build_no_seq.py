@@ -85,7 +85,7 @@ def add_args(parser):
     advanced_args.add_argument(
         "--model-bundle-name",
         type=str,
-        default="original_no_seq",
+        default="nucleotides_no_seq",
         help="Inference model bundle name",
     )
     advanced_args.add_argument(

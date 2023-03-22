@@ -89,6 +89,7 @@ class SpatialIPA(nn.Module):
         Args:
             x: Node features of shape (N, _if)
             affines: Affine matrices describing positions of the nodes, of shape (N, 3, 4)
+            prot_mask: Mask of shape (N, 1) indicating which nodes are protein nodes
             edge_index: Graph connectivity, of shape (N, k)
             batch: If using Pytorch Geometric graph batching, this is crucial
         """

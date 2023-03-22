@@ -149,6 +149,7 @@ class CryoAttention(nn.Module):
         Args:
             x: Node features of shape (N, _if)
             affines: Affine matrices describing positions of the nodes, of shape (N, 3, 4)
+            prot_mask: Mask of shape (N, 1) indicating which nodes are protein
             cryo_grids: List of grids of length batch_size
             cryo_global_origins: List of global origins of grids
             cryo_voxel_sizes: List of voxel sizes of grids
