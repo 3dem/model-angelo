@@ -113,7 +113,7 @@ def kdtree_correspondence(input_cas, target_cas, max_dist=3, repeat=3):
     corrs = []
 
     all_distances, all_indices = k.query(
-        target_cas, k=10, distance_upper_bound=max_dist, workers=4
+        target_cas, k=10, distance_upper_bound=max_dist, workers=12
     )
 
     for r in range(repeat):

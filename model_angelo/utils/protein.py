@@ -201,7 +201,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             maskc = np.zeros((_rc.num_atomc,))
             res_b_factors = np.zeros((_rc.atom_type_num,))
             for atom in res:
-                if atom.name not in _rc.atom_types:
+                if atom.name not in _rc.restype3_to_atoms_index[res.resname]:
                     continue
                 pos[_rc.atom_order[atom.name]] = atom.coord
                 posc[_rc.restype3_to_atoms_index[res.resname][atom.name]] = atom.coord

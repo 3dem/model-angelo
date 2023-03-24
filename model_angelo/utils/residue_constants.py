@@ -1702,7 +1702,7 @@ nuc_torsion_frames = [
 
 nuc_torsion_atom_indices = []
 nuc_torsion_atom_mask = []
-for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]:
+for resname in ["DA", "DC", "DG", "DT", "A", "C", "G", "U", "DN", "N"]:
     resname_torsion_atom_indices = []
     resname_torsion_atom_mask = []
     for torsion_atoms in nuc_torsion_frames[:-1]:

@@ -89,7 +89,10 @@ def get_all_atom_fit_report(
         (input_mask * target_mask)[..., 1]
     )
 
-    lddt_score = get_lddt(torch.Tensor(input_cas_cor), torch.Tensor(target_cas_cor))
+    if len(input_cas_cor) > 80000:
+        lddt_score = 0
+    else:
+        lddt_score = get_lddt(torch.Tensor(input_cas_cor), torch.Tensor(target_cas_cor))
     sequence_match = np.sum(
         input_protein.aatype[input_correspondence]
         == target_protein.aatype[target_correspondence]
@@ -164,6 +167,11 @@ def add_args(parser):
         default="both",
         choices=["both", "protein", "nucleotide"],
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="If set, prints the results to the console",
+    )
     return parser
 
 
@@ -189,7 +197,7 @@ def main(parsed_args):
         predicted_protein,
         target_protein,
         max_dist=parsed_args.max_dist,
-        verbose=False,
+        verbose=parsed_args.verbose,
         two_rounds=True,
         output_structure=parsed_args.output_structure,
         match_type=parsed_args.match_type,
