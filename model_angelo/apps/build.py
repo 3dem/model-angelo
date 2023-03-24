@@ -29,7 +29,7 @@ from model_angelo.utils.misc_utils import (
     Args,
     is_relion_abort,
     write_relion_job_exit_status,
-    abort_if_relion_abort, filter_useless_warnings,
+    abort_if_relion_abort, filter_useless_warnings, check_available_memory,
 )
 from model_angelo.utils.torch_utils import download_and_install_model, get_device_name
 
@@ -130,6 +130,7 @@ def add_args(parser):
     return parser
 
 
+
 def main(parsed_args):
     filter_useless_warnings()
     logger = setup_logger(os.path.join(parsed_args.output_dir, "model_angelo.log"))
@@ -141,6 +142,7 @@ def main(parsed_args):
             pipeline_control=parsed_args.pipeline_control,
         ),
     ):
+        check_available_memory()
         if parsed_args.model_bundle_path is None:
             model_bundle_path = download_and_install_model(
                 parsed_args.model_bundle_name
