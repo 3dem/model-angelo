@@ -193,8 +193,9 @@ def get_correspondence(
     unmatched_input_idxs = np.array(list(input_idxs.difference(matched_input_idxs)))
     unmatched_target_idxs = np.array(list(target_idxs.difference(matched_target_idxs)))
 
-    target_correspondence, input_correspondence = list(final_corrs.keys()), list(
-        final_corrs.values()
+    target_correspondence, input_correspondence = (
+        np.array(list(final_corrs.keys())),
+        np.array(list(final_corrs.values())),
     )
     if get_unmatched:
         return target_correspondence, input_correspondence, unmatched_target_idxs, unmatched_input_idxs
