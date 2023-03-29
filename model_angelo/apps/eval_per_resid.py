@@ -13,7 +13,7 @@ import numpy as np
 from Bio.SVDSuperimposer import SVDSuperimposer
 
 from model_angelo.utils.cas_utils import get_correspondence
-from model_angelo.utils.protein import Protein, get_protein_from_file_path
+from model_angelo.utils.protein import Protein, get_protein_from_file_path, slice_protein
 from model_angelo.utils.residue_constants import atom_order, atomc_backbone_mask
 from scipy.stats.mstats import mquantiles
 
@@ -25,7 +25,16 @@ def get_residue_fit_report(
     verbose=False,
     two_rounds=False,
     eps=1e-9,
+    match_type: str = "both",
 ):
+    if match_type == "protein":
+        input_protein = slice_protein(input_protein, input_protein.prot_mask)
+        target_protein = slice_protein(target_protein, target_protein.prot_mask)
+    elif match_type == "nucleotide":
+        input_protein = slice_protein(input_protein, ~input_protein.prot_mask)
+        target_protein = slice_protein(target_protein, ~target_protein.prot_mask)
+    elif match_type != "both":
+        raise RuntimeError("Only support match types: protein, nucleotide, both")
     input_cas = input_protein.atomc_positions[:, atom_order["CA"]]
     target_cas = target_protein.atomc_positions[:, atom_order["CA"]]
     input_protein.b_factors = (np.sum(input_protein.b_factors * input_protein.atom_mask, axis=-1) / np.sum(
@@ -264,6 +273,11 @@ def add_args(parser):
     parser.add_argument(
         "--skip-header", help="Don't print header in output file", action="store_true"
     )
+    parser.add_argument(
+        "--match-type",
+        default="both",
+        choices=["both", "protein", "nucleotide"],
+    )
     return parser
 
 
@@ -297,6 +311,7 @@ def main(parsed_args):
             max_dist=parsed_args.max_dist,
             verbose=False,
             two_rounds=True,
+            match_type=parsed_args.match_type,
         )
 
     if parsed_args.plot:

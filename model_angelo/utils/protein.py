@@ -188,7 +188,7 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             if res.resname not in _rc.restype_3to1:
                 continue
             if res.id[2] != " ":
-                raise ValueError(
+                warnings.warn(
                     f"PDB contains an insertion code at chain {chain.id} and residue "
                     f"index {res.id[1]}, {res.id[2]}. These are not supported."
                 )
