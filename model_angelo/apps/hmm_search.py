@@ -147,20 +147,16 @@ def main(parsed_args):
     with pyhmmer.easel.SequenceFile(parsed_args.fasta_path, alphabet=alphabet, digital=True) as sf:
         digital_sequences = sf.read_block()
 
-    pipeline = pyhmmer.plan7.Pipeline(
-        alphabet,
+    all_hits = pyhmmer.hmmer.hmmsearch(
+        [hmm for name,hmm in pruned_hmms],
+        digital_sequences,
         F1=parsed_args.F1,
         F2=parsed_args.F2,
         F3=parsed_args.F3,
         E=parsed_args.E,
         T=parsed_args.T,
     )
-    for (name, hmm) in tqdm.tqdm(pruned_hmms):
-        try:
-            hits = pipeline.search_hmm(hmm, digital_sequences)
-        except Exception as e:
-            print(f"Chain {name} failed")
-            continue
+    for (hits, name) in tqdm.tqdm(zip(all_hits, [name for name,hmm in pruned_hmms])):
         if parsed_args.pipeline_control:
             abort_if_relion_abort(parsed_args.output_dir)
         with open(os.path.join(parsed_args.output_dir, f"{name}.hhr"), "wb") as f:
