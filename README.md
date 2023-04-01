@@ -11,6 +11,7 @@ Please note that the weight files required by both ModelAngelo and the language 
 ## Installation
 <details>
 <summary>Personal use</summary>
+<br>
 
 (If you manage a computational cluster, please skip to the next section)
 
@@ -40,11 +41,13 @@ source install_script.sh
 You will now have a conda environment called `model_angelo` that is able to run the program. 
 You need to activate this conda environment with `conda activate model_angelo`. 
 Now, you can run `model_angelo build -h` to see if the installation worked!
-<br><br>
+<br>
 </details>
 
 <details>
 <summary>Shared computational environment</summary>
+<br>
+
 If you manage a computational cluster with many users and would like to install ModelAngelo once to be used everywhere, 
 you should complete the above steps 1 and 2 for a public account.
 
@@ -66,10 +69,12 @@ Finally, you can make the following bash script available for all users to run:
 source `which activate` model_angelo
 model_angelo "$@"
 ```
+<br>
 </details>
 
 <details>
 <summary>Installation issues</summary>
+<br>
 
 **1. Binary activate not found**
 It appears that miniconda's activate binary is not added to `PATH` by default. You can either fix this by appending it yourself, like so:
@@ -77,6 +82,7 @@ It appears that miniconda's activate binary is not added to `PATH` by default. Y
 export PATH="$PATH:/path/to/miniconda3/bin"
 ```
 or running `conda init` and restarting your shell.
+
 </details>
 
 ## Usage
@@ -84,6 +90,7 @@ First, make sure to run `model_angelo build --help` or `model_angelo build_no_se
 
 <details>
 <summary>Building a map with FASTA sequence</summary>
+<br>
 
 This is the recommended use case, when you have access to a medium-high resolution cryo-EM map (resolutions exceeding 4 Å) as well as a FASTA files with all of your protein, RNA, and DNA sequences.
 
@@ -102,6 +109,7 @@ If the output of the program halts before the completion of `GNN model refinemen
 
 <details>
 <summary>Building a map with no FASTA sequence</summary>
+<br>
 
 If you have a sample where you do not know all of the protein sequences that occur in the map, you can run `model_angelo build_no_seq` instead.
 This version of the program uses a network that was not trained with input sequences, nor does it do post-processing on the built map.
@@ -128,6 +136,7 @@ You will have your results as a series of HMM output files with the extension .h
 4. **How does ModelAngelo deal with cis prolines?** It *doesn't*. However, we find that a round of refinement (with REFMAC, for example) fixes this issue.
 
 ## Common issues
+
 1. If the result looks very bad, with many disconnected chains, take a look at the alpha helices. If these are made of short and disconnected chains, the map was probably in the wrong hand. If you flip the map and run again, you should see much better results.
 2. If the map is processed using deepEMhancer, we have noticed less than satisfactory results. Please try with a map post-processed with a conventional algorithm and try again.
 3. Always check your input sequence files to make sure that they correspond to a correct FASTA format. Please make sure that the sequences are all capital letters, as is the convention.
