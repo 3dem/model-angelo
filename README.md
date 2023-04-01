@@ -11,6 +11,7 @@ Please note that the weight files required by both ModelAngelo and the language 
 ## Installation
 <details>
 <summary>Personal use</summary>
+
 (If you manage a computational cluster, please skip to the next section)
 
 **Step 1: Install Conda**
@@ -69,6 +70,7 @@ model_angelo "$@"
 
 <details>
 <summary>Installation issues</summary>
+
 **1. Binary activate not found**
 It appears that miniconda's activate binary is not added to `PATH` by default. You can either fix this by appending it yourself, like so:
 ```
@@ -82,6 +84,7 @@ First, make sure to run `model_angelo build --help` or `model_angelo build_no_se
 
 <details>
 <summary>Building a map with FASTA sequence</summary>
+
 This is the recommended use case, when you have access to a medium-high resolution cryo-EM map (resolutions exceeding 4 Å) as well as a FASTA files with all of your protein, RNA, and DNA sequences.
 
 Let's say the map's name is `map.mrc` and the (protein) sequence file is `prot.fasta`. To build your model in a directory named `output`, you run:
@@ -98,7 +101,8 @@ If the output of the program halts before the completion of `GNN model refinemen
 </details>
 
 <details>
-<summary>Building a map with no FASTA sequence</details>
+<summary>Building a map with no FASTA sequence</summary>
+
 If you have a sample where you do not know all of the protein sequences that occur in the map, you can run `model_angelo build_no_seq` instead.
 This version of the program uses a network that was not trained with input sequences, nor does it do post-processing on the built map.
 
