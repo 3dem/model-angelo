@@ -67,14 +67,15 @@ model_angelo "$@"
 ```
 </details>
 
-## Installation issues
-
+<details>
+<summary>Installation issues</summary>
 **1. Binary activate not found**
 It appears that miniconda's activate binary is not added to `PATH` by default. You can either fix this by appending it yourself, like so:
 ```
 export PATH="$PATH:/path/to/miniconda3/bin"
 ```
 or running `conda init` and restarting your shell.
+</details>
 
 ## Usage
 ### Building a map with FASTA sequence
