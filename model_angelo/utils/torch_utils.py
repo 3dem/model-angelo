@@ -542,3 +542,9 @@ class ShapeError(Exception):
     pass
 
 
+def compile_if_possible(module: nn.Module) -> nn.Module:
+    if hasattr(torch, "compile"):
+        module = torch.compile(module)
+    return module
+
+
