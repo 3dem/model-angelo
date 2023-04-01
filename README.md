@@ -3,7 +3,7 @@
 ModelAngelo is an automatic atomic model building program for cryo-EM maps.
 
 <details>
-<summary>## Compute requirements</summary>
+<summary> _Compute requirements_ </summary>
 <br>
 It is highly recommended to have access to GPUs with at least 8GB of memory. ModelAngelo performs well on NVIDIA GPUs such as 2080's and beyond.
 
