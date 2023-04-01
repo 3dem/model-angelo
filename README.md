@@ -77,10 +77,16 @@ This is the recommended use case, when you have access to a medium-high resoluti
 
 To familiarize yourself with the options available in `model_angelo build`, run `model_angelo build -h`.
 
-Let's say the map's name is `map.mrc` and the sequence file is `sequence.fasta`. To build your model in a directory named `output`, you run:
+Let's say the map's name is `map.mrc` and the (protein) sequence file is `prot.fasta`. To build your model in a directory named `output`, you run:
 ```
-model_angelo build -v map.mrc -f sequence.fasta -o output
+model_angelo build -v map.mrc -pf prot.fasta -o output
 ```
+If you would like to build nucleotides as well, you need to provide the RNA and DNA portions of your sequences in different files like so
+```
+model_angelo build -v map.mrc -pf prot.fasta -df dna.fasta -rf rna.fasta -o output
+```
+If you only have RNA or DNA, you can drop the other input.
+
 If the output of the program halts before the completion of `GNN model refinement, round 3 / 3`, there was a bug that you can see in `output/model_angelo.log`. Otherwise, you can find your model in `output/output.cif`. The name of the mmCIF file is based on the output folder name, so if you specify, for example, `-o testing/test/model_building`, the model will be in `testing/test/model_building/model_building.cif`.
 
 ### Building a map with no FASTA sequence
@@ -94,11 +100,11 @@ You run this command:
 model_angelo build_no_seq -v map.mrc -o output
 ```
 The model will be in `output/output.cif` as before. Now there are also HMM profiles for each chain in HMMER3 format here: `output/hmm_profiles`.
-To do a sequence search for chain A (for example), you should first install [HMMER](https://anaconda.org/bioconda/hmmer) and download a genome database, such as the [human genome](https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers/GRCh38_latest_genomic.fna.gz). Then, you can run
+To do a sequence search for chain A (for example), you should first download a database that will include your organism's proteins, such as the [human genome](https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers/GRCh38_latest_genomic.fna.gz). Then, you can run
 ```
-hmmsearch -o A.txt -A A.sto output/hmm_profiles/A.hmm PATH_TO_DB
+model_angelo hmm_search --i output --f PATH_TO_DB --o hmm_output
 ```
-You will have your result as a multiple sequence alignment here: `A.sto`. 
+You will have your results as a series of HMM output files with the extension .hhr, for example: `hmm_output/A.hhr`. These are named by chain according to the model built by ModelAngelo in `output/output.cif`.
 
 ## FAQs
 
@@ -108,8 +114,10 @@ You will have your result as a multiple sequence alignment here: `A.sto`.
 4. **How does ModelAngelo deal with cis prolines?** It *doesn't*. However, we find that a round of refinement (with REFMAC, for example) fixes this issue.
 
 ## Common issues
-1. ModelAngelo currently does not build nucleotides. It also may make mistakes if nucleotide sequences are in the sequence fasta file.
-2. If the result looks very bad, with many disconnected chains, take a look at the alpha helices. If these are made of short and disconnected chains, the map was probably in the wrong handedness. If you flip the map and run again, you should see much better results.
+1. If the result looks very bad, with many disconnected chains, take a look at the alpha helices. If these are made of short and disconnected chains, the map was probably in the wrong hand. If you flip the map and run again, you should see much better results.
+2. If the map is processed using deepEMhancer, we have noticed less than satisfactory results. Please try with a map post-processed with a conventional algorithm and try again.
+3. Always check your input sequence files to make sure that they correspond to a correct FASTA format. Please make sure that the sequences are all capital letters, as is the convention.
+4. If the output model is shifted with respect to your map, make sure that the map provided to ModelAngelo is cubic. Otherwise, it might get shifted when ModelAngelo internally makes the map cubic.
 
 ## Citation
 
