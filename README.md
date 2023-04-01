@@ -80,8 +80,8 @@ or running `conda init` and restarting your shell.
 ## Usage
 First, make sure to run `model_angelo build --help` or `model_angelo build_no_seq --help` to familiarize yourself with all of the options available.
 
-### Building a map with FASTA sequence
 <details>
+<summary>Building a map with FASTA sequence</summary>
 This is the recommended use case, when you have access to a medium-high resolution cryo-EM map (resolutions exceeding 4 Å) as well as a FASTA files with all of your protein, RNA, and DNA sequences.
 
 Let's say the map's name is `map.mrc` and the (protein) sequence file is `prot.fasta`. To build your model in a directory named `output`, you run:
@@ -96,8 +96,9 @@ If you only have RNA or DNA, you can drop the other input.
 
 If the output of the program halts before the completion of `GNN model refinement, round 3 / 3`, there was a bug that you can see in `output/model_angelo.log`. Otherwise, you can find your model in `output/output.cif`. The name of the mmCIF file is based on the output folder name, so if you specify, for example, `-o testing/test/model_building`, the model will be in `testing/test/model_building/model_building.cif`.
 </details>
-### Building a map with no FASTA sequence
+
 <details>
+<summary>Building a map with no FASTA sequence</details>
 If you have a sample where you do not know all of the protein sequences that occur in the map, you can run `model_angelo build_no_seq` instead.
 This version of the program uses a network that was not trained with input sequences, nor does it do post-processing on the built map.
 
@@ -114,6 +115,7 @@ model_angelo hmm_search --i output --f PATH_TO_DB --o hmm_output
 ```
 You will have your results as a series of HMM output files with the extension .hhr, for example: `hmm_output/A.hhr`. These are named by chain according to the model built by ModelAngelo in `output/output.cif`.
 </details>
+
 ## FAQs
 
 1. **How do I change which GPU ModelAngelo runs on?** You can specify the device(s) ModelAngelo runs on by using the `--device` flag. So, for example, to use GPU with Id 0, you write `--device 0`. To use the first two GPUs of your computer, you can write `--device 0,1`.
