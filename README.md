@@ -11,7 +11,6 @@ Please note that the weight files required by both ModelAngelo and the language 
 ## Installation
 <details>
 <summary>Personal use</summary>
-<br>
 (If you manage a computational cluster, please skip to the next section)
 
 **Step 1: Install Conda**
@@ -43,7 +42,8 @@ Now, you can run `model_angelo build -h` to see if the installation worked!
 <br><br>
 </details>
 
-### Installing for a shared computational environment
+<details>
+<summary>Shared computational environment</summary>
 If you manage a computational cluster with many users and would like to install ModelAngelo once to be used everywhere, 
 you should complete the above steps 1 and 2 for a public account.
 
@@ -65,6 +65,7 @@ Finally, you can make the following bash script available for all users to run:
 source `which activate` model_angelo
 model_angelo "$@"
 ```
+</details>
 
 ## Installation issues
 
