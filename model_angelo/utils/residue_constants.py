@@ -1091,10 +1091,10 @@ def _make_rigid_transformation_4x4(ex, ey, translation):
 # and an array with (restype, atomtype, coord) for the atom positions
 # and compute affine transformation matrices (4,4) from one rigid group to the
 # previous group
-restype_atom37_to_rigid_group = np.zeros([21, 37], dtype=np.int)
+restype_atom37_to_rigid_group = np.zeros([21, 37], dtype=np.int64)
 restype_atom37_mask = np.zeros([21, 37], dtype=np.float32)
 restype_atom37_rigid_group_positions = np.zeros([21, 37, 3], dtype=np.float32)
-restype_atom14_to_rigid_group = np.zeros([21, 14], dtype=np.int)
+restype_atom14_to_rigid_group = np.zeros([21, 14], dtype=np.int64)
 restype_atom14_mask = np.zeros([21, 14], dtype=np.float32)
 restype_atom14_rigid_group_positions = np.zeros([21, 14, 3], dtype=np.float32)
 restype_atom3_rigid_group_positions = np.zeros([21, 3, 3], dtype=np.float32)
@@ -1496,7 +1496,7 @@ between_res_cos_angles_ca_c_n = [-0.4473, 0.0311]  # degrees: 116.568 +- 1.995
 # and an array with (restype, atomtype, coord) for the atom positions
 # and compute affine transformation matrices (4,4) from one rigid group to the
 # previous group
-nuctype_atom28_to_rigid_group = np.zeros([8, 28], dtype=np.int)
+nuctype_atom28_to_rigid_group = np.zeros([8, 28], dtype=np.int64)
 nuctype_atom28_mask = np.zeros([8, 28], dtype=np.float32)
 nuctype_atom28_rigid_group_positions = np.zeros([8, 28, 3], dtype=np.float32)
 nuctype_rigid_group_default_frame = np.zeros([8, 3, 4, 4], dtype=np.float32)

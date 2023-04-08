@@ -252,7 +252,7 @@ def make_cubic(box):
     s = np.max(box.shape)
     s += s % 2
     if np.all(box.shape == s):
-        return box, np.zeros(3, dtype=np.int), bz
+        return box, np.zeros(3, dtype=np.int64), bz
     nbox = np.zeros((s, s, s))
     c = np.array(nbox.shape) // 2 - bz // 2
     nbox[c[0] : c[0] + bz[0], c[1] : c[1] + bz[1], c[2] : c[2] + bz[2]] = box
@@ -266,7 +266,7 @@ def make_cubic_multiple_boxsize(box, boxsize):
     if s % boxsize != 0:
         s += boxsize - (s % boxsize)
     if np.all(box.shape == s):
-        return box, np.zeros(3, dtype=np.int), bz
+        return box, np.zeros(3, dtype=np.int64), bz
     nbox = np.zeros((s, s, s))
     c = np.array(nbox.shape) // 2 - bz // 2
     nbox[c[0] : c[0] + bz[0], c[1] : c[1] + bz[1], c[2] : c[2] + bz[2]] = box
@@ -854,7 +854,7 @@ def voxelize_coordinates(grid: torch.Tensor, coordinates: torch.Tensor) -> torch
 def voxelize_coordinates_numpy(
     grid: np.ndarray, coordinates: np.ndarray, clip_output=False
 ) -> np.ndarray:
-    coordinates_round = np.around(coordinates).astype(np.int32)
+    coordinates_round = np.around(coordinates).astype(np.int64)
     coordinates_round = coordinates_round[
         (coordinates_round > 0).all(axis=-1)
         * (coordinates_round < grid.shape[-1]).all(axis=-1)
