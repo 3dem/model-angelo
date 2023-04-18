@@ -20,7 +20,7 @@ from model_angelo.utils.gnn_inference_utils import (
     get_final_nn_results,
     get_base_parser,
 )
-from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc
+from model_angelo.utils.grid import MRCObject, make_model_angelo_grid, load_mrc, standardize_mrc
 from model_angelo.utils.misc_utils import (
     get_esm_model,
     abort_if_relion_abort,
@@ -112,9 +112,7 @@ def infer(args):
             f"Grid volume file {args.map} is not a supported file format."
         )
     # Standardize the grid to have a mean of 0 and a standard deviation of 1
-    grid_data.grid = ((grid_data.grid - grid_data.grid.mean()) / grid_data.grid.std()).astype(
-        np.float32
-    )
+    grid_data = standardize_mrc(grid_data)
 
     num_res = len(protein.rigidgroups_gt_frames)
     collated_results = init_empty_collate_results(

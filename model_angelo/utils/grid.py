@@ -1247,6 +1247,15 @@ def apply_lowpass_filter_to_map(
     grid = np.fft.ifftshift(np.fft.irfftn(grid_ft))
     return grid
 
+def standardize_mrc(mrc_object: MRCObject) -> MRCObject:
+    grid = (
+        (mrc_object.grid - mrc_object.grid.mean()) / mrc_object.grid.std()
+    ).astype(np.float32)
+    return MRCObject(
+        grid=grid,
+        voxel_size=mrc_object.voxel_size,
+        global_origin=mrc_object.global_origin
+    )
 
 def extend_edge(binary_mask, edge, kernel, ramp):
     smooth_mask = np.copy(binary_mask)
