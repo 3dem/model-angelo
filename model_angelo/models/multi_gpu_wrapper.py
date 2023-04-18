@@ -7,7 +7,7 @@ from collections import namedtuple
 import os
 
 from model_angelo.utils.misc_utils import filter_useless_warnings
-from model_angelo.utils.torch_utils import get_model_from_file
+from model_angelo.utils.torch_utils import get_model_from_file, compile_if_possible
 
 # Currently hard-coded, can change later
 if os.environ.get("MASTER_ADDR") is None:
@@ -65,6 +65,7 @@ def init_model(model_definition_path: str, state_dict_path: str, device: str) ->
         model.load_state_dict(checkpoint)
     else:
         model.load_state_dict(checkpoint["model"])
+    model = compile_if_possible(model)
     model.to(device)
     return model
 
