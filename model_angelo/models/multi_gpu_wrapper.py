@@ -65,7 +65,7 @@ def init_model(model_definition_path: str, state_dict_path: str, device: str) ->
         model.load_state_dict(checkpoint)
     else:
         model.load_state_dict(checkpoint["model"])
-    model = compile_if_possible(model)
+    # model = compile_if_possible(model)
     model.to(device)
     return model
 
