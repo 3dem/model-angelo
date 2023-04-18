@@ -29,9 +29,13 @@ def argmin_random(
     batch_size: int = 1,
     repeat_per_residue: int = 3,
 ):
-    neighbour_counts = count_tensor.clamp(max=repeat_per_residue)[neighbours].sum(
-        dim=-1
-    )
+    # We first look at the individual counts for each residue
+    counts = count_tensor.clamp(max=repeat_per_residue)
+    # If the proportion of clamped counts is too high, we use the full count tensor
+    if torch.sum(counts == repeat_per_residue).item() / len(counts) > 0.7:
+        neighbour_counts = count_tensor
+    else:
+        neighbour_counts = counts[neighbours].sum(dim=-1)
     rand_idxs = torch.randperm(len(neighbour_counts))
     corr_idxs = torch.arange(len(neighbour_counts))[rand_idxs]
     random_argmin = neighbour_counts[rand_idxs].argsort()[:batch_size]

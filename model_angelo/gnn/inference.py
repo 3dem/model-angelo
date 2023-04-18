@@ -123,7 +123,7 @@ def infer(args):
     pbar = tqdm.tqdm(total=total_steps, file=sys.stdout, position=0, leave=True)
 
     # Get an initial set of pointers to neighbours for more efficient inference
-    init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
+    init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 2)
     using_cache = False
     with MultiGPUWrapper(model_definition_path, state_dict_path, device_names, args.fp16) as wrapper:
         while residues_left > 0:
