@@ -80,10 +80,7 @@ def init_empty_collate_results(
 def get_inference_data(
         protein, grid_data, idxs, crop_length=200, num_devices: int = 1,
 ):
-    grid = ((grid_data.grid - np.mean(grid_data.grid)) / np.std(grid_data.grid)).astype(
-        np.float32
-    )
-
+    cryo_grids = torch.from_numpy(grid_data.grid[None])  # Add channel dim
     backbone_frames = protein.rigidgroups_gt_frames[:, 0]  # (num_res, 3, 4)
     ca_positions = get_affine_translation(backbone_frames)
     picked_indices = np.arange(len(ca_positions), dtype=int)
@@ -106,7 +103,7 @@ def get_inference_data(
     
         output_dict = {
             "affines": torch.from_numpy(backbone_frames[picked_indices]),
-            "cryo_grids": torch.from_numpy(grid[None]),  # Add channel dim
+            "cryo_grids": cryo_grids,
             "cryo_global_origins": torch.from_numpy(
                 grid_data.global_origin.astype(np.float32)
             ),

@@ -74,6 +74,10 @@ def infer(args):
         raise RuntimeError(
             f"Grid volume file {args.map} is not a supported file format."
         )
+    # Standardize the grid to have a mean of 0 and a standard deviation of 1
+    grid_data.grid = ((grid_data.grid - grid_data.grid.mean()) / grid_data.grid.std()).astype(
+        np.float32
+    )
 
     num_res = len(protein.rigidgroups_gt_frames)
 
@@ -90,16 +94,15 @@ def infer(args):
 
     with MultiGPUWrapper(model_definition_path, state_dict_path, device_names, args.fp16) as wrapper:
         while residues_left > 0:
-            st = time.time()
             idxs = argmin_random(
                 collated_results["counts"], init_neighbours, args.batch_size * num_devices
             )
+            st = time.time()
             data = get_inference_data(
                 protein, grid_data, idxs, crop_length=args.crop_length, num_devices=num_devices,
             )
-            inference_data_time = time.time()
+            data_time = time.time() - st
             results = run_inference_on_data(wrapper, data, fp16=args.fp16, run_iters=1)
-            inference_time = time.time()
             for device_id in range(num_devices):
                 for i in range(args.batch_size):
                     collated_results, protein = collate_nn_results(
@@ -109,7 +112,6 @@ def infer(args):
                         protein,
                         offset=i * args.crop_length,
                     )
-            collate_time = time.time()
             residues_left = (
                 num_res
                 - torch.sum(collated_results["counts"] > args.repeat_per_residue - 1).item()
@@ -120,7 +122,7 @@ def infer(args):
                     collated_results["counts"].clip(0, args.repeat_per_residue)
                 ).item()
             )
-            print(f"Data: {inference_data_time - st:.2f} Inference: {inference_time - inference_data_time:.2f} Collate: {collate_time - inference_time:.2f}")
+            print(f"Data time: {data_time:.2f}")
             pbar.update(n=int(steps_left_last - steps_left))
             steps_left_last = steps_left
             abort_if_relion_abort(model_angelo_output_dir)
