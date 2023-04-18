@@ -78,7 +78,6 @@ def infer(args):
     grid_data.grid = ((grid_data.grid - grid_data.grid.mean()) / grid_data.grid.std()).astype(
         np.float32
     )
-
     num_res = len(protein.rigidgroups_gt_frames)
 
     collated_results = init_empty_collate_results(num_res, device="cpu",)
