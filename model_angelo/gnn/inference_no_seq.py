@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import tqdm
 from loguru import logger
-import time
 
 from model_angelo.gnn.flood_fill import final_results_to_cif
 from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
@@ -94,11 +93,9 @@ def infer(args):
             idxs = argmin_random(
                 collated_results["counts"], init_neighbours, args.batch_size * num_devices
             )
-            st = time.time()
             data = get_inference_data(
                 protein, grid_data, idxs, crop_length=args.crop_length, num_devices=num_devices,
             )
-            data_time = time.time() - st
             results = run_inference_on_data(wrapper, data, fp16=args.fp16, run_iters=1)
             for device_id in range(num_devices):
                 for i in range(args.batch_size):
@@ -119,7 +116,6 @@ def infer(args):
                     collated_results["counts"].clip(0, args.repeat_per_residue)
                 ).item()
             )
-            print(f"Data time: {data_time:.2f}")
             pbar.update(n=int(steps_left_last - steps_left))
             steps_left_last = steps_left
             abort_if_relion_abort(model_angelo_output_dir)
