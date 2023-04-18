@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import tqdm
 from loguru import logger
+import time
 
 from model_angelo.gnn.flood_fill import final_results_to_cif
 from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
@@ -85,17 +86,20 @@ def infer(args):
     pbar = tqdm.tqdm(total=total_steps, file=sys.stdout, position=0, leave=True)
 
     # Get an initial set of pointers to neighbours for more efficient inference
-    init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 2)
+    init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
 
     with MultiGPUWrapper(model_definition_path, state_dict_path, device_names, args.fp16) as wrapper:
         while residues_left > 0:
+            st = time.time()
             idxs = argmin_random(
                 collated_results["counts"], init_neighbours, args.batch_size * num_devices
             )
             data = get_inference_data(
                 protein, grid_data, idxs, crop_length=args.crop_length, num_devices=num_devices,
             )
-            results = run_inference_on_data(wrapper, data, fp16=args.fp16)
+            inference_data_time = time.time()
+            results = run_inference_on_data(wrapper, data, fp16=args.fp16, run_iters=1)
+            inference_time = time.time()
             for device_id in range(num_devices):
                 for i in range(args.batch_size):
                     collated_results, protein = collate_nn_results(
@@ -105,6 +109,7 @@ def infer(args):
                         protein,
                         offset=i * args.crop_length,
                     )
+            collate_time = time.time()
             residues_left = (
                 num_res
                 - torch.sum(collated_results["counts"] > args.repeat_per_residue - 1).item()
@@ -115,7 +120,7 @@ def infer(args):
                     collated_results["counts"].clip(0, args.repeat_per_residue)
                 ).item()
             )
-
+            print(f"Data: {inference_data_time - st:.2f} Inference: {inference_time - inference_data_time:.2f} Collate: {collate_time - inference_time:.2f}")
             pbar.update(n=int(steps_left_last - steps_left))
             steps_left_last = steps_left
             abort_if_relion_abort(model_angelo_output_dir)
