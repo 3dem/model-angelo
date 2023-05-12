@@ -13,8 +13,8 @@ import numpy as np
 from Bio.SVDSuperimposer import SVDSuperimposer
 
 from model_angelo.utils.cas_utils import get_correspondence
-from model_angelo.utils.protein import Protein, get_protein_from_file_path
-from model_angelo.utils.residue_constants import atom_order, atom37_backbone_mask
+from model_angelo.utils.protein import Protein, get_protein_from_file_path, slice_protein
+from model_angelo.utils.residue_constants import atom_order, atomc_backbone_mask
 from scipy.stats.mstats import mquantiles
 
 
@@ -25,14 +25,44 @@ def get_residue_fit_report(
     verbose=False,
     two_rounds=False,
     eps=1e-9,
+    match_type: str = "both",
 ):
-    input_cas = input_protein.atom_positions[:, atom_order["CA"]]
-    target_cas = target_protein.atom_positions[:, atom_order["CA"]]
-    target_correspondence, input_correspondence, unmatched_target_idxs, unmatched_input_idxs = get_correspondence(
-        input_cas, target_cas, max_dist, verbose, two_rounds=two_rounds, get_unmatched=True
+    if match_type == "protein":
+        input_protein = slice_protein(input_protein, input_protein.prot_mask)
+        target_protein = slice_protein(target_protein, target_protein.prot_mask)
+    elif match_type == "nucleotide":
+        input_protein = slice_protein(input_protein, ~input_protein.prot_mask)
+        target_protein = slice_protein(target_protein, ~target_protein.prot_mask)
+    elif match_type != "both":
+        raise RuntimeError("Only support match types: protein, nucleotide, both")
+    input_cas = input_protein.atomc_positions[:, atom_order["CA"]]
+    target_cas = target_protein.atomc_positions[:, atom_order["CA"]]
+    input_protein.b_factors = (np.sum(input_protein.b_factors * input_protein.atom_mask, axis=-1) / np.sum(
+        input_protein.atom_mask, axis=-1
+    ))[:, None]
+    target_protein.b_factors = (np.sum(target_protein.b_factors * target_protein.atom_mask, axis=-1) / np.sum(
+        target_protein.atom_mask, axis=-1
+    ))[:, None]
+    (
+        target_correspondence,
+        input_correspondence,
+        unmatched_target_idxs,
+        unmatched_input_idxs,
+    ) = get_correspondence(
+        input_cas,
+        target_cas,
+        max_dist,
+        verbose,
+        two_rounds=two_rounds,
+        get_unmatched=True,
     )
 
-    target_correspondence, input_correspondence, unmatched_target_idxs, unmatched_input_idxs = (
+    (
+        target_correspondence,
+        input_correspondence,
+        unmatched_target_idxs,
+        unmatched_input_idxs,
+    ) = (
         target_correspondence.astype(np.int64),
         input_correspondence.astype(np.int64),
         unmatched_target_idxs.astype(np.int64),
@@ -42,10 +72,10 @@ def get_residue_fit_report(
     input_cas_cor = input_cas[input_correspondence]
     target_cas_cor = target_cas[target_correspondence]
 
-    input_atoms = input_protein.atom_positions[input_correspondence]
-    target_atoms = target_protein.atom_positions[target_correspondence]
-    input_mask = input_protein.atom_mask[input_correspondence]
-    target_mask = target_protein.atom_mask[target_correspondence]
+    input_atoms = input_protein.atomc_positions[input_correspondence]
+    target_atoms = target_protein.atomc_positions[target_correspondence]
+    input_mask = input_protein.atomc_mask[input_correspondence]
+    target_mask = target_protein.atomc_mask[target_correspondence]
 
     sup = SVDSuperimposer()
     sup.set(target_cas_cor, input_cas_cor)
@@ -60,92 +90,90 @@ def get_residue_fit_report(
         [
             input_protein.aatype[input_correspondence],
             np.full(len(unmatched_target_idxs), -1),
-            input_protein.aatype[unmatched_input_idxs]
+            input_protein.aatype[unmatched_input_idxs],
         ],
-        0
+        0,
     )
 
     target_type = np.concatenate(
         [
             target_protein.aatype[target_correspondence],
             target_protein.aatype[unmatched_target_idxs],
-            np.full(len(unmatched_input_idxs), -1)
+            np.full(len(unmatched_input_idxs), -1),
         ],
-        0
+        0,
     )
 
     input_residue_index = np.concatenate(
         [
             input_protein.residue_index[input_correspondence],
             np.full(len(unmatched_target_idxs), -1),
-            input_protein.residue_index[unmatched_input_idxs]
+            input_protein.residue_index[unmatched_input_idxs],
         ],
-        0
+        0,
     )
 
     target_residue_index = np.concatenate(
         [
             target_protein.residue_index[target_correspondence],
             target_protein.residue_index[unmatched_target_idxs],
-            np.full(len(unmatched_input_idxs), -1)
+            np.full(len(unmatched_input_idxs), -1),
         ],
-        0
+        0,
     )
 
     ca_rms = (input_mask * target_mask * distance)[..., 1]
-    ca_rms = np.concatenate(
-        [
-            ca_rms,
-            np.full(len(input_type) - len(ca_rms), -1)
-        ],
-        0
-    )
+    ca_rms = np.concatenate([ca_rms, np.full(len(input_type) - len(ca_rms), -1)], 0)
 
     backbone_rms = np.sum(
-        input_mask * target_mask * atom37_backbone_mask * distance
-        , 
-        -1
-    ) / (
-            np.sum(input_mask * atom37_backbone_mask * target_mask, -1) + eps
-    )
-
-    
+        input_mask * target_mask * atomc_backbone_mask * distance, -1
+    ) / (np.sum(input_mask * atomc_backbone_mask * target_mask, -1) + eps)
 
     backbone_rms = np.concatenate(
-        [
-            backbone_rms,
-            np.full(len(input_type) - len(backbone_rms), -1)
-        ],
-        0
+        [backbone_rms, np.full(len(input_type) - len(backbone_rms), -1)], 0
     )
 
-    unmatched_target_mask = target_protein.atom_mask[unmatched_target_idxs]
+    unmatched_target_mask = target_protein.atomc_mask[unmatched_target_idxs]
     b_factors = np.concatenate(
         [
-            np.sum(target_protein.b_factors[target_correspondence] * target_mask, -1) / np.sum(target_mask, -1),
-            np.sum(target_protein.b_factors[unmatched_target_idxs] * unmatched_target_mask, -1) / np.sum(unmatched_target_mask, -1),
-            np.full(len(unmatched_input_idxs), -1)
+            np.sum(target_protein.b_factors[target_correspondence] * target_mask, -1)
+            / np.sum(target_mask, -1),
+            np.sum(
+                target_protein.b_factors[unmatched_target_idxs] * unmatched_target_mask,
+                -1,
+            )
+            / np.sum(unmatched_target_mask, -1),
+            np.full(len(unmatched_input_idxs), -1),
         ],
-        0
+        0,
     )
 
-    matching_aa_mask = input_protein.aatype[input_correspondence] == target_protein.aatype[target_correspondence]
+    matching_aa_mask = (
+        input_protein.aatype[input_correspondence]
+        == target_protein.aatype[target_correspondence]
+    )
     all_atom_rms = (
-            np.sum((input_mask * target_mask * distance), axis=-1) / np.sum(input_mask * target_mask, axis=-1)
+        np.sum((input_mask * target_mask * distance), axis=-1)
+        / np.sum(input_mask * target_mask, axis=-1)
     )[matching_aa_mask]
     all_atom_rms = np.concatenate(
-        [
-            all_atom_rms,
-            np.full(len(b_factors) - len(all_atom_rms), -1)
-        ],
-        0
+        [all_atom_rms, np.full(len(b_factors) - len(all_atom_rms), -1)], 0
     )
 
-    return input_type, target_type, input_residue_index, target_residue_index, ca_rms, backbone_rms, all_atom_rms, b_factors
+    return (
+        input_type,
+        target_type,
+        input_residue_index,
+        target_residue_index,
+        ca_rms,
+        backbone_rms,
+        all_atom_rms,
+        b_factors,
+    )
 
 
 def plot_data(input_type, target_type, ca_rms, backbone_rms, all_atom_rms, b_factors):
-    bin_edges = mquantiles(b_factors[b_factors >= 0], prob=np.linspace(0., 1., 40))
+    bin_edges = mquantiles(b_factors, prob=np.linspace(0.0, 1.0, 40))
     bin_centers = []
 
     target_mask = target_type >= 0  # Were there is a target
@@ -164,7 +192,9 @@ def plot_data(input_type, target_type, ca_rms, backbone_rms, all_atom_rms, b_fac
     mean_all_atom_rms = []
     count = []
     for i in range(len(bin_edges) - 1):
-        bfac_mask = (bin_edges[i] <= b_factors_masked) & (b_factors_masked < bin_edges[i + 1])
+        bfac_mask = (bin_edges[i] <= b_factors_masked) & (
+            b_factors_masked < bin_edges[i + 1]
+        )
         c = np.sum(bfac_mask)
 
         if c < 2:
@@ -174,7 +204,8 @@ def plot_data(input_type, target_type, ca_rms, backbone_rms, all_atom_rms, b_fac
         count.append(c)
 
         mean_seq_recall.append(
-            np.sum(input_type_masked[bfac_mask] == target_type_masked[bfac_mask]) / (np.sum(bfac_mask) + 1e-9)
+            np.sum(input_type_masked[bfac_mask] == target_type_masked[bfac_mask])
+            / (np.sum(bfac_mask) + 1e-9)
         )
 
         bfac_match_mask = (input_type_masked >= 0) & bfac_mask
@@ -184,49 +215,44 @@ def plot_data(input_type, target_type, ca_rms, backbone_rms, all_atom_rms, b_fac
         mean_all_atom_rms.append(np.mean(all_atom_rms[bfac_match_mask]))
 
     import matplotlib.pylab as plt
+
     f = plt.figure(1)
     plt.bar(bin_centers, count)
 
     f = plt.figure(2)
     plt.plot(bin_centers, mean_seq_recall)
     plt.title("Sequence recall")
-    plt.ylim([0., 1.])
+    plt.ylim([0.0, 1.0])
 
     f = plt.figure(3)
     plt.plot(bin_centers, mean_ca_recall)
     plt.title("C-alpha recall")
-    plt.ylim([0., 1.])
+    plt.ylim([0.0, 1.0])
 
     f = plt.figure(4)
     plt.plot(bin_centers, mean_ca_rms)
     plt.title("C-alpha RMS")
-    plt.ylim([0., 2.2])
+    plt.ylim([0.0, 2.2])
 
     f = plt.figure(5)
     plt.plot(bin_centers, mean_backbone_rms)
     plt.title("Backbone RMS")
-    plt.ylim([0., 2.2])
+    plt.ylim([0.0, 2.2])
 
     f = plt.figure(6)
     plt.plot(bin_centers, mean_all_atom_rms)
     plt.title("All Atom RMS")
-    plt.ylim([0., 1.])
+    plt.ylim([0.0, 1.0])
 
     plt.show()
 
 
 def add_args(parser):
     parser.add_argument(
-        "--predicted-structure",
-        "--p",
-        "-p",
-        help="Where your prediction cif file is",
+        "--predicted-structure", "--p", "-p", help="Where your prediction cif file is",
     )
     parser.add_argument(
-        "--target-structure",
-        "--t",
-        "-t",
-        help="Where your real model cif file is",
+        "--target-structure", "--t", "-t", help="Where your real model cif file is",
     )
     parser.add_argument(
         "--max-dist",
@@ -238,23 +264,19 @@ def add_args(parser):
         "--output-file",
         "--o",
         "-o",
-        help="Saves the results to table file with this path"
+        help="Saves the results to table file with this path",
+    )
+    parser.add_argument("--data-file", "--d", "-d", help="Reads from this data file")
+    parser.add_argument(
+        "--plot", help="Plot results output figures", action="store_true"
     )
     parser.add_argument(
-        "--data-file",
-        "--d",
-        "-d",
-        help="Reads from this data file"
+        "--skip-header", help="Don't print header in output file", action="store_true"
     )
     parser.add_argument(
-        "--plot",
-        help="Plot results output figures",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--skip-header",
-        help="Don't print header in output file",
-        action="store_true"
+        "--match-type",
+        default="both",
+        choices=["both", "protein", "nucleotide"],
     )
     return parser
 
@@ -282,20 +304,23 @@ def main(parsed_args):
             ca_rms,
             backbone_rms,
             all_atom_rms,
-            b_factors
+            b_factors,
         ) = get_residue_fit_report(
             predicted_protein,
             target_protein,
             max_dist=parsed_args.max_dist,
             verbose=False,
             two_rounds=True,
+            match_type=parsed_args.match_type,
         )
 
     if parsed_args.plot:
-        plot_data(input_type, target_type, ca_rms, backbone_rms, all_atom_rms, b_factors)
+        plot_data(
+            input_type, target_type, ca_rms, backbone_rms, all_atom_rms, b_factors
+        )
 
     if parsed_args.output_file is not None and parsed_args.data_file is None:
-        with open(parsed_args.output_file, 'w') as f:
+        with open(parsed_args.output_file, "w") as f:
             if not parsed_args.skip_header:
                 f.write(
                     "input_type\t"

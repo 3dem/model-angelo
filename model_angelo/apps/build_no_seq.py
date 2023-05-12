@@ -1,4 +1,10 @@
 """
+You are standing in an open field west of a glass building, with a sliding electric front door.
+There is a small mailbox here.
+> Open mailbox.
+There is a letter.
+> Read letter.
+-------------------------------------------------------------------------
 Welcome to ModelAngelo! Have a look around...
 This is the build_no_seq command, so you need:
 1) A cryo-EM map .mrc file, passed to --volume-path/--v/-v
@@ -23,7 +29,12 @@ import torch
 from model_angelo.c_alpha.inference import infer as c_alpha_infer
 from model_angelo.data.standardize_mrc import standardize_mrc
 from model_angelo.gnn.inference_no_seq import infer as gnn_no_seq_infer
-from model_angelo.utils.misc_utils import filter_useless_warnings, setup_logger, Args, write_relion_job_exit_status
+from model_angelo.utils.misc_utils import (
+    filter_useless_warnings,
+    setup_logger,
+    Args,
+    write_relion_job_exit_status, check_available_memory,
+)
 from model_angelo.utils.torch_utils import download_and_install_model, get_device_name
 
 
@@ -34,15 +45,10 @@ def add_args(parser):
     """
     main_args = parser.add_argument_group(
         "Main arguments",
-        description="These are the only arguments a typical user will need."
+        description="These are the only arguments a typical user will need.",
     )
     main_args.add_argument(
-        "--volume-path",
-        "-v",
-        "--v",
-        help="input volume",
-        type=str,
-        required=True
+        "--volume-path", "-v", "--v", help="input volume", type=str, required=True
     )
     main_args.add_argument(
         "--output-dir",
@@ -54,8 +60,7 @@ def add_args(parser):
     )
 
     additional_args = parser.add_argument_group(
-        "Additional arguments",
-        description="These are sometimes useful."
+        "Additional arguments", description="These are sometimes useful."
     )
     additional_args.add_argument(
         "--mask-path", "-m", "--m", help="path to mask file", type=str, default=None
@@ -65,14 +70,14 @@ def add_args(parser):
         "-d",
         "--d",
         help="compute device, pick one of {cpu, gpu_number}. "
-             "Default set to find an available GPU.",
+        "Default set to find an available GPU.",
         type=str,
         default=None,
     )
 
     advanced_args = parser.add_argument_group(
         "Advanced arguments",
-        description="These should *not* be changed unless the user is aware of what they do."
+        description="These should *not* be changed unless the user is aware of what they do.",
     )
     advanced_args.add_argument(
         "--config-path", "-c", "--c", help="config file", type=str, default=None
@@ -80,14 +85,14 @@ def add_args(parser):
     advanced_args.add_argument(
         "--model-bundle-name",
         type=str,
-        default="original_no_seq",
+        default="nucleotides_no_seq",
         help="Inference model bundle name",
     )
     advanced_args.add_argument(
         "--model-bundle-path",
         type=str,
         default=None,
-        help="Inference model bundle path. If this is set, --model-bundle-name is not used."
+        help="Inference model bundle path. If this is set, --model-bundle-name is not used.",
     )
     advanced_args.add_argument(
         "--keep-intermediate-results",
@@ -108,21 +113,21 @@ def add_args(parser):
 
 
 def main(parsed_args):
+    filter_useless_warnings()
     logger = setup_logger(os.path.join(parsed_args.output_dir, "model_angelo.log"))
     with logger.catch(
-            message="Error in ModelAngelo",
-            onerror=lambda _: write_relion_job_exit_status(
-                parsed_args.output_dir,
-                "FAILURE",
-                pipeline_control=parsed_args.pipeline_control,
-            )
+        message="Error in ModelAngelo",
+        onerror=lambda _: write_relion_job_exit_status(
+            parsed_args.output_dir,
+            "FAILURE",
+            pipeline_control=parsed_args.pipeline_control,
+        ),
     ):
-
-        filter_useless_warnings()
-
-        parsed_args.device = get_device_name(parsed_args.device)
+        check_available_memory()
         if parsed_args.model_bundle_path is None:
-            model_bundle_path = download_and_install_model(parsed_args.model_bundle_name)
+            model_bundle_path = download_and_install_model(
+                parsed_args.model_bundle_name
+            )
         else:
             model_bundle_path = parsed_args.model_bundle_path
 
@@ -147,33 +152,16 @@ def main(parsed_args):
 
         logger.info(f"ModelAngelo with args: {vars(parsed_args)}")
 
-        # Standarize input volume --------------------------------------------------------------------------------------
-
-        standardize_mrc_args = Args(config["standardize_mrc_args"])
-        standardize_mrc_args.input_path = (
-            parsed_args.volume_path
-        )  # The input file(s) to be standardized
-        standardize_mrc_args.output_path = (
-            parsed_args.output_dir
-        )  # The output file(s) to be standardized
-
-        logger.info(f"Input volume preprocessing with args: {standardize_mrc_args}")
-        standarized_mrc_path = standardize_mrc(standardize_mrc_args)
-
-        # Returns a list
-        assert (
-            len(standarized_mrc_path) > 0
-        ), f"standardize_mrc did not get any inputs: {standardize_mrc_args.input_path}"
-        standarized_mrc_path = standarized_mrc_path[0]
-
         # Run C-alpha inference ----------------------------------------------------------------------------------------
         print("--------------------- Initial C-alpha prediction ---------------------")
 
         ca_infer_args = Args(config["ca_infer_args"])
         ca_infer_args.log_dir = c_alpha_model_logdir
         ca_infer_args.model_checkpoint = "chkpt.torch"
-        ca_infer_args.map_path = standarized_mrc_path
-        ca_infer_args.output_path = os.path.join(parsed_args.output_dir, "see_alpha_output")
+        ca_infer_args.map_path = parsed_args.volume_path
+        ca_infer_args.output_path = os.path.join(
+            parsed_args.output_dir, "see_alpha_output"
+        )
         ca_infer_args.mask_path = parsed_args.mask_path
         ca_infer_args.device = parsed_args.device
         ca_infer_args.auto_mask = (not ca_infer_args.dont_mask_input) and (
@@ -189,7 +177,9 @@ def main(parsed_args):
         current_ca_cif_path = ca_cif_path
         total_gnn_rounds = config["gnn_infer_args"]["num_rounds"]
         for i in range(total_gnn_rounds):
-            print(f"------------------ GNN model refinement, round {i + 1} / {total_gnn_rounds} ------------------")
+            print(
+                f"------------------ GNN model refinement, round {i + 1} / {total_gnn_rounds} ------------------"
+            )
 
             current_output_dir = os.path.join(
                 parsed_args.output_dir, f"gnn_output_round_{i + 1}"
@@ -197,19 +187,22 @@ def main(parsed_args):
             os.makedirs(current_output_dir, exist_ok=True)
 
             gnn_infer_args = Args(config["gnn_infer_args"])
-            gnn_infer_args.map = standarized_mrc_path
+            gnn_infer_args.map = parsed_args.volume_path
             gnn_infer_args.struct = current_ca_cif_path
             gnn_infer_args.output_dir = current_output_dir
             gnn_infer_args.model_dir = gnn_model_logdir
             gnn_infer_args.device = parsed_args.device
-            gnn_infer_args.aggressive_pruning = True
+            gnn_infer_args.refine = False
 
-            logger.info(f"GNN model refinement round {i + 1} with args: {gnn_infer_args}")
+            if i == total_gnn_rounds - 1:
+                gnn_infer_args.aggressive_pruning = True
+
+            logger.info(
+                f"GNN model refinement round {i + 1} with args: {gnn_infer_args}"
+            )
             gnn_output = gnn_no_seq_infer(gnn_infer_args)
 
-            current_ca_cif_path = os.path.join(
-                current_output_dir, "output.cif"
-            )
+            current_ca_cif_path = os.path.join(current_output_dir, "output.cif")
 
         raw_file_src = gnn_output
         hmm_profiles_src = os.path.join(os.path.dirname(gnn_output), "hmm_profiles")
@@ -223,17 +216,6 @@ def main(parsed_args):
         shutil.rmtree(hmm_profiles_dst, ignore_errors=True)
         os.replace(hmm_profiles_src, hmm_profiles_dst)
 
-        os.remove(standarized_mrc_path)
-        
-        if not parsed_args.keep_intermediate_results:
-            shutil.rmtree(ca_infer_args.output_path, ignore_errors=True)
-            for i in range(total_gnn_rounds):
-                shutil.rmtree(
-                    os.path.join(
-                        parsed_args.output_dir, f"gnn_output_round_{i + 1}"
-                    )
-                )
-
         print("-" * 70)
         print("ModelAngelo build_no_seq has been completed successfully!")
         print("-" * 70)
@@ -245,11 +227,12 @@ def main(parsed_args):
             f"For example, chain A's profile is in {os.path.join(hmm_profiles_dst, 'A.hmm')}"
         )
         print(
-            f"You can use HHblits to search these HMM profiles against a database"
+            f"You can use model_angelo hmm_search to search these HMM profiles against a database"
         )
         print(
             f"Example command: \n"
-            f"hhblits -i {os.path.join(hmm_profiles_dst, 'A.hhm')} -d PATH_TO_DB -o query.hhr -oa3m query.a3m -M first"
+            f"model_angelo hmm_search -i {parsed_args.output_dir} -f PATH_TO_DB.fasta "
+            f"-o {os.path.join(parsed_args.output_dir, 'hmm_search_output')}"
         )
         print("-" * 70)
         print("Enjoy!")
@@ -263,8 +246,7 @@ def main(parsed_args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__,
     )
     parsed_args = add_args(parser).parse_args()
     main(parsed_args)

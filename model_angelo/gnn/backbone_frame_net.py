@@ -20,6 +20,7 @@ class BackboneFrameNet(nn.Module):
         self.backbone_fc.bias.data = torch.Tensor([0, 1, 0, 0, 0, 0, 1, 0, 0])
 
     def forward(self, x, affine):
+        dtype = x.dtype
         ncac = self.backbone_fc(self.embed_fc(x)).reshape(-1, 3, 3)
         ncac = affine_mul_vecs(affine, ncac)
         new_affine = affine_from_3_points(
@@ -28,4 +29,4 @@ class BackboneFrameNet(nn.Module):
         # Mirror x and z axis
         new_affine[..., :, 0] = new_affine[..., :, 0] * (-1)
         new_affine[..., :, 2] = new_affine[..., :, 2] * (-1)
-        return ncac, new_affine
+        return ncac.to(dtype), new_affine.to(dtype)

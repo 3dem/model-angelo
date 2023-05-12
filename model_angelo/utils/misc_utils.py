@@ -2,6 +2,7 @@ import os
 import pickle
 import sys
 from typing import List
+import psutil
 
 
 def batch_iterator(iterator, batch_size):
@@ -128,9 +129,7 @@ def is_relion_abort(directory: str) -> bool:
 
 
 def write_relion_job_exit_status(
-        directory: str,
-        status: str,
-        pipeline_control: bool = False,
+    directory: str, status: str, pipeline_control: bool = False,
 ):
     if pipeline_control:
         open(os.path.join(directory, f"RELION_JOB_EXIT_{status}"), "a").close()
@@ -143,3 +142,10 @@ def abort_if_relion_abort(directory: str):
         write_relion_job_exit_status(directory, "ABORTED")
         print("Aborting now...")
         sys.exit(1)
+
+def check_available_memory():
+    mem = psutil.virtual_memory().available >> 30
+    assertion_check(
+        mem > 10,
+        "Not enough memory available. Please allocate at least 10GB of memory."
+    )

@@ -38,7 +38,5 @@ class TransitionLayer(nn.Module):
 
     def forward_checkpoint(self, x):
         return torch.utils.checkpoint.checkpoint(
-            self.forward_normal,
-            x,
-            preserve_rng_state=False,
+            self.forward_normal, x, preserve_rng_state=False,
         )

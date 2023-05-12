@@ -3,6 +3,7 @@ from numpy import ndarray
 from scipy.spatial import KDTree
 
 from model_angelo.utils.misc_utils import assertion_check
+from model_angelo.utils.residue_constants import restype_3_to_index
 
 
 class MatchToSequence:
@@ -16,6 +17,7 @@ class MatchToSequence:
         match_scores,
         hmm_output_match_sequences,
         exists_in_sequence_mask,
+        is_nucleotide,
     ):
         self.set_vals(
             new_sequences,
@@ -26,6 +28,7 @@ class MatchToSequence:
             match_scores,
             hmm_output_match_sequences,
             exists_in_sequence_mask,
+            is_nucleotide,
         )
 
     def sort_with_idx(self, idxs: ndarray):
@@ -39,6 +42,7 @@ class MatchToSequence:
             self.hmm_output_match_sequences[i] for i in idxs
         ]
         self.exists_in_sequence_mask = [self.exists_in_sequence_mask[i] for i in idxs]
+        self.is_nucleotide = [self.is_nucleotide[i] for i in idxs]
 
     def set_vals(
         self,
@@ -50,6 +54,7 @@ class MatchToSequence:
         match_scores,
         hmm_output_match_sequences,
         exists_in_sequence_mask,
+        is_nucleotide,
     ):
         self.new_sequences = new_sequences  # Sequence len
         self.residue_idxs = residue_idxs  # Sequence len
@@ -59,6 +64,7 @@ class MatchToSequence:
         self.match_scores = np.array(match_scores)  # Not sequence len
         self.hmm_output_match_sequences = hmm_output_match_sequences  # Sequence len
         self.exists_in_sequence_mask = exists_in_sequence_mask  # Sequence len
+        self.is_nucleotide = is_nucleotide  # Not sequence len
 
     def concatenate_chains(self, new_chain_ids):
         new_sequences = []  # Sequence len
@@ -69,6 +75,7 @@ class MatchToSequence:
         match_scores = []  # Not sequence len
         hmm_output_match_sequences = []  # Sequence len
         exists_in_sequence_mask = []  # Sequence len
+        is_nucleotide = []  # Not sequence len
 
         for merged_chain_id in new_chain_ids:
             new_sequences.append(
@@ -97,6 +104,7 @@ class MatchToSequence:
                     [self.exists_in_sequence_mask[i] for i in merged_chain_id]
                 )
             )
+            is_nucleotide.append(self.is_nucleotide[merged_chain_id[0]])
 
         self.set_vals(
             new_sequences,
@@ -107,14 +115,10 @@ class MatchToSequence:
             match_scores,
             hmm_output_match_sequences,
             exists_in_sequence_mask,
+            is_nucleotide,
         )
 
-    def prune_chains(
-            self,
-            chains,
-            chain_prune_length=4,
-            aggressive_pruning=False
-    ):
+    def prune_chains(self, chains, chain_prune_length=4, aggressive_pruning=False):
         assertion_check(
             len(chains) == len(self.new_sequences),
             f"Chains: {len(chains)} not same size as sequences: {len(self.new_sequences)}",
@@ -127,21 +131,31 @@ class MatchToSequence:
         match_scores = []  # Not sequence len
         hmm_output_match_sequences = []  # Sequence len
         exists_in_sequence_mask = []  # Sequence len
+        is_nucleotide = []  # Not sequence len
         new_chains = []
 
         # More convenient
         chains = [np.array(c) for c in chains]
         for chain_id in range(len(self.new_sequences)):
             if (
-                aggressive_pruning and
-                np.sum(self.exists_in_sequence_mask[chain_id] > 0.5)
+                aggressive_pruning
+                and np.sum(self.exists_in_sequence_mask[chain_id] > 0.5)
                 < chain_prune_length
-            ) or (
-                not aggressive_pruning and
-                len(chains[chain_id]) < chain_prune_length
-            ):
+                and not self.is_nucleotide[chain_id]
+            ) or len(chains[chain_id]) < chain_prune_length:
                 continue
-            if aggressive_pruning:
+            if aggressive_pruning and np.sum(
+                self.exists_in_sequence_mask[chain_id] > 0.5
+            ) < chain_prune_length <= len(chains[chain_id]):
+                # In this case, we keep the chain but mutate the residues to N
+                new_sequences.append(
+                    np.full((len(self.new_sequences[chain_id]),), fill_value=restype_3_to_index["N"], dtype=np.int64)
+                )
+                residue_idxs.append(np.arange(len(self.new_sequences[chain_id])))
+                exists_in_sequence_mask.append(self.exists_in_sequence_mask[chain_id])
+                new_chains.append(chains[chain_id])
+
+            elif aggressive_pruning and not self.is_nucleotide[chain_id]:
                 new_sequences.append(
                     self.new_sequences[chain_id][
                         self.exists_in_sequence_mask[chain_id].astype(bool)
@@ -168,11 +182,15 @@ class MatchToSequence:
                 exists_in_sequence_mask.append(self.exists_in_sequence_mask[chain_id])
                 new_chains.append(chains[chain_id])
 
+            if len(residue_idxs[-1]) < chain_prune_length:
+                continue
+
             sequence_idxs.append(self.sequence_idxs[chain_id])
             key_start_matches.append(np.min(residue_idxs[-1]))
             key_end_matches.append(np.max(residue_idxs[-1]))
             match_scores.append(self.match_scores[chain_id])
             hmm_output_match_sequences.append(self.hmm_output_match_sequences[chain_id])
+            is_nucleotide.append(self.is_nucleotide[chain_id])
 
         self.set_vals(
             new_sequences,
@@ -183,14 +201,13 @@ class MatchToSequence:
             match_scores,
             hmm_output_match_sequences,
             exists_in_sequence_mask,
+            is_nucleotide,
         )
 
         return new_chains
 
     def remove_duplicates(
-        self,
-        chains,
-        ca_pos,
+        self, chains, ca_pos,
     ):
         kdtree = KDTree(ca_pos)
 
@@ -202,6 +219,7 @@ class MatchToSequence:
         match_scores = []  # Not sequence len
         hmm_output_match_sequences = []  # Sequence len
         exists_in_sequence_mask = []  # Sequence len
+        is_nucleotide = []  # Not sequence len
         new_chains = []
 
         idx_info = {}
@@ -219,20 +237,14 @@ class MatchToSequence:
             keep_list = []
             for idx in chain:
                 keep_list.append(not idx_info[idx]["used"])
-
                 close_ids = kdtree.query_ball_point(ca_pos[idx], r=2)
                 for close_id in close_ids:
-                    if (
-                        close_id in idx_info
-                        and idx_info[close_id]["res_idx"] == idx_info[idx]["res_idx"]
-                        and idx_info[close_id]["seq_idx"] == idx_info[idx]["seq_idx"]
-                    ):
+                    if close_id in idx_info:
                         idx_info[close_id]["used"] = True
 
             keep_arr = np.array(keep_list)
-            if len(chain) < 2 and not keep_arr[0]:
+            if np.sum(keep_arr) < 2:
                 continue
-
             new_sequences.append(self.new_sequences[chain_id][keep_arr])
             residue_idxs.append(self.residue_idxs[chain_id][keep_arr])
             exists_in_sequence_mask.append(
@@ -244,6 +256,7 @@ class MatchToSequence:
             key_end_matches.append(np.max(residue_idxs[-1]))
             match_scores.append(self.match_scores[chain_id])
             hmm_output_match_sequences.append(self.hmm_output_match_sequences[chain_id])
+            is_nucleotide.append(self.is_nucleotide[chain_id])
 
         self.set_vals(
             new_sequences,
@@ -254,6 +267,7 @@ class MatchToSequence:
             match_scores,
             hmm_output_match_sequences,
             exists_in_sequence_mask,
+            is_nucleotide,
         )
 
         return new_chains

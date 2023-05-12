@@ -51,9 +51,7 @@ if __name__ == "__main__":
         args.dataset_list, args.box_size, shuffle_idx=True, **dataset_kwargs
     )
     train_data_loader = DataLoader(
-        dataset,
-        num_workers=2 * args.batch_size,
-        batch_size=args.batch_size,
+        dataset, num_workers=2 * args.batch_size, batch_size=args.batch_size,
     )
 
     dataset_kwargs["do_data_augmentation"] = False
@@ -63,9 +61,7 @@ if __name__ == "__main__":
         args.valid_dataset_list, args.box_size, dataset_length=20, **dataset_kwargs
     )
     valid_data_loader = DataLoader(
-        valid_dataset,
-        num_workers=args.batch_size,
-        batch_size=args.batch_size,
+        valid_dataset, num_workers=args.batch_size, batch_size=args.batch_size,
     )
 
     module = get_model_from_file(os.path.join(args.log_dir, "model.py"))
@@ -79,10 +75,7 @@ if __name__ == "__main__":
     )
 
     if args.use_cosine_annealing:
-        learning_rate_scheduler = CosineAnnealingLR(
-            opt,
-            T_max=args.num_steps,
-        )
+        learning_rate_scheduler = CosineAnnealingLR(opt, T_max=args.num_steps,)
     else:
         learning_rate_scheduler = LambdaLR(
             opt, lr_lambda=lambda step: 0.9 ** (step // 20000)

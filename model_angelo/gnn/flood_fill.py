@@ -1,13 +1,14 @@
 import os
 from collections import namedtuple
-from typing import Dict
+from typing import Dict, Callable, List
 
 import numpy as np
 import torch
 from scipy.spatial import cKDTree
 
-from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hhm_file
-from model_angelo.utils.save_pdb_utils import number_to_chain_str
+from model_angelo.utils.aa_probs_to_hmm import dump_aa_logits_to_hmm_file
+from model_angelo.utils.affine_utils import get_affine_translation
+from model_angelo.utils.save_pdb_utils import number_to_chain_str, protein_to_cif
 
 from model_angelo.utils.hmm_sequence_align import (
     FixChainsOutput,
@@ -15,13 +16,20 @@ from model_angelo.utils.hmm_sequence_align import (
     prune_and_connect_chains,
 )
 from model_angelo.utils.protein import (
-    frames_and_literature_positions_to_atom14_pos,
+    frames_and_literature_positions_to_atomc_pos,
     torsion_angles_to_frames,
+    Protein,
 )
-from model_angelo.utils.residue_constants import restype_atom14_mask, select_torsion_angles
+from model_angelo.utils.residue_constants import (
+    restype_atomc_mask,
+    select_torsion_angles,
+    restype3_to_atoms,
+    num_prot,
+)
 from model_angelo.utils.save_pdb_utils import (
     chain_atom14_to_cif,
-    write_chain_report, write_chain_probabilities,
+    write_chain_report,
+    write_chain_probabilities,
 )
 
 FloodFillChain = namedtuple("FloodFillChain", ["start_N", "end_C", "residues"])
@@ -39,6 +47,19 @@ def normalize_local_confidence_score(
     return normalized_score
 
 
+def local_confidence_score_sigmoid(
+    local_confidence_score: np.ndarray,
+    best_value: float = 0.5,
+    worst_value: float = 1.2,
+    mid_point: float = 0.7,
+    scale_multiplier: float = 6,
+) -> np.ndarray:
+    scale = worst_value - best_value
+    score = scale_multiplier * (local_confidence_score - mid_point) / scale
+    normalized_score = 1 / (1 + np.exp(score))
+    return normalized_score
+
+
 def chains_to_atoms(
     final_results: Dict,
     fix_chains_output: FixChainsOutput,
@@ -47,11 +68,13 @@ def chains_to_atoms(
 ):
     fixed_aatype_from_sequence = fix_chains_output.best_match_output.new_sequences
     chains = fix_chains_output.chains
-    aa_probs = torch.from_numpy(final_results["aa_logits"][existence_mask]).softmax(dim=-1).numpy()
+    aa_probs = (
+        torch.from_numpy(final_results["aa_logits"][existence_mask])
+        .softmax(dim=-1)
+        .numpy()
+    )
 
-    (
-        chain_all_atoms, chain_atom_mask, chain_bfactors, chain_aa_probs,
-    ) = (
+    (chain_all_atoms, chain_atom_mask, chain_bfactors, chain_aa_probs,) = (
         [],
         [],
         [],
@@ -72,22 +95,18 @@ def chains_to_atoms(
             torsion_angles,
         )
         chain_all_atoms.append(
-            frames_and_literature_positions_to_atom14_pos(
+            frames_and_literature_positions_to_atomc_pos(
                 fixed_aatype_from_sequence[chain_id], all_frames
             )
         )
-        chain_atom_mask.append(
-            restype_atom14_mask[fixed_aatype_from_sequence[chain_id]]
-        )
+        chain_atom_mask.append(restype_atomc_mask[fixed_aatype_from_sequence[chain_id]])
         chain_bfactors.append(
             normalize_local_confidence_score(
                 final_results["local_confidence"][existence_mask][chains[chain_id]]
             )
             * 100
         )
-        chain_aa_probs.append(
-            aa_probs[chains[chain_id]]
-        )
+        chain_aa_probs.append(aa_probs[chains[chain_id]])
     return (
         chain_all_atoms,
         chain_atom_mask,
@@ -96,30 +115,80 @@ def chains_to_atoms(
     )
 
 
+def remove_overlapping_ca(
+    ca_positions: np.ndarray, radius_threshold: float = 0.5,
+) -> np.ndarray:
+    kdtree = cKDTree(ca_positions)
+    existence_mask = np.ones(len(ca_positions), dtype=bool)
+
+    for i in range(len(ca_positions)):
+        if existence_mask[i]:
+            too_close = np.array(
+                kdtree.query_ball_point(ca_positions[i], r=radius_threshold,)
+            )
+            too_close = too_close[too_close != i]
+            existence_mask[too_close] = False
+    return existence_mask
+
+
 def final_results_to_cif(
-    final_results,
-    cif_path,
-    sequences=None,
-    aatype=None,
-    verbose=False,
-    print_fn=print,
-    aggressive_pruning=False,
+    final_results: dict,
+    protein: Protein,
+    cif_path: str,
+    rna_sequences: List = None,
+    dna_sequences: List = None,
+    verbose: bool = False,
+    print_fn: Callable = print,
+    aggressive_pruning: bool = False,
+    save_hmms: bool = False,
+    refine: bool = False,
+    chain_prune_length: int = 4,
+    temperature: float = 0.5,
 ):
-    """
-    Currently assumes the ordering it comes with, I will change this later
-    """
-    existence_mask = (
-        torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3
-    ).numpy()
-    if aatype is None:
-        aatype = np.argmax(final_results["aa_logits"], axis=-1)[existence_mask]
-    backbone_affine = torch.from_numpy(final_results["pred_affines"])[existence_mask]
+    prot_mask = protein.prot_mask
+    if protein.unified_seq is not None:
+        prot_sequences = protein.unified_seq.split("|||")
+    else:
+        prot_sequences = None
+    if protein.aatype is not None:
+        aatype = protein.aatype
+    else:
+        # Rest of code
+        aatype = np.zeros((len(final_results["aa_logits"]),), dtype=np.int64)
+        aatype[prot_mask] = np.argmax(
+            final_results["aa_logits"][prot_mask][..., :num_prot], axis=-1
+        )
+        aatype[~prot_mask] = (
+                np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1)
+                + num_prot
+        )
+    # existence_mask = (
+    #     (torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3).numpy()
+    #     if not refine
+    #     else np.ones_like(final_results["existence_mask"]).astype(bool)
+    # )
+    existence_mask = np.ones_like(final_results["existence_mask"]).astype(bool) 
+    backbone_affine = torch.from_numpy(final_results["pred_affines"])
+    if not refine:
+        # Remove overlapping residues
+        existence_mask[prot_mask] *= remove_overlapping_ca(
+            get_affine_translation(backbone_affine[prot_mask])
+        )
+        existence_mask[~prot_mask] *= remove_overlapping_ca(
+            get_affine_translation(backbone_affine[~prot_mask])
+        )
+        aatype = aatype[existence_mask]
+    backbone_affine = backbone_affine[existence_mask]
+    final_results["aa_logits"][prot_mask][..., num_prot:] = -100
+    final_results["aa_logits"][~prot_mask][..., :num_prot] = -100
+    final_results["aa_logits"] /= temperature
+
     torsion_angles = select_torsion_angles(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype
     )
     all_frames = torsion_angles_to_frames(aatype, backbone_affine, torsion_angles)
-    all_atoms = frames_and_literature_positions_to_atom14_pos(aatype, all_frames)
-    atom_mask = restype_atom14_mask[aatype]
+    all_atoms = frames_and_literature_positions_to_atomc_pos(aatype, all_frames)
+    atom_mask = restype_atomc_mask[aatype]
     bfactors = (
         normalize_local_confidence_score(
             final_results["local_confidence"][existence_mask]
@@ -127,58 +196,121 @@ def final_results_to_cif(
         * 100
     )
 
+    if refine:
+        protein.atomc_positions = all_atoms
+        protein.b_factors = bfactors
+
+    prot_mask = prot_mask[existence_mask]
+
     all_atoms_np = all_atoms.numpy()
-    chains = flood_fill(all_atoms_np, bfactors)
-    chains_concat = np.concatenate(chains)
+    chains = []
+    all_atom_idxs = np.arange(len(all_atoms_np))
+    if refine:
+        chains = [
+            all_atom_idxs[protein.chain_index == i]
+            for (i, _) in enumerate(protein.chain_id)
+        ]
+    else:
+        if np.any(prot_mask):
+            idxs = all_atom_idxs[prot_mask]
+            prot_chains = flood_fill(
+                all_atoms_np[prot_mask], bfactors[prot_mask], is_nucleotide=False
+            )
+            chains += [idxs[c] for c in prot_chains]
+        if np.any(~prot_mask):
+            idxs = all_atom_idxs[~prot_mask]
+            nuc_chains = flood_fill(
+                all_atoms_np[~prot_mask],
+                bfactors[~prot_mask],
+                is_nucleotide=True,
+                n_c_distance_threshold=4,
+            )
+            chains += [idxs[c] for c in nuc_chains]
 
-    # Prune chains based on length
-    pruned_chains = [c for c in chains if len(c) > 2]
 
-    chain_atom14_to_cif(
-        [aatype[c] for c in pruned_chains],
-        [all_atoms[c] for c in pruned_chains],
-        [atom_mask[c] for c in pruned_chains],
-        cif_path,
-        bfactors=[bfactors[c] for c in pruned_chains],
-    )
+    if refine:
+        protein_to_cif(protein, cif_path)
+    else:
+        chain_atom14_to_cif(
+            [aatype[c] for c in chains],
+            [all_atoms[c] for c in chains],
+            [atom_mask[c] for c in chains],
+            cif_path,
+            bfactors=[bfactors[c] for c in chains],
+        )
 
-    new_final_results = dict(
-        [(k, v[chains_concat]) for (k, v) in final_results.items()]
-    )
-    new_final_results["chain_aa_logits"] = [
-        final_results["aa_logits"][existence_mask][c] for c in chains
+    chain_aa_logits = [final_results["aa_logits"][existence_mask][c] for c in chains]
+    chain_prot_mask = [prot_mask[c] for c in chains]
+    chain_hmm_confidence = [
+        local_confidence_score_sigmoid(
+            final_results["local_confidence"][existence_mask][c]
+        )
+        for c in chains
     ]
     new_final_results["pruned_chain_aa_logits"] = [
         final_results["aa_logits"][existence_mask][c] for c in pruned_chains
     ]
 
-    if sequences is None:
+    if (
+        save_hmms
+        or (prot_sequences is None
+        and rna_sequences is None
+        and dna_sequences is None)
+    ):
         # Can make HMM profiles with the aa_probs
         hmm_dir_path = os.path.join(os.path.dirname(cif_path), "hmm_profiles")
         os.makedirs(hmm_dir_path, exist_ok=True)
 
-        for i, chain_aa_logits in enumerate(new_final_results["pruned_chain_aa_logits"]):
-            chain_name = number_to_chain_str(i)
-            dump_aa_logits_to_hhm_file(
-                chain_aa_logits,
-                os.path.join(hmm_dir_path, f"{chain_name}.hhm"),
-                name=f"{chain_name}",
+        for i, chain_aa_logits in enumerate(chain_aa_logits):
+            chain_name = (
+                number_to_chain_str(i)
+                if protein.chain_id is None
+                else protein.chain_id[i]
             )
-    else:
+            if np.any(chain_prot_mask[i]):
+                dump_aa_logits_to_hmm_file(
+                    chain_aa_logits,
+                    os.path.join(hmm_dir_path, f"{chain_name}.hmm"),
+                    name=f"{chain_name}",
+                    alphabet_type="amino",
+                )
+            else:
+                dump_aa_logits_to_hmm_file(
+                    chain_aa_logits,
+                    os.path.join(hmm_dir_path, f"{chain_name}_rna.hmm"),
+                    name=f"{chain_name}",
+                    alphabet_type="RNA",
+                )
+                dump_aa_logits_to_hmm_file(
+                    chain_aa_logits,
+                    os.path.join(hmm_dir_path, f"{chain_name}_dna.hmm"),
+                    name=f"{chain_name}",
+                    alphabet_type="DNA",
+                )
+
+    elif not refine:
         ca_pos = all_atoms_np[:, 1]
 
         fix_chains_output = fix_chains_pipeline(
-            sequences,
-            chains,
-            new_final_results["chain_aa_logits"],
-            ca_pos,
+            prot_sequences=prot_sequences,
+            rna_sequences=rna_sequences,
+            dna_sequences=dna_sequences,
+            chains=chains,
+            chain_aa_logits=chain_aa_logits,
+            ca_pos=ca_pos,
+            chain_prot_mask=chain_prot_mask,
+            chain_confidences=chain_hmm_confidence,
             base_dir=os.path.dirname(cif_path),
         )
 
-        chain_all_atoms, chain_atom_mask, chain_bfactors, chain_aa_probs = chains_to_atoms(
+        (
+            chain_all_atoms,
+            chain_atom_mask,
+            chain_bfactors,
+            chain_aa_probs,
+        ) = chains_to_atoms(
             final_results, fix_chains_output, backbone_affine, existence_mask
         )
-
         for chain_id, chain in enumerate(fix_chains_output.chains):
             ca_pos[chain] = chain_all_atoms[chain_id][:, 1]
 
@@ -195,7 +327,7 @@ def final_results_to_cif(
             sequence_idxs=fix_chains_output.best_match_output.sequence_idxs,
             bfactors=chain_bfactors,
             match_scores=fix_chains_output.best_match_output.match_scores,
-            chain_prune_length=4,
+            chain_prune_length=chain_prune_length,
             hmm_output_match_sequences=fix_chains_output.best_match_output.hmm_output_match_sequences,
         )
 
@@ -204,10 +336,15 @@ def final_results_to_cif(
             fix_chains_output.best_match_output,
             ca_pos,
             aggressive_pruning=aggressive_pruning,
-            chain_prune_length=4,
+            chain_prune_length=chain_prune_length,
         )
 
-        chain_all_atoms, chain_atom_mask, chain_bfactors, chain_aa_probs = chains_to_atoms(
+        (
+            chain_all_atoms,
+            chain_atom_mask,
+            chain_bfactors,
+            chain_aa_probs,
+        ) = chains_to_atoms(
             final_results, fix_chains_output, backbone_affine, existence_mask
         )
 
@@ -227,7 +364,7 @@ def final_results_to_cif(
             cif_path.replace(".cif", "_aa_probabilities.aap"),
             bfactors=chain_bfactors,
             aa_probs=chain_aa_probs,
-            chain_prune_length=4,
+            chain_prune_length=chain_prune_length,
         )
 
         if (
@@ -236,15 +373,29 @@ def final_results_to_cif(
             and len(fix_chains_output.unmodelled_sequences) > 0
         ):
             print_fn(
-                f"These sequence ids have been left unmodelled: {fix_chains_output.unmodelled_sequences}"
+                f"These sequence ids have been left unmodelled: "
+                f"{fix_chains_output.unmodelled_sequences}"
             )
 
-    return new_final_results
+    return final_results
 
 
-def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
-    n_positions = atom14_positions[:, 0]
-    c_positions = atom14_positions[:, 2]
+def flood_fill(
+    atomc_positions, b_factors, n_c_distance_threshold=2.1, is_nucleotide=False,
+):
+    if is_nucleotide:
+        n_idx, c_idx = (
+            restype3_to_atoms["A"].index("P"),
+            restype3_to_atoms["A"].index("O3'"),
+        )
+    else:
+        n_idx, c_idx = (
+            restype3_to_atoms["ALA"].index("N"),
+            restype3_to_atoms["ALA"].index("C"),
+        )
+
+    n_positions = atomc_positions[:, n_idx]
+    c_positions = atomc_positions[:, c_idx]
     kdtree = cKDTree(c_positions)
     b_factors_copy = np.copy(b_factors)
 
@@ -254,9 +405,7 @@ def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
         idx = np.argmax(b_factors_copy)
         possible_indices = np.array(
             kdtree.query_ball_point(
-                n_positions[idx], 
-                r=n_c_distance_threshold, 
-                return_sorted=True
+                n_positions[idx], r=n_c_distance_threshold, return_sorted=True
             )
         )
         possible_indices = possible_indices[possible_indices != idx]
@@ -357,15 +506,28 @@ def flood_fill(atom14_positions, b_factors, n_c_distance_threshold=2.1):
 
 
 if __name__ == "__main__":
-    from model_angelo.utils.fasta_utils import read_fasta
+    from model_angelo.utils.protein import load_protein_from_prot
     from model_angelo.utils.misc_utils import pickle_load
+    
+    base_path = "/home/kjamali/Downloads/model_angelo1_paper/bug_fix/8aa5/predictions/third_run/gnn_output_round_1"
+    protein = load_protein_from_prot(
+        f"{base_path}/protein.prot"
+    )
+    final_results = pickle_load(
+        f"{base_path}/final_results.pkl"
+    )
+    rna_sequences = pickle_load(
+        f"{base_path}/rna_sequences.pkl"
+    )
+    dna_sequences = pickle_load(
+        f"{base_path}/dna_sequences.pkl"
+    )
 
-    f = pickle_load("/home/kjamali/Downloads/sofia_struct/nn_output_dict.pkl")
-    seq = read_fasta("/home/kjamali/Downloads/sofia_struct/sequence.fasta")
-    seq_list = [x.seq for x in seq[0]]
-    final_results = final_results_to_cif(
-        f,
-        "/home/kjamali/Downloads/sofia_struct/testing2.cif",
-        seq_list,
+    final_results_to_cif(
+        final_results=final_results,
+        protein=protein,
+        cif_path="test.cif",
+        rna_sequences=rna_sequences,
+        dna_sequences=dna_sequences,
         aggressive_pruning=True,
     )

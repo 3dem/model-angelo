@@ -112,7 +112,7 @@ def load_mrc(mrc_fn: str, multiply_global_origin: bool = True) -> MRCObject:
 
     if voxel_size <= 0:
         raise RuntimeError(f"Seems like the MRC file: {mrc_fn} does not have a header.")
-    
+
     c = mrc_file.header["mapc"]
     r = mrc_file.header["mapr"]
     s = mrc_file.header["maps"]
@@ -673,14 +673,9 @@ def tuple_slice_by_boxsize_3d(x, box_size):
 
 def get_lattice_meshgrid_np(shape, no_shift=False):
     linspace = np.linspace(
-        0.5 if not no_shift else 0,
-        shape - (0.5 if not no_shift else 1),
-        shape,
+        0.5 if not no_shift else 0, shape - (0.5 if not no_shift else 1), shape,
     )
-    mesh = np.stack(
-        np.meshgrid(linspace, linspace, linspace, indexing="ij"),
-        axis=-1,
-    )
+    mesh = np.stack(np.meshgrid(linspace, linspace, linspace, indexing="ij"), axis=-1,)
     return mesh
 
 
@@ -692,8 +687,7 @@ def get_lattice_meshgrid(shape, no_shift=False, device="cpu"):
         device=device,
     )
     mesh = torch.stack(
-        torch.meshgrid(linspace, linspace, linspace, indexing="ij"),
-        dim=-1,
+        torch.meshgrid(linspace, linspace, linspace, indexing="ij"), dim=-1,
     )
     return mesh
 
@@ -985,9 +979,13 @@ def sample_rectangle(
     assert grid.shape[2] == grid.shape[3] == grid.shape[4]
     bz, cz, sz = grid.shape[0], grid.shape[1], grid.shape[2]
     scale_mult = (
-        (torch.Tensor([rectangle_shape[2], rectangle_shape[1], rectangle_shape[0]]) - 1)
-        / (sz - 1)
-    ).to(grid.device)
+        torch.tensor(
+            [rectangle_shape[2], rectangle_shape[1], rectangle_shape[0]],
+            device=grid.device,
+            dtype=grid.dtype,
+        )
+        - 1
+    ) / (sz - 1)
     rotation_matrices = rotation_matrices * scale_mult[None, ..., None]
     shifts = (
         grid_sampler_normalize(shifts, sz, align_corners=align_corners)
@@ -995,23 +993,13 @@ def sample_rectangle(
     )
     affine_matrix = get_affine(rotation_matrices, shifts)
     cc = F.affine_grid(
-        affine_matrix,
-        (
-            bz,
-            cz,
-        )
-        + rectangle_shape,
-        align_corners=align_corners,
+        affine_matrix, (bz, cz,) + rectangle_shape, align_corners=align_corners,
     )
     return F.grid_sample(grid.detach(), cc, align_corners=align_corners)
 
 
 def sample_rectangle_along_vector(
-    grid,
-    vectors,
-    origin_points,
-    rectangle_shape=(10, 2, 2),
-    marginalization_dims=None,
+    grid, vectors, origin_points, rectangle_shape=(10, 2, 2), marginalization_dims=None,
 ):
     rotation_matrices = get_z_to_w_rotation_matrix(vectors)
     rectangle = sample_rectangle(
@@ -1034,22 +1022,19 @@ def sample_centered_rectangle(
     assert grid.shape[2] == grid.shape[3] == grid.shape[4]
     bz, cz, sz = grid.shape[0], grid.shape[1], grid.shape[2]
     scale_mult = (
-        (
-            torch.Tensor(
-                [
-                    rectangle_width,
-                    rectangle_width,
-                    rectangle_length,
-                ]
-            )
-            - 1
+        torch.tensor(
+            [rectangle_width, rectangle_width, rectangle_length,],
+            device=grid.device,
+            dtype=grid.dtype,
         )
-        / (sz - 1)
-    ).to(grid.device)
+        - 1
+    ) / (sz - 1)
     rotation_matrices = rotation_matrices * scale_mult[None, ..., None]
-    center_shift_vector = torch.Tensor(
-        [[0, rectangle_width // 2, rectangle_width // 2]]
-    ).to(shifts.device)
+    center_shift_vector = torch.tensor(
+        [[0, rectangle_width // 2, rectangle_width // 2]],
+        device=shifts.device,
+        dtype=shifts.dtype,
+    )
     shifts = (
         grid_sampler_normalize(
             shifts - center_shift_vector, sz, align_corners=align_corners
@@ -1059,43 +1044,30 @@ def sample_centered_rectangle(
     affine_matrix = get_affine(rotation_matrices, shifts)
     cc = F.affine_grid(
         affine_matrix,
-        (
-            bz,
-            cz,
-        )
-        + (rectangle_length, rectangle_width, rectangle_width),
+        (bz, cz,) + (rectangle_length, rectangle_width, rectangle_width),
         align_corners=align_corners,
     )
     return F.grid_sample(grid.detach(), cc, align_corners=align_corners)
 
 
 def sample_centered_cube(
-    grid,
-    rotation_matrices,
-    shifts,
-    cube_side=10,
-    align_corners=True,
+    grid, rotation_matrices, shifts, cube_side=10, align_corners=True,
 ):
     assert len(grid.shape) == 5
     assert grid.shape[2] == grid.shape[3] == grid.shape[4]
     bz, cz, sz = grid.shape[0], grid.shape[1], grid.shape[2]
     scale_mult = (
-        (
-            torch.Tensor(
-                [
-                    cube_side,
-                    cube_side,
-                    cube_side,
-                ]
-            )
-            - 1
+        torch.tensor(
+            [cube_side, cube_side, cube_side,], device=grid.device, dtype=grid.dtype,
         )
-        / (sz - 1)
-    ).to(grid.device)
+        - 1
+    ) / (sz - 1)
     rotation_matrices = rotation_matrices * scale_mult[None, ..., None]
-    center_shift_vector = torch.Tensor(
-        [[cube_side // 2, cube_side // 2, cube_side // 2]]
-    ).to(shifts.device)
+    center_shift_vector = torch.tensor(
+        [[cube_side // 2, cube_side // 2, cube_side // 2]],
+        device=shifts.device,
+        dtype=shifts.dtype,
+    )
     shifts = (
         grid_sampler_normalize(
             shifts - center_shift_vector, sz, align_corners=align_corners
@@ -1104,13 +1076,7 @@ def sample_centered_cube(
     )
     affine_matrix = get_affine(rotation_matrices, shifts)
     cc = F.affine_grid(
-        affine_matrix,
-        (
-            bz,
-            cz,
-        )
-        + 3 * (cube_side,),
-        align_corners=align_corners,
+        affine_matrix, (bz, cz,) + 3 * (cube_side,), align_corners=align_corners,
     )
     return F.grid_sample(grid.detach(), cc, align_corners=align_corners)
 
@@ -1281,6 +1247,15 @@ def apply_lowpass_filter_to_map(
     grid = np.fft.ifftshift(np.fft.irfftn(grid_ft))
     return grid
 
+def standardize_mrc(mrc_object: MRCObject) -> MRCObject:
+    grid = (
+        (mrc_object.grid - mrc_object.grid.mean()) / mrc_object.grid.std()
+    ).astype(np.float32)
+    return MRCObject(
+        grid=grid,
+        voxel_size=mrc_object.voxel_size,
+        global_origin=mrc_object.global_origin
+    )
 
 def extend_edge(binary_mask, edge, kernel, ramp):
     smooth_mask = np.copy(binary_mask)
@@ -1309,10 +1284,7 @@ def get_mask_from_grid(
 
     if extend_inimask > 0:
         binary_mask = extend_edge(
-            binary_mask,
-            extend_inimask,
-            kernel,
-            np.ones((extend_inimask,)),
+            binary_mask, extend_inimask, kernel, np.ones((extend_inimask,)),
         )
 
     if width_soft_edge > 0:
