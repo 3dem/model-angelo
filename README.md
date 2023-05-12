@@ -144,18 +144,16 @@ You will have your results as a series of HMM output files with the extension .h
 
 ## Citation
 
-Currently, ModelAngelo is a pre-print on [arXiv](https://arxiv.org/abs/2210.00006)
+ModelAngelo has been published in the proceedings of the International Conference on Learning Representations (*ICLR*) 2023. You can find the paper on  [Openreview](https://openreview.net/forum?id=65XDF_nwI61)
 
 Here is the BibTex
 ```
-@misc{https://doi.org/10.48550/arxiv.2210.00006,
-  doi = {10.48550/ARXIV.2210.00006},
-  url = {https://arxiv.org/abs/2210.00006},
-  author = {Jamali, Kiarash and Kimanius, Dari and Scheres, Sjors},
-  keywords = {Quantitative Methods (q-bio.QM), Artificial Intelligence (cs.AI), Machine Learning (cs.LG), Biomolecules (q-bio.BM), FOS: Biological sciences, FOS: Biological sciences, FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {ModelAngelo: Automated Model Building in Cryo-EM Maps},
-  publisher = {arXiv},
-  year = {2022},
-  copyright = {Creative Commons Attribution 4.0 International}
+@inproceedings{
+jamali2023modelangelo,
+title={A Graph Neural Network Approach to Automated Model Building in Cryo-EM Maps},
+author={Kiarash Jamali and Dari Kimanius and Sjors HW Scheres},
+booktitle={International Conference on Learning Representations},
+year={2023},
+url={https://openreview.net/forum?id=65XDF_nwI61}
 }
 ```

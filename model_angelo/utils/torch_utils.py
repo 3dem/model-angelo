@@ -430,9 +430,9 @@ def is_ndarray(x) -> bool:
 
 def download_and_install_model(bundle_name: str) -> str:
     bundle_name_to_link = {
-        "original": "https://cloud.mrc-lmb.cam.ac.uk/s/syttED3Axgy2PY8/download/original.zip",
-        "original_no_seq": "https://cloud.mrc-lmb.cam.ac.uk/s/pd67QRmPXBkTJf9/download/original_no_sequence.zip",
-        "small_gpu": "https://cloud.mrc-lmb.cam.ac.uk/s/MiTQZfm2o2QDGb5/download/small_gpu.zip",
+        "original": "https://zenodo.org/record/7733060/files/original.zip",
+        "original_no_seq": "https://zenodo.org/record/7733060/files/original_no_seq.zip",
+        "small_gpu": "https://zenodo.org/record/7733060/files/small_gpu.zip",
         "nucleotides": "https://cloud.mrc-lmb.cam.ac.uk/s/GfmX7MejD94ewnr/download/nucleotides.zip",
         "nucleotides_no_seq": "https://cloud.mrc-lmb.cam.ac.uk/s/sSHqtaA4KEEz9bc/download/nucleotides_no_sequence.zip",
     }

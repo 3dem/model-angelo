@@ -94,6 +94,11 @@ def add_args(parser):
         default=None,
         help="Inference model bundle path. If this is set, --model-bundle-name is not used.",
     )
+    advanced_args.add_argument(
+        "--keep-intermediate-results",
+        action="store_true",
+        help="Keep intermediate results, ie see_alpha_output and gnn_round_x_output"
+    )
 
     # Below are RELION arguments, make sure to always add help=argparse.SUPPRESS
 

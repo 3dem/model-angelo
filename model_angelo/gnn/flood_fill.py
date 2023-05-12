@@ -247,6 +247,9 @@ def final_results_to_cif(
         )
         for c in chains
     ]
+    new_final_results["pruned_chain_aa_logits"] = [
+        final_results["aa_logits"][existence_mask][c] for c in pruned_chains
+    ]
 
     if (
         save_hmms

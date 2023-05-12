@@ -17,6 +17,7 @@ You can also input a custom config file with --config-path/--c/-c
 import argparse
 import json
 import os
+import shutil
 import sys
 
 import torch
@@ -116,6 +117,11 @@ def add_args(parser):
         type=str,
         default=None,
         help="Inference model bundle path. If this is set, --model-bundle-name is not used.",
+    )
+    advanced_args.add_argument(
+        "--keep-intermediate-results",
+        action="store_true",
+        help="Keep intermediate results, ie see_alpha_output and gnn_round_x_output"
     )
 
     # Below are RELION arguments, make sure to always add help=argparse.SUPPRESS
