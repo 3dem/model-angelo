@@ -246,7 +246,8 @@ def get_protein_from_file_path(file_path: str, chain_id: str = None) -> Protein:
             chain_residue_to_seq_id[chain_aatype < _rc.num_prot] = res_to_seq_id_array
             chain_residue_to_seq_id[chain_aatype >= _rc.num_prot] = -1
         residue_to_seq_id.extend(chain_residue_to_seq_id)
-    unified_seq = "|||".join(unified_seq) if len(unified_seq) > 1 else unified_seq[0]
+    if len(unified_seq) > 0:
+        unified_seq = "|||".join(unified_seq) if len(unified_seq) > 1 else unified_seq[0]
     unified_seq_len = seq_len_so_far
     residue_to_seq_id = np.array(residue_to_seq_id, dtype=int)
     # Chain IDs are usually characters so map these to ints.
