@@ -5,4 +5,4 @@ ModelAngelo - Automated Cryo-EM model building toolkit
 """
 
 
-__version__ = "0.2.4"
+__version__ = "1.0.0"

@@ -23,7 +23,7 @@ fi
 
 is_conda_model_angelo_installed=$(conda info --envs | grep model_angelo -c)
 if [[ "${is_conda_model_angelo_installed}" == "0" ]];then
-  conda create -n model_angelo python=3.9 -y;
+  conda create -n model_angelo python=3.10 -y;
 fi
 
 torch_home_path="${TORCH_HOME}"
@@ -56,8 +56,8 @@ $python_exc setup.py install
 
 if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
   echo "Writing weights to ${TORCH_HOME}"
-  $python_exc model_angelo/utils/setup_weights.py --bundle-name original
-  $python_exc model_angelo/utils/setup_weights.py --bundle-name original_no_seq
+  $python_exc model_angelo/utils/setup_weights.py --bundle-name nucleotides
+  $python_exc model_angelo/utils/setup_weights.py --bundle-name nucleotides_no_seq
 else
   echo "Did not download weights because the flag -w or --download-weights was not specified"
 fi

@@ -34,9 +34,7 @@ def point_cloud_to_sequence_log(
 
 
 def point_cloud_to_sequence(
-    sequence: FASTASequence,
-    t_to_aa_prob: Tensor,
-    device: str = "cpu",
+    sequence: FASTASequence, t_to_aa_prob: Tensor, device: str = "cpu",
 ) -> Tuple[List[int], float]:
     batch_size, T = t_to_aa_prob.shape[:2]
     parsed_seq = parse_sequence_string(sequence.seq)
@@ -55,21 +53,12 @@ def point_cloud_to_sequence(
 
 ChainSeqMatch = namedtuple(
     "ChainSeqMatch",
-    [
-        "prob",
-        "matched_seq",
-        "matched_chain",
-        "is_reverse",
-        "is_chain_longer",
-    ],
+    ["prob", "matched_seq", "matched_chain", "is_reverse", "is_chain_longer",],
 )
 
 
 def match_chain_to_seq(
-    chain,
-    input_seq,
-    reverse=False,
-    bfactors=None,
+    chain, input_seq, reverse=False, bfactors=None,
 ) -> ChainSeqMatch:
     seq = input_seq if not reverse else list(reversed(input_seq))
     if len(chain) > len(seq):
@@ -149,9 +138,7 @@ def match_chains_to_sequences(
 
 
 def best_match_to_sequences(
-    sequences: List[str],
-    chain_aa_logits: List[np.ndarray],
-    bfactors: List[np.ndarray],
+    sequences: List[str], chain_aa_logits: List[np.ndarray], bfactors: List[np.ndarray],
 ) -> Tuple[List[List[int]], Dict]:
     output = []
     output_dict = match_chains_to_sequences(sequences, chain_aa_logits, bfactors)

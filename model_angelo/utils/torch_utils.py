@@ -61,9 +61,7 @@ def init_optimizer_with_gradients(model: nn.Module, optimizer: torch.optim.Optim
     optimizer.zero_grad()
 
 
-def checkpoint_load_latest(
-    log_dir: str, device: torch.DeviceObjType, match_model: bool = True, **kwargs
-) -> int:
+def find_latest_checkpoint(log_dir: str) -> Tuple[str, int]:
     checkpoints = glob.glob(os.path.join(log_dir, "chkpt_*"))
     if len(checkpoints) == 0:
         return 0
@@ -71,9 +69,14 @@ def checkpoint_load_latest(
     checkpoints = sorted(checkpoints, key=lambda x: x[1])
 
     checkpoint_to_load, step_num = checkpoints[-1]
+    return checkpoint_to_load, step_num
 
+
+def checkpoint_load_latest(
+    log_dir: str, device: torch.DeviceObjType, match_model: bool = True, **kwargs
+) -> int:
+    checkpoint_to_load, step_num = find_latest_checkpoint(log_dir)
     state_dicts = torch.load(checkpoint_to_load, map_location=device)
-
     if match_model:
         warnings.warn(
             "In checkpoint_load_latest, match_model is set to True. "
@@ -85,7 +88,6 @@ def checkpoint_load_latest(
             v.load_state_dict(state_dicts[k], strict=not match_model)
         elif hasattr(v, "load_state_dict") and not match_model:
             v.load_state_dict(state_dicts[k])
-
     return step_num
 
 
@@ -232,10 +234,7 @@ def no_weight_decay_groups(network: nn.Module) -> List[Dict]:
 
     return [
         {"params": weight_decay},
-        {
-            "params": no_weight_decay,
-            "weight_decay": 0,
-        },
+        {"params": no_weight_decay, "weight_decay": 0,},
     ]
 
 
@@ -271,8 +270,9 @@ def binary_accuracy(out, targets, threshold=0.5):
 
 @torch.no_grad()
 def binary_accuracy_report(out, targets, threshold=0.5):
-    pred, targets = torch.where(out.reshape(-1, 1) < threshold, 0, 1), torch.where(
-        targets.reshape(-1, 1) < threshold, 0, 1
+    pred, targets = (
+        torch.where(out.reshape(-1, 1) < threshold, 0, 1),
+        torch.where(targets.reshape(-1, 1) < threshold, 0, 1),
     )
     acc = torch.eq(pred, targets).float().mean().item()
     precision = torch.eq(pred[pred == 1], targets[pred == 1]).float().mean().item()
@@ -280,10 +280,7 @@ def binary_accuracy_report(out, targets, threshold=0.5):
     return acc, precision, recall
 
 
-def get_batch_slices(
-    num_total: int,
-    batch_size: int,
-) -> List[List[int]]:
+def get_batch_slices(num_total: int, batch_size: int,) -> List[List[int]]:
     if num_total <= batch_size:
         return [list(range(num_total))]
 
@@ -311,10 +308,7 @@ def get_batches_to_idx(idx_to_batches: torch.Tensor) -> List[torch.Tensor]:
 
 
 def linear_warmup_exponential_decay(
-    num_warmup_steps=2000,
-    decay_rate=0.9,
-    decay_ratio=30000,
-    min_lr=0.0,
+    num_warmup_steps=2000, decay_rate=0.9, decay_ratio=30000, min_lr=0.0,
 ):
     def learning_rate_fn(step):
         if step < num_warmup_steps:
@@ -439,23 +433,20 @@ def download_and_install_model(bundle_name: str) -> str:
         "original": "https://zenodo.org/record/7733060/files/original.zip",
         "original_no_seq": "https://zenodo.org/record/7733060/files/original_no_seq.zip",
         "small_gpu": "https://zenodo.org/record/7733060/files/small_gpu.zip",
+        "nucleotides": "https://cloud.mrc-lmb.cam.ac.uk/s/GfmX7MejD94ewnr/download/nucleotides.zip",
+        "nucleotides_no_seq": "https://cloud.mrc-lmb.cam.ac.uk/s/sSHqtaA4KEEz9bc/download/nucleotides_no_sequence.zip",
     }
     dest = os.path.join(
-        torch.hub.get_dir(),
-        "checkpoints",
-        "model_angelo",
-        bundle_name
+        torch.hub.get_dir(), "checkpoints", "model_angelo_v1.0", bundle_name
     )
     if os.path.isfile(os.path.join(dest, "success.txt")):
         return dest
 
     print(f"Setting up bundle with name: {bundle_name} for the first time.")
     import zipfile
+
     os.makedirs(os.path.split(dest)[0], exist_ok=True)
-    torch.hub.download_url_to_file(
-        bundle_name_to_link[bundle_name],
-        dest + ".zip"
-    )
+    torch.hub.download_url_to_file(bundle_name_to_link[bundle_name], dest + ".zip")
 
     with zipfile.ZipFile(dest + ".zip", "r") as zip_object:
         zip_object.extractall(path=os.path.split(dest)[0])
@@ -474,7 +465,10 @@ def check_permissions_exceed(file_name: str, permissions) -> bool:
     file_permissions = oct(os.stat(file_name).st_mode)
     permissions_str = oct(permissions)
 
-    if len(file_permissions) < len(permissions_str) or min(len(file_permissions), len(permissions_str)) < 3:
+    if (
+        len(file_permissions) < len(permissions_str)
+        or min(len(file_permissions), len(permissions_str)) < 3
+    ):
         return False
 
     file_permissions, permissions_str = file_permissions[-3:], permissions_str[-3:]
@@ -485,21 +479,26 @@ def check_permissions_exceed(file_name: str, permissions) -> bool:
 
 
 def download_and_install_esm_model(esm_model_name: str) -> str:
-    permissions = stat.S_IROTH | stat.S_IXOTH | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+    permissions = (
+        stat.S_IROTH
+        | stat.S_IXOTH
+        | stat.S_IRUSR
+        | stat.S_IXUSR
+        | stat.S_IRGRP
+        | stat.S_IXGRP
+    )
     dest_model = os.path.join(
-        torch.hub.get_dir(),
-        "checkpoints",
-        esm_model_name + ".pt"
+        torch.hub.get_dir(), "checkpoints", esm_model_name + ".pt"
     )
     dest_regr = os.path.join(
-        torch.hub.get_dir(),
-        "checkpoints",
-        esm_model_name + "-contact-regression.pt"
+        torch.hub.get_dir(), "checkpoints", esm_model_name + "-contact-regression.pt"
     )
     model_url = f"https://dl.fbaipublicfiles.com/fair-esm/models/{esm_model_name}.pt"
     regr_url = f"https://dl.fbaipublicfiles.com/fair-esm/regression/{esm_model_name}-contact-regression.pt"
     if not os.path.isfile(dest_model):
-        print(f"Setting up language model bundle with name: {esm_model_name} for the first time.")
+        print(
+            f"Setting up language model bundle with name: {esm_model_name} for the first time."
+        )
         torch.hub.download_url_to_file(model_url, dest_model)
     if not os.path.isfile(dest_regr):
         torch.hub.download_url_to_file(regr_url, dest_regr)
@@ -525,6 +524,27 @@ def get_device_name(device_name: str) -> str:
             f"Either do not set, set to cpu, or give a number"
         )
 
+def get_device_names(device_name_str: str) -> List[str]:
+    if device_name_str is None or "," not in device_name_str:
+        return [get_device_name(device_name_str)]
+    else:
+        return [get_device_name(x.strip()) for x in device_name_str.split(",") if len(x.strip()) > 0]
+
+
+def set_overall_seed(seed: int):
+    import torch, random, numpy
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
+    random.seed(seed)
+
 
 class ShapeError(Exception):
     pass
+
+
+def compile_if_possible(module: nn.Module) -> nn.Module:
+    if hasattr(torch, "compile"):
+        module = torch.compile(module)
+    return module
+
+

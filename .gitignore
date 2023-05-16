@@ -130,3 +130,9 @@ dmypy.json
 
 # Pycharm
 .idea/
+*.aap
+*.csv
+*.cif
+*.pkl
+*.hmm
+*.prot

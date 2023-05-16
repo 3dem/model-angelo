@@ -113,7 +113,7 @@ def kdtree_correspondence(input_cas, target_cas, max_dist=3, repeat=3):
     corrs = []
 
     all_distances, all_indices = k.query(
-        target_cas, k=10, distance_upper_bound=max_dist, workers=4
+        target_cas, k=10, distance_upper_bound=max_dist, workers=12
     )
 
     for r in range(repeat):
@@ -138,15 +138,22 @@ def kdtree_correspondence(input_cas, target_cas, max_dist=3, repeat=3):
 
 
 def get_correspondence(
-    input_cas, target_cas, max_dist=3, verbose=False, repeat=3, two_rounds=False, get_unmatched=False
+    input_cas,
+    target_cas,
+    max_dist=3,
+    verbose=False,
+    repeat=3,
+    two_rounds=False,
+    get_unmatched=False,
 ):
     # First round of kd tree correspondence
     final_corrs = kdtree_correspondence(
         input_cas, target_cas, max_dist=3, repeat=repeat
     )
     if two_rounds:
-        target_correspondence, input_correspondence = list(final_corrs.keys()), list(
-            final_corrs.values()
+        target_correspondence, input_correspondence = (
+            list(final_corrs.keys()),
+            list(final_corrs.values()),
         )
         f_input_cas = input_cas[input_correspondence]
         f_target_cas = target_cas[target_correspondence]
@@ -198,7 +205,12 @@ def get_correspondence(
         np.array(list(final_corrs.values())),
     )
     if get_unmatched:
-        return target_correspondence, input_correspondence, unmatched_target_idxs, unmatched_input_idxs
+        return (
+            target_correspondence,
+            input_correspondence,
+            unmatched_target_idxs,
+            unmatched_input_idxs,
+        )
     else:
         return target_correspondence, input_correspondence
 
@@ -361,12 +373,7 @@ if __name__ == "__main__":
     if args.output_file is not None:
         with open(os.path.join(dir_name, "evaluation.pkl"), "wb") as p_wf:
             pickle.dump(
-                {
-                    "rmsd": rmsd,
-                    "recall": recall,
-                    "precision": precision,
-                },
-                p_wf,
+                {"rmsd": rmsd, "recall": recall, "precision": precision,}, p_wf,
             )
 
     print_fn("*" * 50)

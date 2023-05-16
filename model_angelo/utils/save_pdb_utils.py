@@ -9,10 +9,15 @@ from Bio.PDB.mmcifio import MMCIFIO
 from Bio.PDB.StructureBuilder import StructureBuilder
 
 from model_angelo.utils.misc_utils import assertion_check
+from model_angelo.utils.protein import Protein, frames_and_literature_positions_to_atomc_pos, \
+    frames_and_literature_positions_to_atom3_pos
 from model_angelo.utils.residue_constants import (
     index_to_restype_3,
-    restype_name_to_atom14_names, index_to_restype_1,
+    restype_name_to_atomc_names,
+    index_to_restype_1, num_atomc,
 )
+import torch
+
 
 PDB_CHAIN_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 SEQUENCE_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -80,6 +85,44 @@ def points_to_pdb(path_to_save, points):
     io.save(path_to_save)
 
 
+def ca_ps_to_pdb(path_to_save, ca_points, p_points):
+    struct = StructureBuilder()
+    struct.init_structure("1")
+    struct.init_seg("1")
+    struct.init_model("1")
+    struct.init_chain("1")
+    ca_num = len(ca_points)
+    for i, point in enumerate(ca_points):
+        struct.set_line_counter(i)
+        struct.init_residue(f"ALA", " ", i, " ")
+        struct.init_atom(
+            name="CA",
+            coord=point,
+            b_factor=0,
+            occupancy=1,
+            altloc=" ",
+            fullname="CA",
+            element="C",
+        )
+    struct.init_chain("2")
+    for i, point in enumerate(p_points):
+        struct.set_line_counter(ca_num + i)
+        struct.init_residue(f"A", " ", ca_num + i, " ")
+        struct.init_atom(
+            name="P",
+            coord=point,
+            b_factor=0,
+            occupancy=1,
+            altloc=" ",
+            fullname="P",
+            element="P",
+        )
+    struct = struct.get_structure()
+    io = MMCIFIO()
+    io.set_structure(struct)
+    io.save(path_to_save)
+
+
 def chains_to_pdb(path_to_save, chains):
     struct = StructureBuilder()
     struct.init_structure("1")
@@ -124,6 +167,7 @@ def atom14_to_cif(
     atom_mask: np.ndarray,
     path_to_save: str,
     bfactors: np.ndarray = None,
+    max_distance: float = 5,
 ):
     if bfactors is None:
         bfactors = np.zeros(len(aatype))
@@ -141,15 +185,87 @@ def atom14_to_cif(
     for i in range(aatype.shape[0]):
         res_name_3 = index_to_restype_3[aatype[i]]
         bfactor = bfactors[i]
-        atom_names = restype_name_to_atom14_names[res_name_3]
+        atom_names = restype_name_to_atomc_names[res_name_3]
         res_counter = 0
-        if np.linalg.norm(prev_loc - atom14[i][0]) > 5:
+        if np.linalg.norm(prev_loc - atom14[i][0]) > max_distance:
             curr_chain += 1
             struct.init_chain(number_to_chain_str(curr_chain))
         prev_loc = atom14[i][0]
 
         struct.init_residue(res_name_3, " ", i, " ")
         for atom_name, pos, mask in zip(atom_names, atom14[i], atom_mask[i]):
+            if mask < 0.5:
+                continue
+            struct.set_line_counter(i + res_counter)
+            struct.init_atom(
+                name=atom_name,
+                coord=pos,
+                b_factor=bfactor,
+                occupancy=1,
+                altloc=" ",
+                fullname=atom_name,
+                element=atom_name[0],
+            )
+            res_counter += 1
+    struct = struct.get_structure()
+    io = MMCIFIO()
+    io.set_structure(struct)
+    io.save(path_to_save)
+
+
+def protein_to_cif(
+    protein: Protein, path_to_save: str, split_chains: bool = False,
+):
+    # Will be deleted
+    if protein.aatype is None:
+        protein.aatype = np.zeros(len(protein.rigidgroups_gt_frames), dtype=np.int64)
+        protein.aatype[~protein.prot_mask] = 21
+    if protein.chain_id is None:
+        protein.chain_id = ["A"]
+    if protein.chain_index is None:
+        protein.chain_index = np.zeros(len(protein.rigidgroups_gt_frames), dtype=np.int64)
+    if protein.atomc_positions is None:
+        protein.atomc_positions = np.zeros((len(protein.rigidgroups_gt_frames), num_atomc, 3), dtype=np.float32)
+        protein.atomc_mask = np.zeros((len(protein.rigidgroups_gt_frames), num_atomc))
+        protein.atomc_positions[:, :3] = frames_and_literature_positions_to_atom3_pos(
+            protein.aatype, torch.from_numpy(protein.rigidgroups_gt_frames[:, 0])
+        ).numpy()
+        protein.atomc_mask[:, :3] = 1
+    # Up to here
+    if protein.b_factors is None:
+        bfactors = np.zeros(len(protein.aatype))
+    else:
+        bfactors = protein.b_factors
+    if len(bfactors.shape) > 1:
+        bfactors = bfactors[:, 0]
+    struct = StructureBuilder()
+    curr_chain = 0
+
+    struct.init_structure("1")
+    struct.init_seg("1")
+    struct.init_model("1")
+    struct.init_chain(protein.chain_id[0])
+
+    prev_chain = protein.chain_index[0]
+    prev_residue_index = protein.residue_index[0]
+    for i in range(protein.aatype.shape[0]):
+        res_name_3 = index_to_restype_3[protein.aatype[i]]
+        bfactor = bfactors[i]
+        atom_names = restype_name_to_atomc_names[res_name_3]
+        res_counter = 0
+        if prev_chain != protein.chain_index[i]:
+            curr_chain = 0
+            struct.init_chain(protein.chain_id[protein.chain_index[i]])
+        if split_chains and protein.residue_index[i] != prev_residue_index + 1:
+            curr_chain += 1
+            struct.init_chain(protein.chain_id[protein.chain_index[i]] + f"_{curr_chain}")
+        prev_chain = protein.chain_index[i]
+        prev_residue_index = protein.residue_index[i]
+
+        struct.init_residue(res_name_3, " ", i, " ")
+        for atom_name, pos, mask in zip(
+            atom_names, protein.atomc_positions[i], protein.atomc_mask[i]
+        ):
             if mask < 0.5:
                 continue
             struct.set_line_counter(i + res_counter)
@@ -188,6 +304,9 @@ def chain_atom14_to_cif(
         bfactors = [np.zeros(len(chain_aas)) for chain_aas in aatype]
     if res_idxs is None:
         res_idxs = [np.arange(1, len(chain_aas) + 1) for chain_aas in aatype]
+    for chain_id, residue_idx in enumerate(res_idxs):
+        if np.sum(residue_idx == -1) > 0:
+            res_idxs[chain_id] = np.arange(1, len(aatype[chain_id]) + 1)
 
     for j in range(len(bfactors)):
         if len(bfactors[j].shape) > 1:
@@ -220,10 +339,12 @@ def chain_atom14_to_cif(
         for i in range(aatype[chain_id].shape[0]):
             res_name_3 = index_to_restype_3[aatype[chain_id][i]]
             bfactor = bfactors[chain_id][i]
-            atom_names = restype_name_to_atom14_names[res_name_3]
+            atom_names = restype_name_to_atomc_names[res_name_3]
             res_counter = 0
-
-            struct.init_residue(res_name_3, " ", res_idxs[chain_id][i], " ")
+            # res_name_3 = "N" if res_name_3 == "DN" else res_name_3
+            res_name_3 = "C" if res_name_3 == "N" else ("DC" if res_name_3 == "DN" else res_name_3)
+            field_name = " " if res_name_3 != "N" else "H"
+            struct.init_residue(res_name_3, field_name, res_idxs[chain_id][i], " ")
             for atom_name, pos, mask in zip(
                 atom_names, atom14[chain_id][i], atom_mask[chain_id][i]
             ):
@@ -307,24 +428,24 @@ def write_chain_probabilities(
         for chain_id in range(len(bfactors)):
             chain_len = len(bfactors[chain_id])
 
-            file_handle.write(f"="*50 + "\n")
-            file_handle.write(
-                f"Chain id: {chain_id}\n"
-            )
+            file_handle.write(f"=" * 50 + "\n")
+            file_handle.write(f"Chain id: {chain_id}\n")
             if chain_len >= chain_prune_length:
                 file_handle.write(f"Not pruned\n")
             else:
                 file_handle.write(f"Pruned\n")
             file_handle.write(f"Chain length: {chain_len}\n")
             file_handle.write(
-                "Confidence per residue:" + ",".join([str(x) for x in bfactors[chain_id]]) + "\n"
+                "Confidence per residue:"
+                + ",".join([str(x) for x in bfactors[chain_id]])
+                + "\n"
             )
-            file_handle.write(
-                "Amino acid probability per residue:" + "\n"
-            )
-            for i, aa in enumerate(index_to_restype_1):
+            file_handle.write("Amino acid probability per residue:" + "\n")
+            for i, aa in enumerate(index_to_restype_1[:-3]):
                 file_handle.write(
-                    f"{aa}:" + ",".join([str(x) for x in aa_probs[chain_id][:, i]]) + "\n"
+                    f"{aa}:"
+                    + ",".join([str(x) for x in aa_probs[chain_id][:, i]])
+                    + "\n"
                 )
 
 
