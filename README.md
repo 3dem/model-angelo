@@ -143,17 +143,27 @@ You will have your results as a series of HMM output files with the extension .h
 4. If the output model is shifted with respect to your map, make sure that the map provided to ModelAngelo is cubic. Otherwise, it might get shifted when ModelAngelo internally makes the map cubic.
 
 ## Citation
-
-ModelAngelo has been published in the proceedings of the International Conference on Learning Representations (*ICLR*) 2023. You can find the paper on  [Openreview](https://openreview.net/forum?id=65XDF_nwI61)
-
-Here is the BibTex
+- **ModelAngelo 0.3**: Published in the proceedings of the International Conference on Learning Representations (*ICLR*) 2023. You can find the paper on  [Openreview](https://openreview.net/forum?id=65XDF_nwI61). Bibtex:
 ```
-@inproceedings{
-jamali2023modelangelo,
-title={A Graph Neural Network Approach to Automated Model Building in Cryo-EM Maps},
-author={Kiarash Jamali and Dari Kimanius and Sjors HW Scheres},
-booktitle={International Conference on Learning Representations},
-year={2023},
-url={https://openreview.net/forum?id=65XDF_nwI61}
+@inproceedings{jamali2023modelangelo,
+  title={A Graph Neural Network Approach to Automated Model Building in Cryo-EM Maps},
+  author={Kiarash Jamali and Dari Kimanius and Sjors HW Scheres},
+  booktitle={International Conference on Learning Representations},
+  year={2023},
+  url={https://openreview.net/forum?id=65XDF_nwI61}
+}
+``` 
+- **ModelAngelo 1.0**: Pre-print available on [bioRxiv](https://www.biorxiv.org/content/10.1101/2023.05.16.541002v1) . Bibtex:
+```
+@article{jamali2023automated,
+	author = {Kiarash Jamali and Lukas Kall and Rui Zhang and Alan Brown and Dari Kimanius and Sjors Scheres},
+	title = {Automated model building and protein identification in cryo-EM maps},
+	elocation-id = {2023.05.16.541002},
+	year = {2023},
+	doi = {10.1101/2023.05.16.541002},
+	publisher = {Cold Spring Harbor Laboratory},
+	URL = {https://www.biorxiv.org/content/early/2023/05/16/2023.05.16.541002},
+	eprint = {https://www.biorxiv.org/content/early/2023/05/16/2023.05.16.541002.full.pdf},
+	journal = {bioRxiv}
 }
 ```
