@@ -433,8 +433,8 @@ def download_and_install_model(bundle_name: str) -> str:
         "original": "https://zenodo.org/record/7733060/files/original.zip",
         "original_no_seq": "https://zenodo.org/record/7733060/files/original_no_seq.zip",
         "small_gpu": "https://zenodo.org/record/7733060/files/small_gpu.zip",
-        "nucleotides": "https://cloud.mrc-lmb.cam.ac.uk/s/GfmX7MejD94ewnr/download/nucleotides.zip",
-        "nucleotides_no_seq": "https://cloud.mrc-lmb.cam.ac.uk/s/sSHqtaA4KEEz9bc/download/nucleotides_no_sequence.zip",
+        "nucleotides": "https://zenodo.org/record/7942241/files/nucleotides.zip",
+        "nucleotides_no_seq": "https://zenodo.org/record/7942241/files/nucleotides_no_seq.zip",
     }
     dest = os.path.join(
         torch.hub.get_dir(), "checkpoints", "model_angelo_v1.0", bundle_name
