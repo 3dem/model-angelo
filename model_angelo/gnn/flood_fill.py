@@ -506,7 +506,7 @@ if __name__ == "__main__":
     from model_angelo.utils.protein import load_protein_from_prot
     from model_angelo.utils.misc_utils import pickle_load
     
-    base_path = "/home/kjamali/Downloads/model_angelo1_paper/bug_fix/8aa5/predictions/third_run/gnn_output_round_1"
+    base_path = "/home/kjamali/Desktop/code/3dem_model_angelo/model-angelo/test/output/gnn_output_round_1"
     protein = load_protein_from_prot(
         f"{base_path}/protein.prot"
     )

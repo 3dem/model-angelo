@@ -140,6 +140,7 @@ def aa_log_probs_to_hmm_file(
             index_to_str = ["A", "C", "G", "T"]
 
         for res_index in range(len(aa_log_probs)):
+            # Emission
             aa_prob_str = f"      {res_index + 1: >7}   "
             aa_prob_str += negative_log_prob_to_hmm_line(negative_log_prob[res_index])
             # For now, might need to replace based on RF,MM,CONS,CS,MAP
@@ -155,18 +156,33 @@ def aa_log_probs_to_hmm_file(
             file_handle.write("        ")
             # m -> m
             file_handle.write(f"  {-math.log(mm): >.5f}")
-            # m->i
-            file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
-            # m->d
-            file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
-            # i->m
-            file_handle.write(f"  {-math.log(1. - delta): >.5f}")
-            # i->i
-            file_handle.write(f"  {-math.log(delta): >.5f}")
-            # d->m
-            file_handle.write(f"  {-math.log(1 - delta): >.5f}")
-            # d->d
-            file_handle.write(f"  {-math.log(delta): >.5f}\n")
+            if res_index < len(aa_log_probs) - 1:
+                # m->i
+                file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
+                # m->d
+                file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
+                # i->m
+                file_handle.write(f"  {-math.log(1. - delta): >.5f}")
+                # i->i
+                file_handle.write(f"  {-math.log(delta): >.5f}")
+                # d->m
+                file_handle.write(f"  {-math.log(1 - delta): >.5f}")
+                # d->d
+                file_handle.write(f"  {-math.log(delta): >.5f}\n")
+            else:
+                # If res_index is the last, then TMD is 0 (Transitions to Match and Delete)
+                # m->i
+                file_handle.write(f"  {-math.log(1. - mm): >.5f}")
+                # m->d
+                file_handle.write(f"        *")
+                # i->m
+                file_handle.write(f"  {-math.log(1. - delta): >.5f}")
+                # i->i
+                file_handle.write(f"  {-math.log(delta): >.5f}")
+                # d->m
+                file_handle.write(f"  0.00000")
+                # d->d
+                file_handle.write(f"        *\n")
         file_handle.write("//\n")
 
 
