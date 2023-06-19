@@ -64,7 +64,7 @@ def add_args(parser):
         "-rf",
         type=str,
         required=False,
-        help="The path to the protein sequence file",
+        help="The path to the RNA sequence file",
     )
     parser.add_argument(
         "--dna-fasta",
@@ -72,7 +72,7 @@ def add_args(parser):
         "-df",
         required=False,
         type=str,
-        help="The path to the protein sequence file",
+        help="The path to the DNA sequence file",
     )
     main_args.add_argument(
         "--output-dir",
