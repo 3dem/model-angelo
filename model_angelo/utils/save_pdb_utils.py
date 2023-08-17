@@ -2,6 +2,7 @@ import glob
 import os
 import pickle
 from typing import List, Union
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -67,6 +68,17 @@ def points_to_xyz(path_to_save, points, zyx_order=False):
                 f.write(f"C {point[0]} {point[1]} {point[2]}\n")
             else:
                 f.write(f"C {point[2]} {point[1]} {point[0]}\n")
+
+
+def save_structure_to_cif(structure, path_to_save: str):
+    io = MMCIFIO()
+    io.set_structure(structure)
+    # These are switched, as pointed out by Tristan Croll
+    auth_seq_id = deepcopy(io.dic["_atom_site.label_seq_id"])
+    label_seq_id = deepcopy(io.dic["_atom_site.auth_seq_id"])
+    io.dic["_atom_site.label_seq_id"] = label_seq_id
+    io.dic["_atom_site.auth_seq_id"] = auth_seq_id
+    io.save(path_to_save)
 
 
 def points_to_pdb(path_to_save, points):
