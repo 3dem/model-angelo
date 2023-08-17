@@ -8,8 +8,8 @@ from model_angelo.utils.residue_constants import restype_3_to_index, num_prot
 
 pyhmmer_alphabet = {
     "amino": Alphabet.amino(),
-    "dna": Alphabet.dna(),
-    "rna": Alphabet.rna(),
+    "DNA": Alphabet.dna(),
+    "RNA": Alphabet.rna(),
 }
 
 alphabet_to_slice = {
@@ -82,7 +82,7 @@ def aa_log_probs_to_hmm(
             hmm.transition_probabilities[res_index+1, Transitions.MI] = 1.0 - mm
             hmm.transition_probabilities[res_index+1, Transitions.IM] = 1.0 - delta
             hmm.transition_probabilities[res_index+1, Transitions.II] = delta
-
+    hmm.set_composition()
     hmm.validate()
     return hmm
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     probs = np.random.rand(100, 28) * 5
     probs /= probs.sum(axis=-1, keepdims=True)
     confidence = np.random.rand(100)
-    hmm = aa_log_probs_to_hmm("test", probs, confidence)
+    hmm = aa_log_probs_to_hmm("test", probs, confidence, alphabet_type="RNA")
     print(hmm)
     with open("test.hmm", "wb") as f:
         hmm.write(f, binary=False)
