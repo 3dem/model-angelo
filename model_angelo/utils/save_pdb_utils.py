@@ -92,9 +92,7 @@ def points_to_pdb(path_to_save, points):
         struct.init_residue(f"ALA", " ", i, " ")
         struct.init_atom("CA", point, 0, 1, " ", "CA", "C")
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def ca_ps_to_pdb(path_to_save, ca_points, p_points):
@@ -130,9 +128,7 @@ def ca_ps_to_pdb(path_to_save, ca_points, p_points):
             element="P",
         )
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def chains_to_pdb(path_to_save, chains):
@@ -147,9 +143,7 @@ def chains_to_pdb(path_to_save, chains):
             struct.init_residue(f"ALA", " ", j, " ")
             struct.init_atom("CA", point, 0, 1, " ", "CA", "C")
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def to_xyz(directory):
@@ -220,9 +214,7 @@ def atom14_to_cif(
             )
             res_counter += 1
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def protein_to_cif(
@@ -292,9 +284,7 @@ def protein_to_cif(
             )
             res_counter += 1
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def chain_atom14_to_cif(
@@ -375,9 +365,7 @@ def chain_atom14_to_cif(
                 res_counter += 1
 
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def write_chain_report(
