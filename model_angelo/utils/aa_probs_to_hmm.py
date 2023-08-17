@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 from pyhmmer.easel import Alphabet
 from pyhmmer.plan7 import HMM, Transitions
 from scipy.special import softmax
