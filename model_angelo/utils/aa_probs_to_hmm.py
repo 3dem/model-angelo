@@ -20,23 +20,15 @@ alphabet_to_slice = {
 }
 
 
-def aa_log_probs_to_hmm(
-    name: str,
+def convert_aa_logits_to_probs(
     aa_logits: np.ndarray,
-    confidence: np.ndarray = None,
-    delta=0.05,
-    gamma=0.5,
     alphabet_type="amino",
-) -> HMM:
+) -> np.ndarray:
     """
-    This function converts ModelAngelo log_probs to HMMER3 HMMs.
-    The algorithm was developed with Lukas Kall and the code is based on
-    https://github.com/althonos/pyhmmer/issues/40
-    by Martin Larralde.
+    Process aa_logits to probabilities for a given alphabet.
+    This includes just pyrimidine-purine matches for RNA.
     """
-    if confidence is None:
-        confidence = np.ones(len(aa_logits))
-    processed_aa_logits = np.ones_like(aa_logits) * -100
+    processed_aa_logits = np.full_like(aa_logits, -100)
     processed_aa_logits[alphabet_to_slice[alphabet_type]] = aa_logits[
         alphabet_to_slice[alphabet_type]
     ]
@@ -63,8 +55,27 @@ def aa_log_probs_to_hmm(
             ],
         ].sum(axis=-1)
         aa_probs = aa_probs_gather / aa_probs_gather.sum(axis=-1, keepdims=True)
-    
     aa_probs = aa_probs[alphabet_to_slice[alphabet_type]]
+    return aa_probs
+
+
+def aa_logits_to_hmm(
+    aa_logits: np.ndarray,
+    confidence: np.ndarray = None,
+    delta=0.05,
+    gamma=0.5,
+    alphabet_type="amino",
+    name: str="model_angelo_search",
+) -> HMM:
+    """
+    This function converts ModelAngelo log_probs to HMMER3 HMMs.
+    The algorithm was developed with Lukas Kall and the code is based on
+    https://github.com/althonos/pyhmmer/issues/40
+    by Martin Larralde.
+    """
+    if confidence is None:
+        confidence = np.ones(len(aa_logits))
+    aa_probs = convert_aa_logits_to_probs(aa_logits, alphabet_type=alphabet_type)
     alphabet = pyhmmer_alphabet[alphabet_type]
     hmm = HMM(alphabet, M=len(aa_probs), name=bytes(f"{name}", "utf-8"))
     for res_index in range(len(aa_probs)):
@@ -94,7 +105,7 @@ def dump_aa_logits_to_hmm_file(
     name: str = "model_angelo_search",
     alphabet_type: str = "amino",
 ):
-    hmm = aa_log_probs_to_hmm(
+    hmm = aa_logits_to_hmm(
         name=name, 
         aa_logits=aa_logits, 
         confidence=confidence, 
@@ -109,7 +120,7 @@ if __name__ == "__main__":
     probs = np.random.rand(100, 28) * 5
     probs /= probs.sum(axis=-1, keepdims=True)
     confidence = np.random.rand(100)
-    hmm = aa_log_probs_to_hmm("test", probs, confidence, alphabet_type="RNA")
+    hmm = aa_logits_to_hmm("test", probs, confidence, alphabet_type="RNA")
     print(hmm)
     with open("test.hmm", "wb") as f:
         hmm.write(f, binary=False)
