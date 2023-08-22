@@ -57,7 +57,7 @@ def infer(args):
     batch_converter = alphabet.get_batch_converter()
 
     lang_model = lang_model.eval()
-    voxel_size = args.voxel_size
+    voxel_size = getattr(args, "voxel_size", 1.0)
 
     rna_sequences, dna_sequences = [], []
     if args.rna_fasta is not None:
