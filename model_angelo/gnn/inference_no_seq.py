@@ -42,7 +42,7 @@ def infer(args):
     device_names = get_device_names(args.device)
     num_devices = len(device_names)
 
-    voxel_size = args.voxel_size
+    voxel_size = getattr(args, "voxel_size", 1.0)
 
     protein = None
     if args.struct.endswith("prot"):
