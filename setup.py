@@ -24,4 +24,16 @@ setup(
     },
     package_data={'': ['utils/stereo_chemical_props.txt']},
     version=model_angelo.__version__,
+    install_requires=[
+        "tqdm",
+        "scipy",
+        "biopython>=1.81",
+        "einops",
+        "matplotlib",
+        "mrcfile",
+        "pandas",
+        "fair-esm",
+        "pyhmmer>=0.10.1",
+        "loguru",
+    ],
 )

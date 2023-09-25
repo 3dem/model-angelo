@@ -2,6 +2,7 @@ import glob
 import os
 import pickle
 from typing import List, Union
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -9,7 +10,7 @@ from Bio.PDB.mmcifio import MMCIFIO
 from Bio.PDB.StructureBuilder import StructureBuilder
 
 from model_angelo.utils.misc_utils import assertion_check
-from model_angelo.utils.protein import Protein, frames_and_literature_positions_to_atomc_pos, \
+from model_angelo.utils.protein import Protein, \
     frames_and_literature_positions_to_atom3_pos
 from model_angelo.utils.residue_constants import (
     index_to_restype_3,
@@ -69,6 +70,17 @@ def points_to_xyz(path_to_save, points, zyx_order=False):
                 f.write(f"C {point[2]} {point[1]} {point[0]}\n")
 
 
+def save_structure_to_cif(structure, path_to_save: str):
+    io = MMCIFIO()
+    io.set_structure(structure)
+    # These are switched, as pointed out by Tristan Croll
+    auth_seq_id = deepcopy(io.dic["_atom_site.label_seq_id"])
+    label_seq_id = deepcopy(io.dic["_atom_site.auth_seq_id"])
+    io.dic["_atom_site.label_seq_id"] = label_seq_id
+    io.dic["_atom_site.auth_seq_id"] = auth_seq_id
+    io.save(path_to_save)
+
+
 def points_to_pdb(path_to_save, points):
     struct = StructureBuilder()
     struct.init_structure("1")
@@ -80,9 +92,7 @@ def points_to_pdb(path_to_save, points):
         struct.init_residue(f"ALA", " ", i, " ")
         struct.init_atom("CA", point, 0, 1, " ", "CA", "C")
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def ca_ps_to_pdb(path_to_save, ca_points, p_points):
@@ -118,9 +128,7 @@ def ca_ps_to_pdb(path_to_save, ca_points, p_points):
             element="P",
         )
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def chains_to_pdb(path_to_save, chains):
@@ -135,9 +143,7 @@ def chains_to_pdb(path_to_save, chains):
             struct.init_residue(f"ALA", " ", j, " ")
             struct.init_atom("CA", point, 0, 1, " ", "CA", "C")
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def to_xyz(directory):
@@ -208,9 +214,7 @@ def atom14_to_cif(
             )
             res_counter += 1
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def protein_to_cif(
@@ -280,9 +284,7 @@ def protein_to_cif(
             )
             res_counter += 1
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def chain_atom14_to_cif(
@@ -363,9 +365,7 @@ def chain_atom14_to_cif(
                 res_counter += 1
 
     struct = struct.get_structure()
-    io = MMCIFIO()
-    io.set_structure(struct)
-    io.save(path_to_save)
+    save_structure_to_cif(struct, path_to_save)
 
 
 def write_chain_report(

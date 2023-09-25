@@ -51,7 +51,6 @@ fi
 
 python_exc="${CONDA_PREFIX}/bin/python"
 
-$python_exc -mpip install -r requirements.txt
 $python_exc setup.py install
 
 if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
