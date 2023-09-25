@@ -23,8 +23,14 @@ from model_angelo.utils.grid import (
 )
 from model_angelo.utils.misc_utils import abort_if_relion_abort
 from model_angelo.utils.save_pdb_utils import points_to_pdb, ca_ps_to_pdb
-from model_angelo.utils.torch_utils import get_model_from_file, get_device_names
+from model_angelo.utils.torch_utils import get_device_names
 from model_angelo.models.multi_gpu_wrapper import MultiGPUWrapper
+
+
+
+class NoCaAtomsError(Exception):
+    pass
+
 
 
 def grid_to_points(
@@ -283,6 +289,12 @@ def infer(args):
         f"Have {len(output_ca_points_before_pruning)} Cα points before pruning and {len(output_ca_points)} after pruning"
     )
 
+    if len(output_ca_points) == 0:
+        raise NoCaAtomsError(
+            "No Cα atoms were predicted! This usually means the global resolution of \n"
+            "the map is worse than 4 Å. It could also mean that the map is in the wrong hand."
+        )
+    
     points_to_pdb(
         os.path.join(args.output_path, "output_ca_points_before_pruning.cif"),
         voxel_size * output_ca_points_before_pruning,
