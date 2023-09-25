@@ -25,6 +25,16 @@ SEQUENCE_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 SEQUENCE_BASED_CHAIN_IDS = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 
+
+class ModelAngeloMMCIFIO(MMCIFIO):
+    def _save_dict(self, out_file):
+        auth_seq_id = deepcopy(self.dic["_atom_site.label_seq_id"])
+        label_seq_id = deepcopy(self.dic["_atom_site.auth_seq_id"])
+        self.dic["_atom_site.label_seq_id"] = label_seq_id
+        self.dic["_atom_site.auth_seq_id"] = auth_seq_id
+        return super()._save_dict(out_file)
+
+
 def number_to_base(n, b):
     """
     From https://stackoverflow.com/questions/2267362/how-to-convert-an-integer-to-a-string-in-any-base
@@ -71,13 +81,8 @@ def points_to_xyz(path_to_save, points, zyx_order=False):
 
 
 def save_structure_to_cif(structure, path_to_save: str):
-    io = MMCIFIO()
+    io = ModelAngeloMMCIFIO()
     io.set_structure(structure)
-    # These are switched, as pointed out by Tristan Croll
-    auth_seq_id = deepcopy(io.dic["_atom_site.label_seq_id"])
-    label_seq_id = deepcopy(io.dic["_atom_site.auth_seq_id"])
-    io.dic["_atom_site.label_seq_id"] = label_seq_id
-    io.dic["_atom_site.auth_seq_id"] = auth_seq_id
     io.save(path_to_save)
 
 
