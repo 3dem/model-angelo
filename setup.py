@@ -23,7 +23,7 @@ setup(
         ],
     },
     package_data={'': ['utils/stereo_chemical_props.txt']},
-    packages=find_packages(),
+    packages=["model_angelo"],
     version=model_angelo.__version__,
     install_requires=[
         "tqdm",
