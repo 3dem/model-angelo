@@ -25,6 +25,7 @@ def main():
     import model_angelo.apps.eval_per_resid
     import model_angelo.apps.hmm_search
     import model_angelo.apps.refine
+    import model_angelo.utils.setup_weights
 
     modules = {
         "build": model_angelo.apps.build,
@@ -33,6 +34,7 @@ def main():
         "eval_per_resid": model_angelo.apps.eval_per_resid,
         "hmm_search": model_angelo.apps.hmm_search,
         "refine": model_angelo.apps.refine,
+        "setup_weights": model_angelo.utils.setup_weights,
     }
 
     subparsers = parser.add_subparsers(title="Choose a module",)
