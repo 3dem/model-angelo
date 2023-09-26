@@ -55,8 +55,8 @@ $python_exc setup.py install
 
 if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
   echo "Writing weights to ${TORCH_HOME}"
-  $python_exc model_angelo/utils/setup_weights.py --bundle-name nucleotides
-  $python_exc model_angelo/utils/setup_weights.py --bundle-name nucleotides_no_seq
+  model_angelo setup_weights --bundle-name nucleotides
+  model_angelo setup_weights --bundle-name nucleotides_no_seq
 else
   echo "Did not download weights because the flag -w or --download-weights was not specified"
 fi
