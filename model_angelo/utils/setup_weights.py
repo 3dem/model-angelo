@@ -8,7 +8,7 @@ from model_angelo.utils.torch_utils import (
 )
 
 
-if __name__ == "__main__:
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ModelAngelo weights installation utility")
     parser.add_argument("--bundle-name", type=str, default="original")
     
