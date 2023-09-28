@@ -71,6 +71,14 @@ def setup_logger(log_path: str):
         enqueue=True,
         diagnose=True,
     )
+    logger.add(
+        sys.stderr,
+        format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
+        enqueue=True,
+        level="ERROR",
+        backtrace=False,
+        diagnose=False,
+    )
     return logger
 
 
