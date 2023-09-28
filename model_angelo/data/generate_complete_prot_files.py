@@ -14,24 +14,35 @@ from model_angelo.utils.protein import (
 )
 
 
+
+class BadFastaFile(Exception):
+    pass
+
+
 def get_lm_embeddings_for_protein(
     lang_model, batch_converter, protein, max_chain_length=1000
 ):
-    sequences = protein.unified_seq.split("|||")
-    sequences = [FASTASequence(seq, "", "A") for seq in sequences]
-    seq_names = [str(x) for x in range(len(sequences))]
-    result = run_transformer_on_fasta(
-        lang_model,
-        batch_converter,
-        sequences,
-        seq_names,
-        repr_layers=[33],
-        max_chain_length=max_chain_length,
-    )
-    lm_embeddings = np.concatenate(
-        [result[s]["representations"][33].cpu().numpy() for s in seq_names], axis=0,
-    )
-    protein_with_lm = add_lm_embeddings_to_protein(protein, lm_embeddings)
+    try:
+        sequences = protein.unified_seq.split("|||")
+        sequences = [FASTASequence(seq, "", "A") for seq in sequences]
+        seq_names = [str(x) for x in range(len(sequences))]
+        result = run_transformer_on_fasta(
+            lang_model,
+            batch_converter,
+            sequences,
+            seq_names,
+            repr_layers=[33],
+            max_chain_length=max_chain_length,
+        )
+        lm_embeddings = np.concatenate(
+            [result[s]["representations"][33].cpu().numpy() for s in seq_names], axis=0,
+        )
+        protein_with_lm = add_lm_embeddings_to_protein(protein, lm_embeddings)
+    except KeyError:
+        raise BadFastaFile(
+            f"Fasta file parsed as {protein.unified_seq} is badly formatted."
+            f"The issue is most likely that the Fasta file has a sequence made entirely of X, or similar issues."
+        )
     return protein_with_lm
 
 
