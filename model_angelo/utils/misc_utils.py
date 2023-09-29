@@ -119,8 +119,16 @@ def filter_useless_warnings():
 
 def get_esm_model(esm_model_name):
     import esm
-
-    return getattr(esm.pretrained, esm_model_name)()
+    import torch
+    try:
+        model = esm.pretrained.load_model_and_alphabet_hub(esm_model_name)
+    except:
+        model = esm.pretrained.load_model_and_alphabet_local(
+            os.path.join(
+                torch.hub.get_dir(), "checkpoints", esm_model_name + ".pt"
+            )
+        )
+    return model
 
 
 class Args(object):  # Generic container for arguments
