@@ -42,7 +42,7 @@ then
   exit 1;
 fi
 
-conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia -y
+$python_exc -mpip install torch torchvision torchaudio
 
 if [ "${torch_home_path}" ]
 then
