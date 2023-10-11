@@ -3,7 +3,7 @@ from pyhmmer.easel import Alphabet
 from pyhmmer.plan7 import HMM, Transitions
 from scipy.special import softmax
 
-from model_angelo.utils.residue_constants import restype_3_to_index, num_prot
+from model_angelo.utils.residue_constants import restype_3_to_index, restype_1_to_index, num_prot
 
 pyhmmer_alphabet = {
     "amino": Alphabet.amino(),
@@ -18,6 +18,11 @@ alphabet_to_slice = {
     "PP": np.s_[..., num_prot:],
 }
 
+alphabet_to_index = {
+    "amino": restype_1_to_index,
+    "RNA": {"A": 24, "C": 25, "G": 26, "U": 27},
+    "DNA": {"A": 20, "C": 21, "G": 22, "T": 23},
+}
 
 def convert_aa_logits_to_probs(
     aa_logits: np.ndarray,

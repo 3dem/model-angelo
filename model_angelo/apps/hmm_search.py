@@ -12,6 +12,7 @@ You will need:
 import argparse
 import os
 import pyhmmer
+import pandas as pd
 import glob
 
 import tqdm
@@ -157,17 +158,48 @@ def main(parsed_args):
         E=parsed_args.E,
         T=parsed_args.T,
     )
-    for (hits, name) in tqdm.tqdm(zip(all_hits, [name for name,hmm in pruned_hmms])):
+    hits_csv = {
+        "target_name": [],
+        "query_name": [],
+        "accession": [],
+        "E-value": [],
+        "score": [],
+        "bias": [],
+        "description": [],
+    }
+    for (hits, name) in tqdm.tqdm(zip(all_hits, [name for name, hmm in pruned_hmms])):
         if parsed_args.pipeline_control:
             abort_if_relion_abort(parsed_args.output_dir)
         with open(os.path.join(parsed_args.output_dir, f"{name}.hhr"), "wb") as f:
             hits.write(f)
+        for hit in hits:
+            if hit.included:
+                try:
+                    hits_csv["target_name"].append(hit.name.decode("utf-8"))
+                    hits_csv["query_name"].append(name)
+                    hits_csv["accession"].append(hit.accession.decode("utf-8") if hit.accession else "")
+                    hits_csv["E-value"].append(hit.evalue)
+                    hits_csv["score"].append(hit.score)
+                    hits_csv["bias"].append(hit.bias)
+                    hits_csv["description"].append(hit.description.decode("utf-8"))
+                except:
+                    pass
         try:
             msa = hits.to_msa(alphabet)
             with open(os.path.join(parsed_args.output_dir, f"{name}.a2m"), "wb") as f:
                 msa.write(f, "a2m")
         except:
             pass
+    
+    hits_df = pd.DataFrame(hits_csv)
+    # Sort hits by lowest E-value to highest
+    hits_df.sort_values(by=["E-value"], inplace=True)
+    hits_df.to_csv(os.path.join(parsed_args.output_dir, "all_hits.csv"), index=False)
+
+    # Keep track of unique chains by target name with the lowest E-value and store separately
+    min_evalue_indices = hits_df.groupby('target_name')['E-value'].idxmin()
+    filtered_df = hits_df.loc[min_evalue_indices]
+    filtered_df.to_csv(os.path.join(parsed_args.output_dir, "best_hits.csv"), index=False)
 
     print("-" * 70)
     print("ModelAngelo hmm_search completed successfully!")
@@ -182,6 +214,8 @@ def main(parsed_args):
             f"For example, for chain {pruned_hmms[0][0]}, the result is in "
             f"{os.path.join(parsed_args.output_dir, pruned_hmms[0][0] + '.hhr')}"
         )
+    print(f"You can find a summary of all hits in {os.path.join(parsed_args.output_dir, 'all_hits.csv')}")
+    print(f"You can find a summary of the best hits in {os.path.join(parsed_args.output_dir, 'best_hits.csv')}")
     print("-" * 70)
     print("Enjoy!")
 
