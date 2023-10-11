@@ -97,6 +97,7 @@ def aa_logits_to_hmm(
             hmm.transition_probabilities[res_index+1, Transitions.MI] = 1.0 - mm
             hmm.transition_probabilities[res_index+1, Transitions.IM] = 1.0 - delta
             hmm.transition_probabilities[res_index+1, Transitions.II] = delta
+    hmm.set_consensus()
     hmm.set_composition()
     hmm.validate()
     return hmm
