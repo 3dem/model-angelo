@@ -181,10 +181,10 @@ def main(parsed_args):
         # Try to open FASTA       --------------------------------------------------------------------------------------
         from model_angelo.utils.fasta_utils import read_fasta
 
-        if not is_valid_fasta_ending(parsed_args.protein_fasta):
-            raise RuntimeError(
-                f"File {parsed_args.protein_fasta} is not a supported file format."
-            )
+        # if not is_valid_fasta_ending(parsed_args.protein_fasta):
+        #     raise RuntimeError(
+        #         f"File {parsed_args.protein_fasta} is not a supported file format."
+        #     )
 
         _ = read_fasta(parsed_args.protein_fasta)
 

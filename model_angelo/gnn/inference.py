@@ -82,10 +82,10 @@ def infer(args):
             for seq_file in [args.protein_fasta, args.rna_fasta, args.dna_fasta]:
                 if seq_file is None:
                     continue
-                if not is_valid_fasta_ending(seq_file):
-                    raise RuntimeError(
-                        f"File {seq_file} is not a supported file format."
-                    )
+                # if not is_valid_fasta_ending(seq_file):
+                #     raise RuntimeError(
+                #         f"File {seq_file} is not a supported file format."
+                #     )
             protein = init_protein_from_see_alpha(args.struct, args.protein_fasta, skip_nucleotides=skip_nucleotides)
         else:
             protein = get_protein_from_file_path(args.struct)
