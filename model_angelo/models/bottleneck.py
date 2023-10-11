@@ -60,4 +60,9 @@ class Bottleneck(nn.Module):
         return out
 
     def forward_checkpoint(self, x):
-        return torch_checkpoint(self.forward_normal, x, preserve_rng_state=False)
+        return torch_checkpoint(
+            self.forward_normal, 
+            x, 
+            preserve_rng_state=False,
+            use_reentrant=False,
+        )

@@ -139,4 +139,5 @@ class SpatialIPA(nn.Module):
             edge_index,
             batch,
             preserve_rng_state=False,
+            use_reentrant=False,
         )

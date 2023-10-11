@@ -158,6 +158,7 @@ class SequenceAttention(nn.Module):
             sequence_key_cache,
             sequence_value_cache,
             preserve_rng_state=False,
+            use_reentrant=False,
         )
 
     def _intern_forward(
