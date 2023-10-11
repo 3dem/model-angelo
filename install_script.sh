@@ -42,7 +42,7 @@ then
   exit 1;
 fi
 
-conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
+conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia -y
 
 if [ "${torch_home_path}" ]
 then
@@ -51,13 +51,12 @@ fi
 
 python_exc="${CONDA_PREFIX}/bin/python"
 
-$python_exc -mpip install -r requirements.txt
-$python_exc setup.py install
+$python_exc -mpip install -e .
 
 if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
   echo "Writing weights to ${TORCH_HOME}"
-  $python_exc model_angelo/utils/setup_weights.py --bundle-name nucleotides
-  $python_exc model_angelo/utils/setup_weights.py --bundle-name nucleotides_no_seq
+  model_angelo setup_weights --bundle-name nucleotides
+  model_angelo setup_weights --bundle-name nucleotides_no_seq
 else
   echo "Did not download weights because the flag -w or --download-weights was not specified"
 fi

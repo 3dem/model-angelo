@@ -436,6 +436,13 @@ def download_and_install_model(bundle_name: str) -> str:
         "nucleotides": "https://zenodo.org/record/7942241/files/nucleotides.zip",
         "nucleotides_no_seq": "https://zenodo.org/record/7942241/files/nucleotides_no_seq.zip",
     }
+    checksums = {
+        "original": "7ff5832808020555eb6c82723a755866",
+        "original_no_seq": "f37623da299dbde4e86f3160c726057a",
+        "small_gpu": "d7d8b530adf6ed8771dec24cf628ec03",
+        "nucleotides": "ce568d75b24f8a4654f1fa2f7a89cb27",
+        "nucleotides_no_seq": "4fcbeba1fe469943d51e5cbb492c072e",
+    }
     dest = os.path.join(
         torch.hub.get_dir(), "checkpoints", "model_angelo_v1.0", bundle_name
     )
@@ -447,6 +454,23 @@ def download_and_install_model(bundle_name: str) -> str:
 
     os.makedirs(os.path.split(dest)[0], exist_ok=True)
     torch.hub.download_url_to_file(bundle_name_to_link[bundle_name], dest + ".zip")
+
+    # Check the file's MD5 checksum
+    print("Checking checksum of downloaded file.")
+    import hashlib
+    # Calculate MD5 checksum
+    md5_hash = hashlib.md5()
+    with open(dest + ".zip", "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            md5_hash.update(byte_block)
+    # Compare checksums
+    if md5_hash.hexdigest() != checksums[bundle_name]:
+        raise RuntimeError(
+            f"Checksum of downloaded file {dest + '.zip'} does not match expected checksum. "
+            f"Expected: {checksums[bundle_name]}, got: {md5_hash.hexdigest()}"
+        )
+    else:
+        print("Checksum of downloaded file matches expected checksum.")
 
     with zipfile.ZipFile(dest + ".zip", "r") as zip_object:
         zip_object.extractall(path=os.path.split(dest)[0])

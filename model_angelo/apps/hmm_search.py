@@ -106,7 +106,8 @@ def add_args(parser):
     parser.add_argument(
         "--pipeline-control",
         "--pipeline_control",
-        action="store_true",
+        type=str,
+        default="",
         help=argparse.SUPPRESS,
     )
 

@@ -7,7 +7,7 @@ Setup module for ModelAngelo
 import os
 import sys
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 sys.path.insert(0, f"{os.path.dirname(__file__)}/model_angelo")
 
@@ -23,5 +23,18 @@ setup(
         ],
     },
     package_data={'': ['utils/stereo_chemical_props.txt']},
+    packages=find_packages(),
     version=model_angelo.__version__,
+    install_requires=[
+        "tqdm",
+        "scipy",
+        "biopython>=1.81",
+        "einops",
+        "matplotlib",
+        "mrcfile",
+        "pandas",
+        "fair-esm",
+        "pyhmmer>=0.10.1",
+        "loguru",
+    ],
 )
