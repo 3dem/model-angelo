@@ -120,12 +120,25 @@ You run this command:
 ```
 model_angelo build_no_seq -v map.mrc -o output
 ```
-The model will be in `output/output.cif` as before. Now there are also HMM profiles for each chain in HMMER3 format here: `output/hmm_profiles`.
+The model will be in `output/output.cif` as before. 
+</details>
+
+<details>
+<summary>Using the HMM search procedure</summary>
+<br>
+If you have a map and would like to identify new proteins, first build it with the no sequence option as above.
+You will have the model as an mmCIF.
+
+Now there are also HMM profiles for each chain in HMMER3 format here: `output/hmm_profiles`.
+
 To do a sequence search for chain A (for example), you should first download a database that will include your organism's proteins, such as the [human genome](https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers/GRCh38_latest_genomic.fna.gz). Then, you can run
 ```
 model_angelo hmm_search --i output --f PATH_TO_DB --o hmm_output
 ```
 You will have your results as a series of HMM output files with the extension .hhr, for example: `hmm_output/A.hhr`. These are named by chain according to the model built by ModelAngelo in `output/output.cif`.
+
+For further convenience, especially for large maps, we also now have two csv files named `output/all_hits.csv` and `output/best_hits.csv`. The first will have all the hits for all the chains sorted by the E-value. The second has all the *unique* hits, with the information of the best hit.
+
 </details>
 
 ## FAQs
