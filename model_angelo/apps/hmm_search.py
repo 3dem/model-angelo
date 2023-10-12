@@ -120,6 +120,10 @@ def main(parsed_args):
     print("By Kiarash Jamali, Scheres Group, MRC Laboratory of Molecular Biology")
 
     hmm_profile_dir = os.path.join(parsed_args.input_dir, "hmm_profiles")
+    if len(glob.glob(f"{hmm_profile_dir}/*.hmm")) == 0:
+        # Try original directory
+        if len(glob.glob(f"{parsed_args.input_dir}/*.hmm")) > 0:
+            hmm_profile_dir = parsed_args.input_dir
     if not os.path.isdir(hmm_profile_dir):
         print(
             f"The directory {hmm_profile_dir} does not exist. "
@@ -173,7 +177,7 @@ def main(parsed_args):
         with open(os.path.join(parsed_args.output_dir, f"{name}.hhr"), "wb") as f:
             hits.write(f)
         for hit in hits:
-            if hit.included:
+            if hit.evalue < parsed_args.E:
                 try:
                     hits_csv["target_name"].append(hit.name.decode("utf-8"))
                     hits_csv["query_name"].append(name)
