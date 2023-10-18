@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 
 import numpy as np
 import torch
@@ -55,24 +56,22 @@ def infer(args):
     if protein is None:
         raise RuntimeError(f"File {args.struct} is not a supported file format.")
 
-    grid_data = None
-    if args.map.endswith("mrc"):
-        grid_data = load_mrc(args.map, multiply_global_origin=False)
-        grid_data = make_model_angelo_grid(
-            grid_data.grid,
-            grid_data.voxel_size,
-            grid_data.global_origin,
-            target_voxel_size=voxel_size,
-        )
-        grid_data = MRCObject(
-            grid=grid_data.grid,
-            voxel_size=grid_data.voxel_size,
-            global_origin=np.zeros((3,), dtype=np.float32),
-        )
-    if grid_data is None:
-        raise RuntimeError(
-            f"Grid volume file {args.map} is not a supported file format."
-        )
+    if not args.map.endswith("mrc"):
+        warnings.warn(f"The file {args.map} does not end with '.mrc'\nPlease make sure it is an MRC file.")
+
+    grid_data = load_mrc(args.map, multiply_global_origin=False)
+    grid_data = make_model_angelo_grid(
+        grid_data.grid,
+        grid_data.voxel_size,
+        grid_data.global_origin,
+        target_voxel_size=voxel_size,
+    )
+    grid_data = MRCObject(
+        grid=grid_data.grid,
+        voxel_size=grid_data.voxel_size,
+        global_origin=np.zeros((3,), dtype=np.float32),
+    )
+
     # Standardize the grid to have a mean of 0 and a standard deviation of 1
     grid_data = standardize_mrc(grid_data)
     num_res = len(protein.rigidgroups_gt_frames)

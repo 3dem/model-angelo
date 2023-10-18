@@ -4,6 +4,7 @@ import sys
 import time
 from itertools import product
 from random import shuffle
+import warnings
 
 import numpy as np
 import torch
@@ -156,7 +157,9 @@ def infer(args):
         else:
             cas = ds["cas"]
 
-    elif args.map_path.endswith("mrc"):
+    else:
+        if not args.map_path.endswith("mrc"):
+            warnings.warn(f"The file {args.map_path} does not end with '.mrc'\nPlease make sure it is an MRC file.")
         grid_np, voxel_size, global_origin = load_mrc(args.map_path)
         grid_np, voxel_size, global_origin = make_model_angelo_grid(
             np.copy(grid_np), voxel_size, global_origin, target_voxel_size=1.5
