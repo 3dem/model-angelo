@@ -150,7 +150,12 @@ def main(parsed_args):
 
     pruned_hmms = [k for k in hmms if k[1].alphabet == alphabet]
 
-    with pyhmmer.easel.SequenceFile(parsed_args.fasta_path, alphabet=alphabet, digital=True) as sf:
+    with pyhmmer.easel.SequenceFile(
+        parsed_args.fasta_path, 
+        alphabet=alphabet,
+        format="afa",  # This is to allow it to ignore gaps 
+        digital=True
+    ) as sf:
         digital_sequences = sf.read_block()
 
     all_hits = pyhmmer.hmmer.hmmsearch(
