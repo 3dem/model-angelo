@@ -24,7 +24,7 @@ import torch
 
 from model_angelo.c_alpha.inference import infer as c_alpha_infer
 from model_angelo.gnn.inference import infer as gnn_infer
-from model_angelo.utils.fasta_utils import is_valid_fasta_ending
+from model_angelo.utils.fasta_utils import is_valid_fasta_ending, write_fasta_only_aa
 from model_angelo.utils.misc_utils import (
     setup_logger,
     Args,
@@ -186,7 +186,7 @@ def main(parsed_args):
         #         f"File {parsed_args.protein_fasta} is not a supported file format."
         #     )
 
-        _ = read_fasta(parsed_args.protein_fasta)
+        new_protein_fasta_path = write_fasta_only_aa(parsed_args.protein_fasta)
 
         # Run C-alpha inference ----------------------------------------------------------------------------------------
         print("--------------------- Initial C-alpha prediction ---------------------")
@@ -224,7 +224,7 @@ def main(parsed_args):
 
             gnn_infer_args = Args(config["gnn_infer_args"])
             gnn_infer_args.map = parsed_args.volume_path
-            gnn_infer_args.protein_fasta = parsed_args.protein_fasta
+            gnn_infer_args.protein_fasta = new_protein_fasta_path
             gnn_infer_args.rna_fasta = parsed_args.rna_fasta
             gnn_infer_args.dna_fasta = parsed_args.dna_fasta
             gnn_infer_args.struct = current_ca_cif_path

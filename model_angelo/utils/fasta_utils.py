@@ -3,6 +3,7 @@ import string
 from collections import namedtuple
 from itertools import islice
 from typing import List, Tuple
+import warnings
 
 import numpy as np
 from Bio import SeqIO
@@ -118,6 +119,26 @@ def write_fasta_no_gaps(fasta_input_path: str):
         for record in SeqIO.parse(fasta_input_path, "fasta"):
             f.write(f">{record.description}\n")
             f.write(remove_gaps(str(record.seq)) + "\n")
+    return new_file_name
+
+
+def write_fasta_only_aa(fasta_input_path: str):
+    new_file_name = os.path.splitext(fasta_input_path)[0] + "_only_aa.fasta"
+    removed_residues = False
+    with open(new_file_name, "w") as f:
+        for record in SeqIO.parse(fasta_input_path, "fasta"):
+            f.write(f">{record.description}\n")
+            old_seq = str(record.seq)
+            new_seq = remove_non_residue(old_seq)
+            removed_residues = removed_residues or (old_seq != new_seq)
+            f.write(new_seq + "\n")
+    if not removed_residues:
+        os.remove(new_file_name)
+        new_file_name = fasta_input_path
+    else:
+        warnings.warn(
+            f"File {fasta_input_path} contains non-protein residues. These were removed."
+        )
     return new_file_name
 
 
