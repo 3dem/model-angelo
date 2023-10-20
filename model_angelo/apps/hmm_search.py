@@ -153,7 +153,7 @@ def main(parsed_args):
     with pyhmmer.easel.SequenceFile(
         parsed_args.fasta_path, 
         alphabet=alphabet,
-        format="afa",  # This is to allow it to ignore gaps 
+        format=None,  # This is to allow it to ignore gaps 
         digital=True
     ) as sf:
         digital_sequences = sf.read_block()
