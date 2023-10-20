@@ -112,6 +112,15 @@ def split_fasta_file_into_chains(fasta_path, out_dir):
             i += 1
 
 
+def write_fasta_no_gaps(fasta_input_path: str):
+    new_file_name = os.path.splitext(fasta_input_path)[0] + "_no_gaps.fasta"
+    with open(new_file_name, "w") as f:
+        for record in SeqIO.parse(fasta_input_path, "fasta"):
+            f.write(f">{record.description}\n")
+            f.write(remove_gaps(str(record.seq)) + "\n")
+    return new_file_name
+
+
 def parse_hhr(hhr_file_path, max_num_seq=np.inf, align_sequence=False):
     # TODO need to fit alignments to original sequence using ----- characters
     sequences = []

@@ -21,6 +21,7 @@ from model_angelo.utils.misc_utils import (
     write_relion_job_exit_status,
     abort_if_relion_abort,
 )
+from model_angelo.utils.fasta_utils import write_fasta_no_gaps
 
 
 def add_args(parser):
@@ -150,13 +151,23 @@ def main(parsed_args):
 
     pruned_hmms = [k for k in hmms if k[1].alphabet == alphabet]
 
-    with pyhmmer.easel.SequenceFile(
-        parsed_args.fasta_path, 
-        alphabet=alphabet,
-        format=None,  # This is to allow it to ignore gaps 
-        digital=True
-    ) as sf:
-        digital_sequences = sf.read_block()
+    try:
+        with pyhmmer.easel.SequenceFile(
+            parsed_args.fasta_path, 
+            alphabet=alphabet,
+            digital=True
+        ) as sf:
+            digital_sequences = sf.read_block()
+    except ValueError:
+        # Write without gaps and try again
+        new_fasta_path = write_fasta_no_gaps(parsed_args.fasta_path)
+        with pyhmmer.easel.SequenceFile(
+            new_fasta_path, 
+            alphabet=alphabet,
+            digital=True
+        ) as sf:
+            digital_sequences = sf.read_block()
+
 
     all_hits = pyhmmer.hmmer.hmmsearch(
         [hmm for name,hmm in pruned_hmms],
