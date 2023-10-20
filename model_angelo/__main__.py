@@ -7,6 +7,7 @@ ModelAngelo: Automated Cryo-EM model building toolkit
 
 def main():
     import argparse
+    import warnings
 
     import model_angelo
 
@@ -18,6 +19,9 @@ def main():
         action="version",
         version=f"ModelAngelo {model_angelo.__version__}",
     )
+
+    # Suppress some warnings
+    warnings.filterwarnings("ignore", message="^.* socket cannot be initialized.*$")
 
     import model_angelo.apps.build
     import model_angelo.apps.build_no_seq
