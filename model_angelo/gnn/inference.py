@@ -125,6 +125,7 @@ def infer(args):
 
     # Get an initial set of pointers to neighbours for more efficient inference
     init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
+    num_pred_residues = 50 if num_res > args.crop_length else num_res
     using_cache = False
     with MultiGPUWrapper(model_definition_path, state_dict_path, device_names, args.fp16) as wrapper:
         while residues_left > 0:
@@ -152,6 +153,7 @@ def infer(args):
                         data[device_id]["indices"],
                         protein,
                         offset=i * args.crop_length,
+                        num_pred_residues=num_pred_residues,
                     )
             residues_left = (
                 num_res
