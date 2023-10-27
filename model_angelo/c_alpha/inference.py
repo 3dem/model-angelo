@@ -164,7 +164,6 @@ def infer(args):
         grid_np, voxel_size, global_origin = make_model_angelo_grid(
             np.copy(grid_np), voxel_size, global_origin, target_voxel_size=1.5
         )
-
     # grid_np = remove_dust_from_volume(grid_np)
     if args.bfactor != 0:
         grid_np = apply_bfactor_to_map(

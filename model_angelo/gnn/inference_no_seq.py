@@ -85,8 +85,8 @@ def infer(args):
     pbar = tqdm.tqdm(total=total_steps, file=sys.stdout, position=0, leave=True)
 
     # Get an initial set of pointers to neighbours for more efficient inference
-    init_neighbours = get_neighbour_idxs(protein, k=args.crop_length // 4)
     num_pred_residues = 50 if num_res > args.crop_length else num_res
+    init_neighbours = get_neighbour_idxs(protein, k=num_pred_residues)
     with MultiGPUWrapper(model_definition_path, state_dict_path, device_names, args.fp16) as wrapper:
         while residues_left > 0:
             idxs = argmin_random(
