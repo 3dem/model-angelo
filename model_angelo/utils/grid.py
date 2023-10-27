@@ -250,6 +250,7 @@ def make_power_spectra(ft_size, voxel_size, bfac):
 def make_cubic(box):
     bz = np.array(box.shape)
     s = np.max(box.shape)
+    s = max(s, 128)
     s += s % 2
     if np.all(box.shape == s):
         return box, np.zeros(3, dtype=np.int64), bz
