@@ -131,7 +131,7 @@ You will have the model as an mmCIF.
 
 Now there are also HMM profiles for each chain in HMMER3 format here: `output/hmm_profiles`.
 
-To do a sequence search for chain A (for example), you should first download a database that will include your organism's proteins, such as the [human genome](https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh38_latest/refseq_identifiers/GRCh38_latest_genomic.fna.gz). Then, you can run
+To do a sequence search, you should first download a fasta file that includes the proteins you are interested in your organism's proteins, such as the [human genome](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000005640/UP000005640_9606.fasta.gz). Then, you can run
 ```
 model_angelo hmm_search --i output --f PATH_TO_DB --o hmm_output
 ```
