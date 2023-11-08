@@ -51,7 +51,7 @@ fi
 
 python_exc="${CONDA_PREFIX}/bin/python"
 
-$python_exc -mpip install -e .
+$python_exc -mpip install .
 
 if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
   echo "Writing weights to ${TORCH_HOME}"
