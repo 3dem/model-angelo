@@ -1,3 +1,5 @@
+#!/bin/bash
+ENVNAME=model_angelo
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
@@ -5,11 +7,17 @@ while test $# -gt 0; do
       echo "Make sure you have set the TORCH_HOME environment variable to a suitable public location (if installing on a cluster)"
       echo "-h, --help                   simple help and instructions"
       echo "-w, --download-weights       use if you want to also download the weights"
+      echo "-n, --name                   name of model-angelo conda environment, default: model_angelo"
       exit 0
       ;;
     -w|--download-weights)
       echo "Downloading weights as well because flag -w or --download-weights was specified"
       DOWNLOAD_WEIGHTS=1
+      shift
+      ;;
+    -n|--name)
+      ENVNAME="$2"
+      echo $ENVNAME
       shift
       ;;
   esac
@@ -23,20 +31,20 @@ fi
 
 is_conda_model_angelo_installed=$(conda info --envs | grep model_angelo -c)
 if [[ "${is_conda_model_angelo_installed}" == "0" ]];then
-  conda create -n model_angelo python=3.10 -y;
+  conda create -n $ENVNAME python=3.10 -y;
 fi
 
 torch_home_path="${TORCH_HOME}"
 
 if [[ `command -v activate` ]]
 then
-  source `which activate` model_angelo
+  source `which activate` $ENVNAME
 else
-  conda activate model_angelo
+  conda activate $ENVNAME
 fi
   
 # Check to make sure model_angelo is activated
-if [[ "${CONDA_DEFAULT_ENV}" != "model_angelo" ]]
+if [[ "${CONDA_DEFAULT_ENV}" != $ENVNAME ]]
 then
   echo "Could not run conda activate model_angelo, please check the errors";
   exit 1;
