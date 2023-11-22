@@ -196,8 +196,11 @@ def main(parsed_args):
             gnn_infer_args.refine = False
 
             if i == total_gnn_rounds - 1:
-                gnn_infer_args.aggressive_pruning = True
-
+                if parsed_args.config_path is None:
+                    gnn_infer_args.aggressive_pruning = True
+            else:
+                gnn_infer_args.aggressive_pruning = False
+            
             logger.info(
                 f"GNN model refinement round {i + 1} with args: {gnn_infer_args}"
             )
