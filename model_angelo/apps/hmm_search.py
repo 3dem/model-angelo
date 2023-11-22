@@ -219,6 +219,8 @@ def main(parsed_args):
     # Keep track of unique chains by target name with the lowest E-value and store separately
     min_evalue_indices = hits_df.groupby('target_name')['E-value'].idxmin()
     filtered_df = hits_df.loc[min_evalue_indices]
+    # Sort hits by lowest E-value to highest
+    filtered_df.sort_values(by=["E-value"], inplace=True)
     filtered_df.to_csv(os.path.join(parsed_args.output_dir, "best_hits.csv"), index=False)
 
     print("-" * 70)
