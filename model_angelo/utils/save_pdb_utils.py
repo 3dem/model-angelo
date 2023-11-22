@@ -28,8 +28,8 @@ SEQUENCE_BASED_CHAIN_IDS = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 class ModelAngeloMMCIFIO(MMCIFIO):
     def _save_dict(self, out_file):
-        auth_seq_id = deepcopy(self.dic["_atom_site.label_seq_id"])
-        label_seq_id = deepcopy(self.dic["_atom_site.auth_seq_id"])
+        label_seq_id = deepcopy(self.dic["_atom_site.label_seq_id"])
+        auth_seq_id = deepcopy(self.dic["_atom_site.auth_seq_id"])
         self.dic["_atom_site.label_seq_id"] = label_seq_id
         self.dic["_atom_site.auth_seq_id"] = auth_seq_id
         return super()._save_dict(out_file)
