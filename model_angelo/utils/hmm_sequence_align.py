@@ -362,8 +362,8 @@ def sort_chains(
     unique_seqs = np.unique(match_to_sequence.sequence_idxs)
 
     og_chain_lens = np.array([len(c) for c in chains])
-    og_chain_starts = np.array([c[0] for c in chains])
-    og_chain_ends = np.array([c[-1] for c in chains])
+    og_chain_starts = np.array([c[0] for c in chains], dtype=np.int32)
+    og_chain_ends = np.array([c[-1] for c in chains], dtype=np.int32)
 
     chain_starts = og_chain_starts.copy()
     chain_ends = og_chain_ends.copy()
