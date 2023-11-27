@@ -150,6 +150,7 @@ def main(parsed_args):
 
     os.makedirs(parsed_args.output_dir, exist_ok=True)
 
+    hmms = [(k.split("_")[0], v) for k, v in hmms]
     pruned_hmms = [k for k in hmms if k[1].alphabet == alphabet]
 
     try:

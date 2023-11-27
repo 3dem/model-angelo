@@ -234,7 +234,15 @@ def main(parsed_args):
             gnn_infer_args.write_hmm_profiles = False
             gnn_infer_args.refine = False
 
-            gnn_infer_args.aggressive_pruning = True
+            if i == total_gnn_rounds - 1:
+                if parsed_args.config_path is None:
+                    gnn_infer_args.aggressive_pruning = True
+                else:
+                    gnn_infer_args.aggressive_pruning = config["gnn_infer_args"][
+                        "aggressive_pruning"
+                    ]
+            else:
+                gnn_infer_args.aggressive_pruning = False
 
             logger.info(
                 f"GNN model refinement round {i + 1} with args: {gnn_infer_args}"
