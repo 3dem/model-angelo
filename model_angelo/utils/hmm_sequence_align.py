@@ -452,8 +452,8 @@ def sort_chains(
             tmp_chain_ids.append(new_chain_id)
             new_chain_ids = tmp_chain_ids
 
-            chain_starts = np.array([c[0] for c in chains])
-            chain_ends = np.array([c[-1] for c in chains])
+            chain_starts = np.array([c[0] for c in chains], dtype=np.int32)
+            chain_ends = np.array([c[-1] for c in chains], dtype=np.int32)
 
             spent_starts.add(chain_start_match)
             spent_ends.add(chain_end_match)

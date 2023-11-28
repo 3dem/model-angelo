@@ -434,8 +434,8 @@ def flood_fill(
 
         b_factors_copy[idx] = -1
 
-    og_chain_starts = np.array([c[0] for c in chains])
-    og_chain_ends = np.array([c[-1] for c in chains])
+    og_chain_starts = np.array([c[0] for c in chains], dtype=np.int32)
+    og_chain_ends = np.array([c[-1] for c in chains], dtype=np.int32)
 
     chain_starts = og_chain_starts.copy()
     chain_ends = og_chain_ends.copy()
@@ -488,8 +488,8 @@ def flood_fill(
                 tmp_chains.append(new_chain)
                 chains = tmp_chains
 
-                chain_starts = np.array([c[0] for c in chains])
-                chain_ends = np.array([c[-1] for c in chains])
+                chain_starts = np.array([c[0] for c in chains], dtype=np.int32)
+                chain_ends = np.array([c[-1] for c in chains], dtype=np.int32)
 
                 spent_starts.add(chain_start_match)
                 spent_ends.add(chain_end_match)

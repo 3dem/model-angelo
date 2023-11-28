@@ -39,7 +39,7 @@ def add_args(parser):
     """
     Need to remove model_bundle_path as a positional argument. It should not be required.
     It should normally reside in ~/.cache/model_angelo/bundle or something.
-    """>>>>>>> main
+    """
     main_args = parser.add_argument_group(
         "Main arguments",
         description="These are the only arguments a typical user will need.",
@@ -180,13 +180,13 @@ def main(parsed_args):
 
         # Try to open FASTA       --------------------------------------------------------------------------------------
         from model_angelo.utils.fasta_utils import read_fasta
-
-        # if not is_valid_fasta_ending(parsed_args.protein_fasta):
-        #     raise RuntimeError(
-        #         f"File {parsed_args.protein_fasta} is not a supported file format."
-        #     )
-
         new_protein_fasta_path = write_fasta_only_aa(parsed_args.protein_fasta)
+        try:
+            read_fasta(new_protein_fasta_path)
+        except Exception as e:
+            raise RuntimeError(
+                f"File {parsed_args.protein_fasta} is not a valid FASTA file."
+            ) from e
 
         # Run C-alpha inference ----------------------------------------------------------------------------------------
         print("--------------------- Initial C-alpha prediction ---------------------")
