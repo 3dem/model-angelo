@@ -230,7 +230,7 @@ def main(parsed_args):
         shutil.rmtree(hmm_profiles_dst, ignore_errors=True)
         os.replace(hmm_profiles_src, hmm_profiles_dst)
 
-        if not parsed_args.keep_intermediate_files:
+        if not parsed_args.keep_intermediate_results:
             for directory in os.listdir(parsed_args.output_dir):
                 if directory.startswith("gnn_output_round_") or directory == "see_alpha_output":
                     shutil.rmtree(os.path.join(parsed_args.output_dir, directory))

@@ -278,7 +278,7 @@ def main(parsed_args):
         os.replace(pruned_es_file_src, pruned_es_file_dst)
         os.replace(raw_es_file_src, raw_es_file_dst)
         
-        if not parsed_args.keep_intermediate_files:
+        if not parsed_args.keep_intermediate_results:
             for directory in os.listdir(parsed_args.output_dir):
                 if directory.startswith("gnn_output_round_") or directory == "see_alpha_output":
                     shutil.rmtree(os.path.join(parsed_args.output_dir, directory))
