@@ -75,12 +75,13 @@ def chains_to_atoms(
         .numpy()
     )
 
-    (chain_all_atoms, chain_atom_mask, chain_bfactors, chain_aa_probs,) = (
-        [],
-        [],
-        [],
-        [],
-    )
+    (
+        chain_all_atoms, 
+        chain_atom_mask, 
+        chain_bfactors, 
+        chain_entropy_scores, 
+        chain_aa_probs,
+    ) = ([], [], [], [], [])
     # Everything below is in the order of chains
     for chain_id in range(len(chains)):
         chain_id_backbone_affine = backbone_affine[chains[chain_id]]
@@ -107,11 +108,15 @@ def chains_to_atoms(
             )
             * 100
         )
+        chain_entropy_scores.append(
+            final_results["entropy_score"][existence_mask][chains[chain_id]]
+        )
         chain_aa_probs.append(aa_probs[chains[chain_id]])
     return (
         chain_all_atoms,
         chain_atom_mask,
         chain_bfactors,
+        chain_entropy_scores,
         chain_aa_probs,
     )
 
@@ -182,6 +187,12 @@ def final_results_to_cif(
     backbone_affine = backbone_affine[existence_mask]
     final_results["aa_logits"][prot_mask][..., num_prot:] = -100
     final_results["aa_logits"][~prot_mask][..., :num_prot] = -100
+    # Calculate entropy score
+    exp_logits = np.exp(final_results["aa_logits"])
+    logit_probs = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
+    aa_entropy = -np.sum(final_results["aa_logits"] * logit_probs, axis=-1)
+    entropy_clipped = np.clip(aa_entropy, -8, -2)
+    final_results["entropy_score"] = - (2 + entropy_clipped) / 6
     final_results["aa_logits"] /= temperature
 
     torsion_angles = select_torsion_angles(
@@ -307,6 +318,7 @@ def final_results_to_cif(
             chain_all_atoms,
             chain_atom_mask,
             chain_bfactors,
+            chain_entropy_scores,
             chain_aa_probs,
         ) = chains_to_atoms(
             final_results, fix_chains_output, backbone_affine, existence_mask
@@ -320,6 +332,13 @@ def final_results_to_cif(
             chain_atom_mask,
             cif_path.replace(".cif", "_fixed_aa.cif"),
             bfactors=chain_bfactors,
+        )
+        chain_atom14_to_cif(
+            fix_chains_output.best_match_output.new_sequences,
+            chain_all_atoms,
+            chain_atom_mask,
+            cif_path.replace(".cif", "_fixed_aa_entropy_scores.cif"),
+            bfactors=chain_entropy_scores,
         )
 
         write_chain_report(
@@ -343,6 +362,7 @@ def final_results_to_cif(
             chain_all_atoms,
             chain_atom_mask,
             chain_bfactors,
+            chain_entropy_scores,
             chain_aa_probs,
         ) = chains_to_atoms(
             final_results, fix_chains_output, backbone_affine, existence_mask
@@ -354,6 +374,18 @@ def final_results_to_cif(
             chain_atom_mask,
             cif_path.replace(".cif", "_fixed_aa_pruned.cif"),
             bfactors=chain_bfactors,
+            sequence_idxs=fix_chains_output.best_match_output.sequence_idxs,
+            res_idxs=fix_chains_output.best_match_output.residue_idxs
+            if aggressive_pruning
+            else None,
+        )
+        
+        chain_atom14_to_cif(
+            fix_chains_output.best_match_output.new_sequences,
+            chain_all_atoms,
+            chain_atom_mask,
+            cif_path.replace(".cif", "_fixed_aa_pruned_entropy_scores.cif"),
+            bfactors=chain_entropy_scores,
             sequence_idxs=fix_chains_output.best_match_output.sequence_idxs,
             res_idxs=fix_chains_output.best_match_output.residue_idxs
             if aggressive_pruning
