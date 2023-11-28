@@ -109,7 +109,7 @@ def chains_to_atoms(
             * 100
         )
         chain_entropy_scores.append(
-            final_results["entropy_score"][existence_mask][chains[chain_id]]
+            final_results["entropy_score"][existence_mask][chains[chain_id]] * 100
         )
         chain_aa_probs.append(aa_probs[chains[chain_id]])
     return (
