@@ -191,8 +191,9 @@ def final_results_to_cif(
     exp_logits = np.exp(final_results["aa_logits"])
     logit_probs = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
     aa_entropy = -np.sum(final_results["aa_logits"] * logit_probs, axis=-1)
-    entropy_clipped = np.clip(aa_entropy, -8, -2)
-    final_results["entropy_score"] = - (2 + entropy_clipped) / 6
+    final_results["entropy_score"] = local_confidence_score_sigmoid(
+        - aa_entropy, best_value=5.0, worst_value=2.0, mid_point=3.0,
+    )
     final_results["aa_logits"] /= temperature
 
     torsion_angles = select_torsion_angles(
@@ -337,7 +338,7 @@ def final_results_to_cif(
             fix_chains_output.best_match_output.new_sequences,
             chain_all_atoms,
             chain_atom_mask,
-            cif_path.replace(".cif", "_fixed_aa_entropy_scores.cif"),
+            cif_path.replace(".cif", "_fixed_aa_entropy_score.cif"),
             bfactors=chain_entropy_scores,
         )
 
@@ -384,7 +385,7 @@ def final_results_to_cif(
             fix_chains_output.best_match_output.new_sequences,
             chain_all_atoms,
             chain_atom_mask,
-            cif_path.replace(".cif", "_fixed_aa_pruned_entropy_scores.cif"),
+            cif_path.replace(".cif", "_fixed_aa_pruned_entropy_score.cif"),
             bfactors=chain_entropy_scores,
             sequence_idxs=fix_chains_output.best_match_output.sequence_idxs,
             res_idxs=fix_chains_output.best_match_output.residue_idxs

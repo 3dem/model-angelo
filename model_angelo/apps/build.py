@@ -256,7 +256,7 @@ def main(parsed_args):
 
         pruned_file_src = gnn_output.replace("output.cif", "output_fixed_aa_pruned.cif")
         raw_file_src = gnn_output.replace("output.cif", "output_fixed_aa.cif")
-
+        
         name = os.path.basename(parsed_args.output_dir)
         pruned_file_dst = os.path.join(parsed_args.output_dir, f"{name}.cif")
         raw_file_dst = os.path.join(parsed_args.output_dir, f"{name}_raw.cif")
@@ -264,18 +264,48 @@ def main(parsed_args):
         os.replace(pruned_file_src, pruned_file_dst)
         os.replace(raw_file_src, raw_file_dst)
 
+        # Entropy files
+        os.makedirs(
+            os.path.join(parsed_args.output_dir, "entropy_scores"),
+            exist_ok=True,
+        )
+        pruned_es_file_src = gnn_output.replace("output.cif", "output_fixed_aa_pruned_entropy_score.cif")
+        raw_es_file_src = gnn_output.replace("output.cif", "output_fixed_aa_entropy_score.cif")
+        
+        pruned_es_file_dst = os.path.join(parsed_args.output_dir, "entropy_scores", f"{name}.cif")
+        raw_es_file_dst = os.path.join(parsed_args.output_dir, "entropy_scores", f"{name}_raw.cif")
+        
+        os.replace(pruned_es_file_src, pruned_es_file_dst)
+        os.replace(raw_es_file_src, raw_es_file_dst)
+        
+        if not parsed_args.keep_intermediate_files:
+            for directory in os.listdir(parsed_args.output_dir):
+                if directory.startswith("gnn_output_round_") or directory == "see_alpha_output":
+                    shutil.rmtree(os.path.join(parsed_args.output_dir, directory))
+
         print("-" * 70)
         print("ModelAngelo build has been completed successfully!")
         print("-" * 70)
         print(f"You can find your output mmCIF file here: {pruned_file_dst}")
         print("-" * 70)
         print(
-            f"The raw output without pruning might be useful to show "
+            f"The raw output without pruning might be useful to show \n"
             f"some parts of the map that may be modelled, \n"
             f"but could not be automatically modelled. \n"
             f"However, the amino acid classifications are generally \n"
             f"not going to be correct. \n"
             f"You can find that here: {raw_file_dst}"
+        )
+        print("-" * 70)
+        print(
+            f"(Experimental) We now have CIF files with entropy scores \n"
+            f"for each residue. These are useful for identifying regions \n"
+            f"of the map that have lower confidence in the residue type \n"
+            f"(i.e. amino-acid or nucleotide base) identity. \n"
+            f"These files are named the same as the pruned and raw files, \n"
+            f"however the bfactor column has the new entropy score instead \n"
+            f"of the ModelAngelo predicted confidence, which is backbone-based. \n"
+            f"These files are in: {os.path.join(parsed_args.output_dir, 'entropy_scores')}"
         )
         print("-" * 70)
         print("Enjoy!")
