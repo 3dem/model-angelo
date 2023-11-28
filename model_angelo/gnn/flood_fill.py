@@ -208,6 +208,7 @@ def final_results_to_cif(
         )
         * 100
     )
+    entropy_scores = final_results["entropy_score"][existence_mask] * 100
 
     if refine:
         protein.atomc_positions = all_atoms
@@ -250,6 +251,13 @@ def final_results_to_cif(
             [atom_mask[c] for c in chains],
             cif_path,
             bfactors=[bfactors[c] for c in chains],
+        )
+        chain_atom14_to_cif(
+            [aatype[c] for c in chains],
+            [all_atoms[c] for c in chains],
+            [atom_mask[c] for c in chains],
+            cif_path.replace(".cif", "_entropy_score.cif"),
+            bfactors=[entropy_scores[c] for c in chains],
         )
 
     chain_aa_logits = [final_results["aa_logits"][existence_mask][c] for c in chains]

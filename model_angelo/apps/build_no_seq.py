@@ -222,7 +222,7 @@ def main(parsed_args):
         os.replace(raw_file_src, raw_file_dst)
 
         # Entropy file
-        raw_es_file_src = gnn_output.replace("output.cif", "output_fixed_aa_entropy_score.cif")
+        raw_es_file_src = gnn_output.replace("output.cif", "output_entropy_score.cif")
         raw_es_file_dst = os.path.join(parsed_args.output_dir, f"{name}_entropy_score.cif")
         
         os.replace(raw_es_file_src, raw_es_file_dst)
