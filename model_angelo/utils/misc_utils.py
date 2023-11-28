@@ -165,3 +165,13 @@ def check_available_memory():
         mem > 10,
         "Not enough memory available. Please allocate at least 10GB of memory."
     )
+
+def upper_and_lower_case_annotation(string: str):
+    output = []
+    for char in string:
+        if char.isalpha():
+            if char.isupper():
+                output.append("u")
+            else:
+                output.append("l")
+    return string + "_" + "".join(output)

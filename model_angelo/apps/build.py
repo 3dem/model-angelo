@@ -39,7 +39,7 @@ def add_args(parser):
     """
     Need to remove model_bundle_path as a positional argument. It should not be required.
     It should normally reside in ~/.cache/model_angelo/bundle or something.
-    """
+    """>>>>>>> main
     main_args = parser.add_argument_group(
         "Main arguments",
         description="These are the only arguments a typical user will need.",
@@ -234,8 +234,15 @@ def main(parsed_args):
             gnn_infer_args.write_hmm_profiles = False
             gnn_infer_args.refine = False
 
-            if parsed_args.config_path is None:
-                gnn_infer_args.aggressive_pruning = True
+            if i == total_gnn_rounds - 1:
+                if parsed_args.config_path is None:
+                    gnn_infer_args.aggressive_pruning = True
+                else:
+                    gnn_infer_args.aggressive_pruning = config["gnn_infer_args"][
+                        "aggressive_pruning"
+                    ]
+            else:
+                gnn_infer_args.aggressive_pruning = False
 
             logger.info(
                 f"GNN model refinement round {i + 1} with args: {gnn_infer_args}"

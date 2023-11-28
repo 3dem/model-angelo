@@ -186,7 +186,12 @@ def main(parsed_args):
         gnn_infer_args.write_hmm_profiles = parsed_args.write_hmm_profiles
         gnn_infer_args.refine = True
 
-        gnn_infer_args.aggressive_pruning = True
+        if parsed_args.config_path is None:
+            gnn_infer_args.aggressive_pruning = True
+        else:
+            gnn_infer_args.aggressive_pruning = config["gnn_infer_args"][
+                "aggressive_pruning"
+            ]
 
         logger.info(f"GNN model refinement round with args: {gnn_infer_args}")
         gnn_output = gnn_infer(gnn_infer_args)
@@ -217,7 +222,7 @@ def main(parsed_args):
             print(
                 f"The HMM profiles are available in the directory: {hmm_profiles_dst}\n"
                 f"They are named according to the chains found in {file_dst}\n"
-                f"For example, chain A's profile is in {os.path.join(hmm_profiles_dst, 'A.hmm')}"
+                f"For example, chain A's profile is in {os.path.join(hmm_profiles_dst, 'A_u.hmm')}"
             )
             print(
                 f"You can use model_angelo hmm_search to search these HMM profiles against a database"

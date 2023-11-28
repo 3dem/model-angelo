@@ -22,6 +22,7 @@ from model_angelo.utils.misc_utils import (
     abort_if_relion_abort,
 )
 from model_angelo.utils.fasta_utils import write_fasta_no_gaps
+from model_angelo.utils.misc_utils import upper_and_lower_case_annotation
 
 
 def add_args(parser):
@@ -149,6 +150,7 @@ def main(parsed_args):
 
     os.makedirs(parsed_args.output_dir, exist_ok=True)
 
+    hmms = [(k.split("_")[0], v) for k, v in hmms]
     pruned_hmms = [k for k in hmms if k[1].alphabet == alphabet]
 
     try:
@@ -170,7 +172,7 @@ def main(parsed_args):
 
 
     all_hits = pyhmmer.hmmer.hmmsearch(
-        [hmm for name,hmm in pruned_hmms],
+        [hmm for name, hmm in pruned_hmms],
         digital_sequences,
         F1=parsed_args.F1,
         F2=parsed_args.F2,
@@ -188,9 +190,10 @@ def main(parsed_args):
         "description": [],
     }
     for (hits, name) in tqdm.tqdm(zip(all_hits, [name for name, hmm in pruned_hmms])):
+        annotation = upper_and_lower_case_annotation(name)
         if parsed_args.pipeline_control:
             abort_if_relion_abort(parsed_args.output_dir)
-        with open(os.path.join(parsed_args.output_dir, f"{name}.hhr"), "wb") as f:
+        with open(os.path.join(parsed_args.output_dir, f"{annotation}.hhr"), "wb") as f:
             hits.write(f)
         for hit in hits:
             if hit.evalue < parsed_args.E:
@@ -206,7 +209,7 @@ def main(parsed_args):
                     pass
         try:
             msa = hits.to_msa(alphabet)
-            with open(os.path.join(parsed_args.output_dir, f"{name}.a2m"), "wb") as f:
+            with open(os.path.join(parsed_args.output_dir, f"{annotation}.a2m"), "wb") as f:
                 msa.write(f, "a2m")
         except:
             pass
@@ -234,7 +237,7 @@ def main(parsed_args):
     if len(pruned_hmms) > 0:
         print(
             f"For example, for chain {pruned_hmms[0][0]}, the result is in "
-            f"{os.path.join(parsed_args.output_dir, pruned_hmms[0][0] + '.hhr')}"
+            f"{os.path.join(parsed_args.output_dir, upper_and_lower_case_annotation(pruned_hmms[0][0]) + '.hhr')}"
         )
     print(f"You can find a summary of all hits in {os.path.join(parsed_args.output_dir, 'all_hits.csv')}")
     print(f"You can find a summary of the best hits in {os.path.join(parsed_args.output_dir, 'best_hits.csv')}")

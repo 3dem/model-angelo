@@ -1,6 +1,7 @@
 import os
 from collections import namedtuple
 from typing import Dict, Callable, List
+from model_angelo.utils.misc_utils import upper_and_lower_case_annotation
 
 import numpy as np
 import torch
@@ -264,23 +265,25 @@ def final_results_to_cif(
                 if protein.chain_id is None
                 else protein.chain_id[i]
             )
+            # Because of stupid Windows...
+            annotation = upper_and_lower_case_annotation(chain_name)
             if np.any(chain_prot_mask[i]):
                 dump_aa_logits_to_hmm_file(
                     chain_aa_logits,
-                    os.path.join(hmm_dir_path, f"{chain_name}.hmm"),
+                    os.path.join(hmm_dir_path, f"{annotation}.hmm"),
                     name=f"{chain_name}",
                     alphabet_type="amino",
                 )
             else:
                 dump_aa_logits_to_hmm_file(
                     chain_aa_logits,
-                    os.path.join(hmm_dir_path, f"{chain_name}_rna.hmm"),
+                    os.path.join(hmm_dir_path, f"{annotation}_rna.hmm"),
                     name=f"{chain_name}",
                     alphabet_type="RNA",
                 )
                 dump_aa_logits_to_hmm_file(
                     chain_aa_logits,
-                    os.path.join(hmm_dir_path, f"{chain_name}_dna.hmm"),
+                    os.path.join(hmm_dir_path, f"{annotation}_dna.hmm"),
                     name=f"{chain_name}",
                     alphabet_type="DNA",
                 )
