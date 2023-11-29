@@ -221,13 +221,35 @@ def main(parsed_args):
 
         os.replace(raw_file_src, raw_file_dst)
 
+        # Entropy file
+        raw_es_file_src = gnn_output.replace("output.cif", "output_entropy_score.cif")
+        raw_es_file_dst = os.path.join(parsed_args.output_dir, f"{name}_entropy_score.cif")
+        
+        os.replace(raw_es_file_src, raw_es_file_dst)
+
         shutil.rmtree(hmm_profiles_dst, ignore_errors=True)
         os.replace(hmm_profiles_src, hmm_profiles_dst)
+
+        if not parsed_args.keep_intermediate_results:
+            for directory in os.listdir(parsed_args.output_dir):
+                if directory.startswith("gnn_output_round_") or directory == "see_alpha_output":
+                    shutil.rmtree(os.path.join(parsed_args.output_dir, directory))
 
         print("-" * 70)
         print("ModelAngelo build_no_seq has been completed successfully!")
         print("-" * 70)
         print(f"You can find your output mmCIF file here: {raw_file_dst}")
+        print("-" * 70)
+        print(
+            f"(Experimental) We now have a CIF file output with entropy scores \n"
+            f"for each residue. These are useful for identifying regions \n"
+            f"of the map that have lower confidence in the residue type \n"
+            f"(i.e. amino-acid or nucleotide base) identity. \n"
+            f"This is the same model as the one above, but the bfactor column \n" 
+            f"has the new entropy score instead of the ModelAngelo predicted confidence,\n"
+            f"which is backbone-based."
+            f"This file is here: {raw_es_file_dst}"
+        )
         print("-" * 70)
         print(
             f"The HMM profiles are available in the directory: {hmm_profiles_dst}\n"

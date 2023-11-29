@@ -175,12 +175,6 @@ def infer(args):
     final_results = get_final_nn_results(collated_results)
     output_path = os.path.join(args.output_dir, "output.cif")
 
-    # For debugging eyes only
-    pickle_dump(final_results, os.path.join(args.output_dir, "final_results.pkl"))
-    dump_protein_to_prot(protein, os.path.join(args.output_dir, "protein.prot"))
-    pickle_dump(rna_sequences, os.path.join(args.output_dir, "rna_sequences.pkl"))
-    pickle_dump(dna_sequences, os.path.join(args.output_dir, "dna_sequences.pkl"))
-
     final_results_to_cif(
         final_results,
         protein=protein,
