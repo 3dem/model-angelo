@@ -127,11 +127,12 @@ def write_fasta_only_aa(fasta_input_path: str):
     removed_residues = False
     with open(new_file_name, "w") as f:
         for record in SeqIO.parse(fasta_input_path, "fasta"):
-            f.write(f">{record.description}\n")
             old_seq = str(record.seq)
             new_seq = remove_non_residue(old_seq)
             removed_residues = removed_residues or (old_seq != new_seq)
-            f.write(new_seq + "\n")
+            if len(new_seq) > 0:
+                f.write(f">{record.description}\n")
+                f.write(new_seq + "\n")
     if not removed_residues:
         os.remove(new_file_name)
         new_file_name = fasta_input_path
