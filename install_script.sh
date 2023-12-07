@@ -17,8 +17,8 @@ while test $# -gt 0; do
       ;;
     -n|--name)
       ENVNAME="$2"
-      echo $ENVNAME
-      shift
+      echo "Environment Name is: $ENVNAME"
+      shift 2
       ;;
   esac
 done
@@ -29,7 +29,7 @@ if [ -z "${TORCH_HOME}" ] && [ -n "${DOWNLOAD_WEIGHTS}" ]; then
   exit 1;
 fi
 
-is_conda_model_angelo_installed=$(conda info --envs | grep model_angelo -c)
+is_conda_model_angelo_installed=$(conda info --envs | grep $ENVNAME -c)
 if [[ "${is_conda_model_angelo_installed}" == "0" ]];then
   conda create -n $ENVNAME python=3.10 -y;
 fi
