@@ -46,7 +46,7 @@ fi
 # Check to make sure model_angelo is activated
 if [[ "${CONDA_DEFAULT_ENV}" != $ENVNAME ]]
 then
-  echo "Could not run conda activate model_angelo, please check the errors";
+  echo "Could not run conda activate $ENVNAME, please check the errors";
   exit 1;
 fi
 
