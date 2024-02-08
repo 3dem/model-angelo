@@ -131,7 +131,20 @@ You will have the model as an mmCIF.
 
 Now there are also HMM profiles for each chain in HMMER3 format here: `output/hmm_profiles`.
 
-To do a sequence search, you should first download a fasta file that includes the proteins you are interested in your organism's proteins, such as the [human genome](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000005640/UP000005640_9606.fasta.gz). Then, you can run
+To do a sequence search, you should first download a fasta file that includes your proteins of interest. Often, this will be the proteome of the organism in question. Here are some example proteomes in a `FASTA` format:
+
+<div align="center">
+	
+| Organism | Link |
+| -------- | ---- |
+| *E.coli* (K12) | [Download](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Bacteria/UP000000625/UP000000625_83333.fasta.gz) |
+| Human | [Download](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000005640/UP000005640_9606.fasta.gz) |
+| *Saccharomyces cerevisiae* | [Download](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000002311/UP000002311_559292.fasta.gz) |
+
+</div>
+
+After downloading this file, you will need to uncompress it with `gunzip`. Then, you can run
+
 ```
 model_angelo hmm_search --i output --f PATH_TO_DB --o hmm_output
 ```
