@@ -113,19 +113,23 @@ def split_fasta_file_into_chains(fasta_path, out_dir):
             i += 1
 
 
-def write_fasta_no_gaps(fasta_input_path: str):
-    new_file_name = os.path.splitext(fasta_input_path)[0] + "_no_gaps.fasta"
-    with open(new_file_name, "w") as f:
+def write_fasta_no_gaps(fasta_input_path: str, output_dir: str):
+    file_name = os.path.basename(fasta_input_path)
+    new_file_name = os.path.splitext(file_name)[0] + "_no_gaps.fasta"
+    new_file_path = os.path.join(output_dir, new_file_name)
+    with open(new_file_path, "w") as f:
         for record in SeqIO.parse(fasta_input_path, "fasta"):
             f.write(f">{record.description}\n")
             f.write(remove_gaps(str(record.seq)) + "\n")
-    return new_file_name
+    return new_file_path
 
 
-def write_fasta_only_aa(fasta_input_path: str):
-    new_file_name = os.path.splitext(fasta_input_path)[0] + "_only_aa.fasta"
+def write_fasta_only_aa(fasta_input_path: str, output_dir: str):
+    file_name = os.path.basename(fasta_input_path)
+    new_file_name = os.path.splitext(file_name)[0] + "_only_aa.fasta"
+    new_file_path = os.path.join(output_dir, new_file_name)
     removed_residues = False
-    with open(new_file_name, "w") as f:
+    with open(new_file_path, "w") as f:
         for record in SeqIO.parse(fasta_input_path, "fasta"):
             old_seq = str(record.seq)
             new_seq = remove_non_residue(old_seq)
@@ -134,13 +138,13 @@ def write_fasta_only_aa(fasta_input_path: str):
                 f.write(f">{record.description}\n")
                 f.write(new_seq + "\n")
     if not removed_residues:
-        os.remove(new_file_name)
-        new_file_name = fasta_input_path
+        os.remove(new_file_path)
+        new_file_path = fasta_input_path
     else:
         warnings.warn(
             f"File {fasta_input_path} contains non-protein residues. These were removed."
         )
-    return new_file_name
+    return new_file_path
 
 
 def parse_hhr(hhr_file_path, max_num_seq=np.inf, align_sequence=False):
