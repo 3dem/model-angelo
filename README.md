@@ -179,17 +179,14 @@ For further convenience, especially for large maps, we also now have two csv fil
   url={https://openreview.net/forum?id=65XDF_nwI61}
 }
 ``` 
-- **ModelAngelo 1.0**: Pre-print available on [bioRxiv](https://www.biorxiv.org/content/10.1101/2023.05.16.541002v1) . Bibtex:
+- **ModelAngelo 1.0**: Paper available in [Nature](https://www.nature.com/articles/s41586-024-07215-4) . Bibtex:
 ```
-@article{jamali2023automated,
+@article{jamali2024automated,
 	author = {Kiarash Jamali and Lukas Kall and Rui Zhang and Alan Brown and Dari Kimanius and Sjors Scheres},
 	title = {Automated model building and protein identification in cryo-EM maps},
-	elocation-id = {2023.05.16.541002},
-	year = {2023},
-	doi = {10.1101/2023.05.16.541002},
-	publisher = {Cold Spring Harbor Laboratory},
-	URL = {https://www.biorxiv.org/content/early/2023/05/16/2023.05.16.541002},
-	eprint = {https://www.biorxiv.org/content/early/2023/05/16/2023.05.16.541002.full.pdf},
-	journal = {bioRxiv}
+	year = {2024},
+	doi = {10.1038/s41586-024-07215-4},
+	URL = {https://www.nature.com/articles/s41586-024-07215-4},
+	journal = {Nature}
 }
 ```

@@ -33,7 +33,7 @@ setup(
         "matplotlib",
         "mrcfile",
         "pandas",
-        "fair-esm",
+        "fair-esm==1.0.3",
         "pyhmmer>=0.10.1",
         "loguru",
     ],
