@@ -76,7 +76,7 @@ def checkpoint_load_latest(
     log_dir: str, device: torch.DeviceObjType, match_model: bool = True, **kwargs
 ) -> int:
     checkpoint_to_load, step_num = find_latest_checkpoint(log_dir)
-    state_dicts = torch.load(checkpoint_to_load, map_location=device)
+    state_dicts = torch.load(checkpoint_to_load, map_location=device, weights_only=True)
     if match_model:
         warnings.warn(
             "In checkpoint_load_latest, match_model is set to True. "
