@@ -34,7 +34,8 @@ setup(
         "mrcfile",
         "pandas",
         "fair-esm==1.0.3",
-        "pyhmmer>=0.10.1",
+        "pyhmmer==0.7.1",
         "loguru",
+        "numpy==1.21.*",
     ],
 )
