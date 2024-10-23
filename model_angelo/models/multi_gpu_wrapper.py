@@ -60,7 +60,7 @@ def cast_dict_to_full(dictionary):
 
 def init_model(model_definition_path: str, state_dict_path: str, device: str) -> nn.Module:
     model = get_model_from_file(model_definition_path).eval()
-    checkpoint = torch.load(state_dict_path, map_location="cpu")
+    checkpoint = torch.load(state_dict_path, map_location="cpu", weights_only=True)
     if "model" not in checkpoint:
         model.load_state_dict(checkpoint)
     else:
