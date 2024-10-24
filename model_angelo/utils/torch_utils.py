@@ -571,4 +571,3 @@ def compile_if_possible(module: nn.Module) -> nn.Module:
         module = torch.compile(module)
     return module
 
-

@@ -9,6 +9,7 @@ from model_angelo.models.common_modules import (
     NormalizeStd,
     RegularBlock,
     ResBlock,
+    Upsample
 )
 
 
@@ -62,7 +63,7 @@ class Resnet(nn.Module):
             self.main_layers.append(pooling_class(2, stride=2))
         for i in range(self.num_blocks):
             if i == self.num_blocks - 2 and downsample_x:
-                self.main_layers.append(nn.Upsample(scale_factor=2))
+                self.main_layers.append(Upsample(scale_factor=2))
             self.main_layers.append(
                 ResBlock(
                     in_channels=self.g_width,
