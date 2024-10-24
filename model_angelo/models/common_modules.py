@@ -213,3 +213,15 @@ class LearnedGate(nn.Module):
     def forward(self, x, y):
         s = torch.sigmoid(self.gate)
         return s * x + (1 - s) * y
+
+
+class Upsample(nn.Module):
+    def __init__(self, scale_factor, mode="nearest"):
+        super().__init__()
+        self.scale_factor = scale_factor
+        self.mode = mode
+    
+    def forward(self, x):
+        return F.interpolate(
+            x, scale_factor=self.scale_factor, mode=self.mode
+        )

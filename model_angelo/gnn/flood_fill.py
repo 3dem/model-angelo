@@ -194,7 +194,6 @@ def final_results_to_cif(
     final_results["entropy_score"] = local_confidence_score_sigmoid(
         - aa_entropy, best_value=5.0, worst_value=2.0, mid_point=3.0,
     )
-    final_results["aa_logits"] /= temperature
 
     torsion_angles = select_torsion_angles(
         torch.from_numpy(final_results["pred_torsions"][existence_mask]), aatype=aatype

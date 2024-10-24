@@ -60,7 +60,7 @@ def cast_dict_to_full(dictionary):
 
 def init_model(model_definition_path: str, state_dict_path: str, device: str) -> nn.Module:
     model = get_model_from_file(model_definition_path).eval()
-    checkpoint = torch.load(state_dict_path, map_location="cpu")
+    checkpoint = torch.load(state_dict_path, map_location="cpu", weights_only=False)
     if "model" not in checkpoint:
         model.load_state_dict(checkpoint)
     else:
@@ -93,7 +93,7 @@ def run_inference(
                 inference_data = input_queue.get()
                 if inference_data.status != 1:
                     break
-                with torch.cuda.amp.autocast(dtype=dtype):
+                with torch.autocast(device_type="cuda", dtype=dtype):
                     output = model(**inference_data.data)
                 output = output.to("cpu").to(torch.float32)
                 output_queue.put(output)
@@ -155,7 +155,7 @@ class MultiGPUWrapper(nn.Module):
                     InferenceData(data=send_dict_to_device(data, device), status=1)
                 )
             else:
-                with torch.cuda.amp.autocast(dtype=self.dtype), torch.no_grad():
+                with torch.autocast(device_type="cuda", dtype=self.dtype), torch.no_grad():
                     output_list.append(
                         self.model(**send_dict_to_device(data, device)).to("cpu").to(torch.float32)
                     )
