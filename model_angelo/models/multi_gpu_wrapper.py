@@ -93,7 +93,7 @@ def run_inference(
                 inference_data = input_queue.get()
                 if inference_data.status != 1:
                     break
-                with torch.cuda.amp.autocast(dtype=dtype):
+                with torch.autocast(device_type="cuda", dtype=dtype):
                     output = model(**inference_data.data)
                 output = output.to("cpu").to(torch.float32)
                 output_queue.put(output)
@@ -155,7 +155,7 @@ class MultiGPUWrapper(nn.Module):
                     InferenceData(data=send_dict_to_device(data, device), status=1)
                 )
             else:
-                with torch.cuda.amp.autocast(dtype=self.dtype), torch.no_grad():
+                with torch.autocast(device_type="cuda", dtype=self.dtype), torch.no_grad():
                     output_list.append(
                         self.model(**send_dict_to_device(data, device)).to("cpu").to(torch.float32)
                     )
