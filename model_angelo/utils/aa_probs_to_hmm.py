@@ -156,33 +156,18 @@ def aa_log_probs_to_hmm_file(
             file_handle.write("        ")
             # m -> m
             file_handle.write(f"  {-math.log(mm): >.5f}")
-            if res_index < len(aa_log_probs) - 1:
-                # m->i
-                file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
-                # m->d
-                file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
-                # i->m
-                file_handle.write(f"  {-math.log(1. - delta): >.5f}")
-                # i->i
-                file_handle.write(f"  {-math.log(delta): >.5f}")
-                # d->m
-                file_handle.write(f"  {-math.log(1 - delta): >.5f}")
-                # d->d
-                file_handle.write(f"  {-math.log(delta): >.5f}\n")
-            else:
-                # If res_index is the last, then TMD is 0 (Transitions to Match and Delete)
-                # m->i
-                file_handle.write(f"  {-math.log(1. - mm): >.5f}")
-                # m->d
-                file_handle.write(f"        *")
-                # i->m
-                file_handle.write(f"  {-math.log(1. - delta): >.5f}")
-                # i->i
-                file_handle.write(f"  {-math.log(delta): >.5f}")
-                # d->m
-                file_handle.write(f"  0.00000")
-                # d->d
-                file_handle.write(f"        *\n")
+            # m->i
+            file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
+            # m->d
+            file_handle.write(f"  {-math.log((1. - mm) / 2.): >.5f}")
+            # i->m
+            file_handle.write(f"  {-math.log(1. - delta): >.5f}")
+            # i->i
+            file_handle.write(f"  {-math.log(delta): >.5f}")
+            # d->m
+            file_handle.write(f"  {-math.log(1 - delta): >.5f}")
+            # d->d
+            file_handle.write(f"  {-math.log(delta): >.5f}\n")
         file_handle.write("//\n")
 
 
