@@ -27,13 +27,14 @@ setup(
     install_requires=[
         "tqdm",
         "scipy",
+        "numpy<2",
         "biopython>=1.81",
         "einops",
         "matplotlib",
         "mrcfile",
         "pandas",
         "fair-esm",
-        "pyhmmer>=0.10.1",
+        "pyhmmer==0.7.1",
         "loguru",
     ],
 )
