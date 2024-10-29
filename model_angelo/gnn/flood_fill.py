@@ -143,7 +143,7 @@ def final_results_to_cif(
     save_hmms: bool = False,
     refine: bool = False,
     chain_prune_length: int = 4,
-    temperature: float = 0.5,
+    temperature: float = 1.0,
 ):
     prot_mask = protein.prot_mask
     if protein.unified_seq is not None:
