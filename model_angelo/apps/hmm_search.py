@@ -162,7 +162,7 @@ def main(parsed_args):
             digital_sequences = sf.read_block()
     except ValueError:
         # Write without gaps and try again
-        new_fasta_path = write_fasta_no_gaps(parsed_args.fasta_path)
+        new_fasta_path = write_fasta_no_gaps(parsed_args.fasta_path, parsed_args.output_dir)
         with pyhmmer.easel.SequenceFile(
             new_fasta_path, 
             alphabet=alphabet,

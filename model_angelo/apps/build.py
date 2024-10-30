@@ -180,7 +180,7 @@ def main(parsed_args):
 
         # Try to open FASTA       --------------------------------------------------------------------------------------
         from model_angelo.utils.fasta_utils import read_fasta
-        new_protein_fasta_path = write_fasta_only_aa(parsed_args.protein_fasta)
+        new_protein_fasta_path = write_fasta_only_aa(parsed_args.protein_fasta, parsed_args.output_dir)
         try:
             read_fasta(new_protein_fasta_path)
         except Exception as e:
