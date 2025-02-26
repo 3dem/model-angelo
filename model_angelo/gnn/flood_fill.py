@@ -236,7 +236,7 @@ def final_results_to_cif(
                 all_atoms_np[~prot_mask],
                 bfactors[~prot_mask],
                 is_nucleotide=True,
-                n_c_distance_threshold=4,
+                n_c_distance_threshold=3,
             )
             chains += [idxs[c] for c in nuc_chains]
 
