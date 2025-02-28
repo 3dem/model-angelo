@@ -122,18 +122,23 @@ def chains_to_atoms(
 
 
 def remove_overlapping_ca(
-    ca_positions: np.ndarray, radius_threshold: float = 0.5,
+    ca_positions: np.ndarray, 
+    b_factors: np.ndarray, 
+    radius_threshold: float = 1.5,
 ) -> np.ndarray:
     kdtree = cKDTree(ca_positions)
     existence_mask = np.ones(len(ca_positions), dtype=bool)
+    b_factors_copy = np.copy(b_factors)
 
-    for i in range(len(ca_positions)):
-        if existence_mask[i]:
-            too_close = np.array(
-                kdtree.query_ball_point(ca_positions[i], r=radius_threshold,)
-            )
-            too_close = too_close[too_close != i]
-            existence_mask[too_close] = False
+    while np.any(b_factors_copy > -1):
+        idx = np.argmax(b_factors_copy)
+        too_close = np.array(
+            kdtree.query_ball_point(ca_positions[i], r=radius_threshold,)
+        )
+        # The following line includes the current idx
+        b_factors_copy[too_close] = -1
+        too_close = too_close[too_close != idx]
+        existence_mask[too_close] = False
     return existence_mask
 
 
@@ -168,20 +173,27 @@ def final_results_to_cif(
                 np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1)
                 + num_prot
         )
+    bfactors = (
+        normalize_local_confidence_score(
+            final_results["local_confidence"][existence_mask]
+        )
+        * 100
+    )
     existence_mask = (
         (torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3).numpy()
         if not refine
         else np.ones_like(final_results["existence_mask"]).astype(bool)
     )
-    existence_mask = np.ones_like(final_results["existence_mask"]).astype(bool) 
     backbone_affine = torch.from_numpy(final_results["pred_affines"])
     if not refine:
         # Remove overlapping residues
         existence_mask[prot_mask] *= remove_overlapping_ca(
-            get_affine_translation(backbone_affine[prot_mask])
+            get_affine_translation(backbone_affine[prot_mask]),
+            bfactors[prot_mask],
         )
         existence_mask[~prot_mask] *= remove_overlapping_ca(
-            get_affine_translation(backbone_affine[~prot_mask])
+            get_affine_translation(backbone_affine[~prot_mask]),
+            bfactors[prot_mask]
         )
         aatype = aatype[existence_mask]
     backbone_affine = backbone_affine[existence_mask]
@@ -201,12 +213,6 @@ def final_results_to_cif(
     all_frames = torsion_angles_to_frames(aatype, backbone_affine, torsion_angles)
     all_atoms = frames_and_literature_positions_to_atomc_pos(aatype, all_frames)
     atom_mask = restype_atomc_mask[aatype]
-    bfactors = (
-        normalize_local_confidence_score(
-            final_results["local_confidence"][existence_mask]
-        )
-        * 100
-    )
     entropy_scores = final_results["entropy_score"][existence_mask] * 100
 
     if refine:
