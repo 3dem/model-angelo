@@ -49,10 +49,7 @@ def infer(args):
     if args.struct.endswith("prot"):
         protein = load_protein_from_prot(args.struct)
     elif args.struct.endswith("cif") or args.struct.endswith("pdb"):
-        if "output" in args.struct:
-            protein = init_protein_from_see_alpha(args.struct)
-        else:
-            protein = get_protein_from_file_path(args.struct)
+        protein = init_protein_from_see_alpha(args.struct)
     if protein is None:
         raise RuntimeError(f"File {args.struct} is not a supported file format.")
 
