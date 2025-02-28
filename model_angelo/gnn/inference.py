@@ -79,17 +79,13 @@ def infer(args):
                 lang_model, batch_converter, protein
             )
     elif args.struct.endswith("cif") or args.struct.endswith("pdb"):
-        if "output" in args.struct and not args.refine:
+        if args.refine:
+            protein = get_protein_from_file_path(args.struct)
+        else:
             for seq_file in [args.protein_fasta, args.rna_fasta, args.dna_fasta]:
                 if seq_file is None:
                     continue
-                # if not is_valid_fasta_ending(seq_file):
-                #     raise RuntimeError(
-                #         f"File {seq_file} is not a supported file format."
-                #     )
             protein = init_protein_from_see_alpha(args.struct, args.protein_fasta, skip_nucleotides=skip_nucleotides)
-        else:
-            protein = get_protein_from_file_path(args.struct)
         protein = get_lm_embeddings_for_protein(lang_model, batch_converter, protein)
     if protein is None:
         raise RuntimeError(f"File {args.struct} is not a supported file format.")
