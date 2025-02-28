@@ -168,11 +168,11 @@ def final_results_to_cif(
                 np.argmax(final_results["aa_logits"][~prot_mask][..., num_prot:], axis=-1)
                 + num_prot
         )
-    # existence_mask = (
-    #     (torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3).numpy()
-    #     if not refine
-    #     else np.ones_like(final_results["existence_mask"]).astype(bool)
-    # )
+    existence_mask = (
+        (torch.from_numpy(final_results["existence_mask"]).sigmoid() > 0.3).numpy()
+        if not refine
+        else np.ones_like(final_results["existence_mask"]).astype(bool)
+    )
     existence_mask = np.ones_like(final_results["existence_mask"]).astype(bool) 
     backbone_affine = torch.from_numpy(final_results["pred_affines"])
     if not refine:
