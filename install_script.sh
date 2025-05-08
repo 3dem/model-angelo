@@ -52,7 +52,7 @@ fi
 
 python_exc="${CONDA_PREFIX}/bin/python"
 
-$python_exc -mpip3 install .
+$python_exc -mpip3 install . --extra-index-url https://download.pytorch.org/whl/cu128
 
 if [ "${torch_home_path}" ]
 then
