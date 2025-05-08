@@ -50,16 +50,14 @@ then
   exit 1;
 fi
 
-conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.8 -c pytorch -c nvidia -y
+python_exc="${CONDA_PREFIX}/bin/python"
+
+$python_exc -mpip3 install .
 
 if [ "${torch_home_path}" ]
 then
   conda env config vars set TORCH_HOME="${torch_home_path}"
 fi
-
-python_exc="${CONDA_PREFIX}/bin/python"
-
-$python_exc -mpip install .
 
 if [[ "${DOWNLOAD_WEIGHTS}" ]]; then
   echo "Writing weights to ${TORCH_HOME}"
