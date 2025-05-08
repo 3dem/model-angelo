@@ -36,6 +36,9 @@ setup(
         "fair-esm==1.0.3",
         "pyhmmer==0.7.1",
         "loguru",
-        "numpy<2.0,
+        "numpy==2.1.2",
+        "torch==2.7.0",
+        "torchvision",
+        "torchaudio",
     ],
 )
