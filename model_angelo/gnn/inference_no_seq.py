@@ -36,7 +36,9 @@ def infer(args):
     os.makedirs(args.output_dir, exist_ok=True)
     model_angelo_output_dir = os.path.dirname(args.output_dir)
 
-    model_definition_path = os.path.join(args.model_dir, "model.py")
+    model_definition_path = getattr(args, "model_definition_path", None)
+    if model_definition_path is None:
+        model_definition_path = os.path.join(args.model_dir, "model.py")
     state_dict_path, step = find_latest_checkpoint(args.model_dir)
     logger.info(f"Loaded module from step: {step}")
 

@@ -22,7 +22,13 @@ setup(
             "model_angelo = model_angelo.__main__:main",
         ],
     },
-    package_data={'': ['utils/stereo_chemical_props.txt']},
+    package_data={
+        "model_angelo": [
+            "utils/stereo_chemical_props.txt",
+            "model_definitions/*/c_alpha/*.py",
+            "model_definitions/*/gnn/*.py",
+        ]
+    },
     packages=find_packages(),
     version=model_angelo.__version__,
     install_requires=[
