@@ -136,7 +136,9 @@ def infer(args):
     model_angelo_output_dir = os.path.dirname(args.output_path)
     device_names = get_device_names(args.device)
 
-    model_definition_path = os.path.join(args.log_dir, "model.py")
+    model_definition_path = getattr(args, "model_definition_path", None)
+    if model_definition_path is None:
+        model_definition_path = os.path.join(args.log_dir, "model.py")
     state_dict_path = os.path.join(args.log_dir, args.model_checkpoint) 
 
     logger.info(f"Using model file {model_definition_path}")

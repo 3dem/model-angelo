@@ -17,6 +17,33 @@ from model_angelo.models.common_modules import SpatialAvg, SpatialMax
 from model_angelo.utils.misc_utils import flatten_dict, unflatten_dict
 
 
+def get_package_root() -> str:
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def get_repo_model_definitions_path(bundle_name: str) -> str:
+    return os.path.join(get_package_root(), "model_definitions", bundle_name)
+
+
+def resolve_model_definition_paths(
+    bundle_name: str, require_c_alpha: bool = True, require_gnn: bool = True
+) -> Dict[str, str]:
+    definitions_root = get_repo_model_definitions_path(bundle_name)
+    paths = {}
+    if require_c_alpha:
+        paths["c_alpha"] = os.path.join(definitions_root, "c_alpha", "model.py")
+    if require_gnn:
+        paths["gnn"] = os.path.join(definitions_root, "gnn", "model.py")
+    for path in paths.values():
+        if not os.path.isfile(path):
+            raise RuntimeError(
+                "Model definition not found at "
+                f"{path}. Place model definitions under "
+                "model_angelo/model_definitions/<bundle_name>."
+            )
+    return paths
+
+
 def expand_as(x, y):
     n = len(x.shape)
     m = len(y.shape)
@@ -570,4 +597,3 @@ def compile_if_possible(module: nn.Module) -> nn.Module:
     if hasattr(torch, "compile"):
         module = torch.compile(module)
     return module
-

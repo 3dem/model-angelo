@@ -85,6 +85,11 @@ or running `conda init` and restarting your shell.
 
 </details>
 
+## Model definitions
+ModelAngelo loads model definitions from this repository under `model_angelo/model_definitions/<bundle_name>/...`.
+Checkpoints are still downloaded into the Torch cache by `download_and_install_model` and are not stored in the repo.
+If you need to edit the model code, update the `model.py` files in `model_angelo/model_definitions` and rerun your command.
+
 ## Usage
 First, make sure to run `model_angelo build --help` or `model_angelo build_no_seq --help` to familiarize yourself with all of the options available.
 

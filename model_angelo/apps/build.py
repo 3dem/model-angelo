@@ -32,7 +32,10 @@ from model_angelo.utils.misc_utils import (
     write_relion_job_exit_status,
     abort_if_relion_abort, filter_useless_warnings, check_available_memory,
 )
-from model_angelo.utils.torch_utils import download_and_install_model, get_device_name
+from model_angelo.utils.torch_utils import (
+    download_and_install_model,
+    resolve_model_definition_paths,
+)
 
 
 def add_args(parser):
@@ -157,6 +160,12 @@ def main(parsed_args):
         else:
             model_bundle_path = parsed_args.model_bundle_path
 
+        model_definition_paths = resolve_model_definition_paths(
+            parsed_args.model_bundle_name
+        )
+        ca_model_definition_path = model_definition_paths["c_alpha"]
+        gnn_model_definition_path = model_definition_paths["gnn"]
+
         if parsed_args.config_path is None:
             config_path = os.path.join(model_bundle_path, "config.json")
         else:
@@ -193,6 +202,7 @@ def main(parsed_args):
 
         ca_infer_args = Args(config["ca_infer_args"])
         ca_infer_args.log_dir = c_alpha_model_logdir
+        ca_infer_args.model_definition_path = ca_model_definition_path
         ca_infer_args.model_checkpoint = "chkpt.torch"
         ca_infer_args.map_path = parsed_args.volume_path
         ca_infer_args.output_path = os.path.join(
@@ -230,6 +240,7 @@ def main(parsed_args):
             gnn_infer_args.struct = current_ca_cif_path
             gnn_infer_args.output_dir = current_output_dir
             gnn_infer_args.model_dir = gnn_model_logdir
+            gnn_infer_args.model_definition_path = gnn_model_definition_path
             gnn_infer_args.device = parsed_args.device
             gnn_infer_args.write_hmm_profiles = False
             gnn_infer_args.refine = False
