@@ -30,6 +30,32 @@ HMMAlignment = namedtuple(
     ],
 )
 
+RNA_RESTYPE_INDICES = np.array(
+    [
+        restype_3_to_index["A"],
+        restype_3_to_index["C"],
+        restype_3_to_index["G"],
+        restype_3_to_index["U"],
+    ],
+    dtype=np.int64,
+)
+DNA_RESTYPE_INDICES = np.array(
+    [
+        restype_3_to_index["DA"],
+        restype_3_to_index["DC"],
+        restype_3_to_index["DG"],
+        restype_3_to_index["DT"],
+    ],
+    dtype=np.int64,
+)
+
+
+def nucleotide_argmax_from_logits(
+    aa_logits: np.ndarray, nucleotide_indices: np.ndarray
+) -> np.ndarray:
+    local_argmax = np.argmax(aa_logits[..., nucleotide_indices], axis=-1)
+    return nucleotide_indices[local_argmax]
+
 
 def get_hmm_alignment(
     aa_logits: np.ndarray,
@@ -97,7 +123,7 @@ def get_hmm_alignment(
                 np.array([len(remove_non_residue(x)) for x in dna_processed_msas])
             )
         if has_rna_seq and has_dna_seq:
-            if rna_seq_val <= dna_seq_val:
+            if rna_seq_val >= dna_seq_val:
                 match_type = "RNA"
             else:
                 match_type = "DNA"
@@ -119,7 +145,9 @@ def get_hmm_alignment(
             )
             index_dict = alphabet_to_index["RNA"]
             seq_idx = rna_seq_idx + len(digital_prot_sequences)
-            original_pred_seq = np.full(len(aa_logits), fill_value=restype_3_to_index["N"], dtype=np.int64)
+            original_pred_seq = nucleotide_argmax_from_logits(
+                aa_logits, RNA_RESTYPE_INDICES
+            )
         elif match_type == "DNA":
             original_seq = None if not do_pp else raw_dna_sequences[dna_seq_idx]
             msa_index_corr = get_msa_index_correspondence(
@@ -129,7 +157,9 @@ def get_hmm_alignment(
             seq_idx = (
                 dna_seq_idx + len(digital_prot_sequences) + len(digital_rna_sequences)
             )
-            original_pred_seq = np.full(len(aa_logits), fill_value=restype_3_to_index["DN"], dtype=np.int64)
+            original_pred_seq = nucleotide_argmax_from_logits(
+                aa_logits, DNA_RESTYPE_INDICES
+            )
         match_sequence = msa_index_corr.sequence
 
     msa_sequence = np.array(
