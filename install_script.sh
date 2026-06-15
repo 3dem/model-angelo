@@ -1,4 +1,10 @@
 #!/bin/bash
+if (return 0 2>/dev/null); then
+  MODEL_ANGELO_FINISH=return
+else
+  MODEL_ANGELO_FINISH=exit
+fi
+
 ENVNAME=model_angelo
 while test $# -gt 0; do
   case "$1" in
@@ -8,7 +14,7 @@ while test $# -gt 0; do
     echo "-h, --help                   simple help and instructions"
     echo "-w, --download-weights       use if you want to also download the weights"
     echo "-n, --name                   name of model-angelo conda environment, default: model_angelo"
-    exit 0
+    "${MODEL_ANGELO_FINISH}" 0
     ;;
   -w | --download-weights)
     echo "Downloading weights as well because flag -w or --download-weights was specified"
@@ -26,7 +32,7 @@ done
 if [ -z "${TORCH_HOME}" ] && [ -n "${DOWNLOAD_WEIGHTS}" ]; then
   echo "ERROR: TORCH_HOME is not set, but --download-weights or -w flag is set"
   echo "Please specify TORCH_HOME to a publicly available directory"
-  exit 1
+  "${MODEL_ANGELO_FINISH}" 1
 fi
 
 is_conda_model_angelo_installed=$(conda info --envs | grep $ENVNAME -c)
@@ -45,7 +51,7 @@ fi
 # Check to make sure model_angelo is activated
 if [[ "${CONDA_DEFAULT_ENV}" != $ENVNAME ]]; then
   echo "Could not run conda activate $ENVNAME, please check the errors"
-  exit 1
+  "${MODEL_ANGELO_FINISH}" 1
 fi
 
 python_exc="${CONDA_PREFIX}/bin/python"
