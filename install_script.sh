@@ -1,5 +1,6 @@
 #!/bin/bash
-if (return 0 2>/dev/null); then
+if [[ -n "${ZSH_EVAL_CONTEXT:-}" && "${ZSH_EVAL_CONTEXT}" == *:file* ]] || \
+  [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" != "$0" ]]; then
   MODEL_ANGELO_FINISH=return
 else
   MODEL_ANGELO_FINISH=exit
@@ -22,9 +23,17 @@ while test $# -gt 0; do
     shift
     ;;
   -n | --name)
+    if [ -z "${2:-}" ]; then
+      echo "ERROR: --name requires an environment name"
+      "${MODEL_ANGELO_FINISH}" 1
+    fi
     ENVNAME="$2"
     echo "Environment Name is: $ENVNAME"
     shift 2
+    ;;
+  *)
+    echo "ERROR: Unknown option: $1"
+    "${MODEL_ANGELO_FINISH}" 1
     ;;
   esac
 done
